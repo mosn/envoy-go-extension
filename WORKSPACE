@@ -7,11 +7,11 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file"
 # 2. Update .bazelversion, envoy.bazelrc and .bazelrc if needed.
 #
 # Note: this is needed by release builder to resolve envoy dep sha to tag.
-# Commit date: 2021-05-11
+# Commit date: 2022-07-27
 
-ENVOY_SHA = "875bb7dda84a87786cb0b504a5b964d31141a653"
+ENVOY_SHA = "2aca584b3bca81622d3b009612f0c7be93eeea34"
 
-ENVOY_SHA256 = "a90001351386984ac36ee4a52b43098af8162294427e76a52509bc8743549a17"
+ENVOY_SHA256 = "9a3eda2de9b3f5967100f96da2bbad3e7cbb26278aefa7af2446066b226f361d"
 
 ENVOY_ORG = "envoyproxy"
 
@@ -26,11 +26,16 @@ http_archive(
     url = "https://github.com/" + ENVOY_ORG + "/" + ENVOY_REPO + "/archive/" + ENVOY_SHA + ".tar.gz",
 )
 
+# Determine SHA256 `wget https://github.com/istio/proxy/archive/refs/tags/$ISTIO_VERSION.tar.gz && sha256sum $ISTIO_VERSION.tar.gz`
+
+ISTIO_VERSION="1.14.3"
+ISTIO_SHA256="a73747eadace4c578cbeffbca6c1cd294a5274a2c231222a53db49e1a2e508a9"
+
 http_archive(
     name = "io_istio_proxy",
-    strip_prefix = "proxy-1.12.7",
-    sha256 = "65bb3da1a936ac0c6fcc03c62e8888b4a46ffe15e5244f4eb963c2204588f6bc",
-    url = "https://github.com/istio/proxy/archive/refs/tags/1.12.7.tar.gz",
+    strip_prefix = "proxy-" + ISTIO_VERSION,
+    sha256 = ISTIO_SHA256,
+    url = "https://github.com/istio/proxy/archive/refs/tags/" + ISTIO_VERSION + ".tar.gz",
 )
 
 load(
