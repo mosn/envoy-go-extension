@@ -23,14 +23,17 @@ class GolangExtentionFilterConfig {
 public:
   GolangExtentionFilterConfig(
       const envoy::extensions::filters::http::golang::v3::Config& proto_config)
-      : filter_chain_(proto_config.plugin_name()), so_id_(proto_config.so_id()){};
+      : plugin_name_(proto_config.plugin_name()), so_id_(proto_config.so_id()), plugin_config_(proto_config.plugin_config()){};
 
   const std::string& filter_chain() const { return filter_chain_; }
   const std::string& so_id() const { return so_id_; }
+  const std::string& plugin_name() const { return plugin_name_; }
 
 private:
   const std::string filter_chain_;
+  const std::string plugin_name_;
   const std::string so_id_;
+  const Protobuf::Any plugin_config_;
 };
 
 using GolangExtentionFilterConfigSharedPtr = std::shared_ptr<GolangExtentionFilterConfig>;
