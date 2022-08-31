@@ -14,6 +14,7 @@ envoy_cc_binary(
         # "//src/application_protocols/thrift:config",
         # "//src/application_protocols/brpc:config",
         # "//src/http/golang:config",
+        "//src/common/dso:dso_lib",
         # skipped due to this error:
         # ERROR: /home/zhudejiang.pt/.cache/bazel/_bazel_zhudejiang.pt/e6d51174313f6fcb2790deca9a35220d/external/io_istio_proxy/extensions/metadata_exchange/BUILD:11:17: in cc_library rule @io_istio_proxy//extensions/metadata_exchange:metadata_exchange_lib: target '@envoy//source/extensions/common/wasm/ext:declare_property_cc_proto' is not visible from target '@io_istio_proxy//extensions/metadata_exchange:metadata_exchange_lib'. Check the visibility declaration of the former target if you think the dependency is legitimate
         # "@io_istio_proxy//extensions/access_log_policy:access_log_policy_lib",
