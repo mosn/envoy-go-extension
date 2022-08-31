@@ -13,6 +13,7 @@ envoy_cc_binary(
         # "//src/application_protocols/dubbo:config",
         # "//src/application_protocols/thrift:config",
         # "//src/application_protocols/brpc:config",
+        "//src/bootstrap/dso:config",
         "//src/common/dso:dso_lib",
         "//src/http/golang:config",
         # skipped due to this error:
