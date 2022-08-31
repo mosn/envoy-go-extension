@@ -11,9 +11,9 @@ licenses(["notice"])  # Apache 2
 # Public docs: docs/root/configuration/http_filters/golang_extension_filter.rst
 
 envoy_cc_library(
-    name = "golang_extension_filter_lib",
-    srcs = ["golang_extension_filter.cc"],
-    hdrs = ["golang_extension_filter.h"],
+    name = "golang_filter_lib",
+    srcs = ["golang_filter.cc"],
+    hdrs = ["golang_filter.h"],
     repository = "@envoy",
     deps = [
         "@envoy//envoy/http:codes_interface",
@@ -37,7 +37,7 @@ envoy_cc_library(
         "@envoy//envoy/registry",
         "@envoy//envoy/server:filter_config_interface",
         "@envoy//source/extensions/filters/http/common:factory_base_lib",
-        "//src/http/golang:golang_extension_filter_lib",
+        "//src/http/golang:golang_filter_lib",
         "//src/common/dso:dso_lib",
         "//api/http/golang/v3:pkg_cc_proto",
     ],

@@ -73,12 +73,14 @@ public:
   explicit Filter(Grpc::Context& context, FilterConfigSharedPtr config, uint64_t sid,
                   Dso::DsoInstance* dynamicLib)
       : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
+    /*
     static std::atomic_flag first = ATOMIC_FLAG_INIT;
     // set callback function handler for async
     if (!first.test_and_set() && dynamicLib_ != NULL) {
       dynamicLib_->setPostDecodeCallbackFunc(postDecode);
       dynamicLib_->setPostEncodeCallbackFunc(postEncode);
     }
+    */
   }
 
   // Http::StreamFilterBase

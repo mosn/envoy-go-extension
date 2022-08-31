@@ -2,7 +2,7 @@
 
 #include "envoy/registry/registry.h"
 
-#include "src/http/golang/golang_extension_filter.h"
+#include "src/http/golang/golang_filter.h"
 
 namespace Envoy {
 namespace Extensions {
