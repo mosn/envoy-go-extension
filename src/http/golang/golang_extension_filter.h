@@ -19,9 +19,9 @@ namespace Golang {
 /**
  * Configuration for the HTTP golang extension filter.
  */
-class GolangFilterConfig {
+class FilterConfig {
 public:
-  GolangFilterConfig(
+  FilterConfig(
       const envoy::extensions::filters::http::golang::v3::Config& proto_config)
       : plugin_name_(proto_config.plugin_name()), so_id_(proto_config.so_id()), plugin_config_(proto_config.plugin_config()){};
 
@@ -36,7 +36,20 @@ private:
   const Protobuf::Any plugin_config_;
 };
 
-using GolangFilterConfigSharedPtr = std::shared_ptr<GolangFilterConfig>;
+using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
+
+/**
+ * Route configuration for the filter.
+ */
+class FilterConfigPerRoute : public Router::RouteSpecificFilterConfig {
+public:
+  // TODO
+  FilterConfigPerRoute(const envoy::extensions::filters::http::golang::v3::ConfigsPerRoute&,
+                       Server::Configuration::ServerFactoryContext&) {}
+
+  ~FilterConfigPerRoute() override {}
+};
+
 
 /**
  * An enum specific for Golang status.
@@ -57,7 +70,7 @@ class Filter : public Http::StreamFilter,
                Logger::Loggable<Logger::Id::http>,
                public AccessLog::Instance {
 public:
-  explicit Filter(Grpc::Context& context, GolangFilterConfigSharedPtr config, uint64_t sid,
+  explicit Filter(Grpc::Context& context, FilterConfigSharedPtr config, uint64_t sid,
                   Dso::DsoInstance* dynamicLib)
       : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
     static std::atomic_flag first = ATOMIC_FLAG_INIT;
@@ -146,7 +159,7 @@ private:
   static void freeReqAndResp(Request& req, Response& resp);
   static void initReqAndResp(Request& req, Response& resp, size_t headerSize, size_t TrailerSize);
 
-  const GolangFilterConfigSharedPtr config_;
+  const FilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};

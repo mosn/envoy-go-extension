@@ -17,14 +17,21 @@ constexpr char CanonicalName[] = "envoy.filters.http.golang";
  * NamedHttpFilterConfigFactory.
  */
 class GolangFilterConfig
-    : public Common::FactoryBase<envoy::extensions::filters::http::golang::v3::Config> {
+    : public Common::FactoryBase<envoy::extensions::filters::http::golang::v3::Config,
+                                 envoy::extensions::filters::http::golang::v3::ConfigsPerRoute> {
 public:
   GolangFilterConfig() : FactoryBase(CanonicalName) {}
 
+private:
   Http::FilterFactoryCb createFilterFactoryFromProtoTyped(
       const envoy::extensions::filters::http::golang::v3::Config& proto_config,
       const std::string& stats_prefix,
       Server::Configuration::FactoryContext& factory_context) override;
+
+  Router::RouteSpecificFilterConfigConstSharedPtr createRouteSpecificFilterConfigTyped(
+      const envoy::extensions::filters::http::golang::v3::ConfigsPerRoute& proto_config,
+      Server::Configuration::ServerFactoryContext& context,
+      ProtobufMessage::ValidationVisitor& validator) override;
 };
 
 } // namespace Golang

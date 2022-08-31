@@ -13,8 +13,8 @@ Http::FilterFactoryCb GolangFilterConfig::createFilterFactoryFromProtoTyped(
     const envoy::extensions::filters::http::golang::v3::Config& proto_config, const std::string&,
     Server::Configuration::FactoryContext& factory_context) {
 
-  GolangFilterConfigSharedPtr config =
-      std::make_shared<GolangFilterConfig>(proto_config);
+  FilterConfigSharedPtr config =
+      std::make_shared<FilterConfig>(proto_config);
 
   return [&factory_context, config](Http::FilterChainFactoryCallbacks& callbacks) {
     auto filter =
@@ -25,11 +25,18 @@ Http::FilterFactoryCb GolangFilterConfig::createFilterFactoryFromProtoTyped(
   };
 }
 
+Router::RouteSpecificFilterConfigConstSharedPtr
+GolangFilterConfig::createRouteSpecificFilterConfigTyped(
+    const envoy::extensions::filters::http::golang::v3::ConfigsPerRoute& proto_config,
+    Server::Configuration::ServerFactoryContext& context, ProtobufMessage::ValidationVisitor&) {
+  return std::make_shared<FilterConfigPerRoute>(proto_config, context);
+}
+
 /**
  * Static registration for the golang extensions filter. @see RegisterFactory.
  */
 REGISTER_FACTORY(GolangFilterConfig,
-                 Server::Configuration::NamedHttpFilterConfigFactory);
+                 Server::Configuration::NamedHttpFilterConfigFactory){"envoy.golang"};
 
 } // namespace Golang
 } // namespace HttpFilters
