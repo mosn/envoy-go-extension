@@ -425,13 +425,8 @@ void Filter::freeCharPointerArray(NonConstString* p) {
 }
 
 bool Filter::hasDestroyed() { return has_destroyed_; }
-Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers, bool end_stream) {
-  if (!end_stream) {
-    request_headers_ = &headers;
-    // stop decodeheader filter for delay iteration
-    return Http::FilterHeadersStatus::StopIteration;
-  }
 
+Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers, bool end_stream) {
   if (dynamicLib_ == nullptr) {
     ENVOY_LOG(error, "dynamicLib_ is nullPtr, maybe the instance already unpub.");
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
@@ -441,40 +436,16 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   // save request headers
   request_headers_ = &headers;
 
-  // TODO stripped into general function.
   try {
-
-    Request req{};
-    Response resp{};
-    // create request and response struct
-    cost_time_mem_ += measure<>::execution([&]() { initReqAndResp(req, resp, headers.size(), 0); });
-
-    // build golang request, if the build fails, then the filter should be
-    // skipped
-    if (!buildGolangRequestHeaders(req, headers)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterHeadersStatus::Continue;
-    }
-
-    // call golang request stream filter
-    cost_time_decode_ +=
-        measure<>::execution([&]() { resp = dynamicLib_->runReceiveStreamFilter(req); });
-
-    switch (doGolangResponseAndCleanup(req, resp, headers, true)) {
-    case GolangStatus::Continue:
-      return Http::FilterHeadersStatus::Continue;
-    case GolangStatus::DirectResponse:
-      return Http::FilterHeadersStatus::StopIteration;
-    case GolangStatus::NeedAsync:
-      return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
-    }
+    FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
+    ptr_holder_ = reinterpret_cast<uint64_t>(holder);
+    dynamicLib_->moeOnRequestHeader(ptr_holder_, end_stream);
 
   } catch (const EnvoyException& e) {
-    ENVOY_LOG(error, "golang extension filter decodeHeaders catch: {}.", e.what());
+    ENVOY_LOG(error, "golang filter decodeHeaders catch: {}.", e.what());
 
   } catch (...) {
-    ENVOY_LOG(error, "golang extension filter decodeHeaders catch unknown exception.");
+    ENVOY_LOG(error, "golang filter decodeHeaders catch unknown exception.");
   }
 
   return Http::FilterHeadersStatus::Continue;

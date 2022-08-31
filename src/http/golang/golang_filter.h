@@ -67,6 +67,7 @@ enum class GolangStatus {
  * See docs/configuration/http_filters/golang_extension_filter.rst
  */
 class Filter : public Http::StreamFilter,
+               public std::enable_shared_from_this<Filter>,
                Logger::Loggable<Logger::Id::http>,
                public AccessLog::Instance {
 public:
@@ -180,6 +181,18 @@ private:
   uint64_t cost_time_encode_{0};
   uint64_t cost_time_mem_{0};
   uint64_t stream_id_{0};
+
+  uint64_t ptr_holder_{0};
+};
+
+class FilterWeakPtrHolder {
+public:
+  FilterWeakPtrHolder(std::weak_ptr<Filter> ptr) : ptr_(ptr) {}
+  ~FilterWeakPtrHolder(){};
+  std::weak_ptr<Filter>& get() { return ptr_; }
+
+private:
+  std::weak_ptr<Filter> ptr_{};
 };
 
 // used to count function execution time

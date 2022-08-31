@@ -115,6 +115,8 @@ extern void moeOnUpstreamTlsInfo(GoInt64 p0, GoUint64 p1, TlsInfo* p2);
 
 extern void moeOnTlsHandshakerSelectCert(GoUint64 p0, GoUint64 p1, GoUint64 p2);
 
+extern void moeOnRequestHeader(GoInt64 p0, GoUint64 p1);
+
 #ifdef __cplusplus
 }
 #endif
