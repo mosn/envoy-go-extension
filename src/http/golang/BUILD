@@ -36,7 +36,6 @@ envoy_cc_library(
     deps = [
         "@envoy//envoy/registry",
         "@envoy//envoy/server:filter_config_interface",
-        "@envoy//source/extensions/filters/http:well_known_names",
         "@envoy//source/extensions/filters/http/common:factory_base_lib",
         "//src/http/golang:golang_extension_filter_lib",
         "//src/common/dso:dso_lib",
