@@ -16,6 +16,7 @@ envoy_cc_library(
     hdrs = ["golang_filter.h"],
     repository = "@envoy",
     deps = [
+        ":cgo",
         "@envoy//envoy/http:codes_interface",
         "@envoy//envoy/http:filter_interface",
         "@envoy//source/common/common:enum_to_int",
@@ -34,10 +35,28 @@ envoy_cc_library(
     hdrs = ["config.h"],
     repository = "@envoy",
     deps = [
+        ":golang_filter_lib",
         "@envoy//envoy/registry",
         "@envoy//envoy/server:filter_config_interface",
         "@envoy//source/extensions/filters/http/common:factory_base_lib",
-        "//src/http/golang:golang_filter_lib",
+        "//src/common/dso:dso_lib",
+        "//api/http/golang/v3:pkg_cc_proto",
+    ],
+)
+
+envoy_cc_library(
+    name = "cgo",
+    srcs = ["cgo.cc"],
+    hdrs = ["golang_filter.h"],
+    repository = "@envoy",
+    deps = [
+        "@envoy//envoy/http:codes_interface",
+        "@envoy//envoy/http:filter_interface",
+        "@envoy//source/common/common:enum_to_int",
+        "@envoy//source/common/common:utility_lib",
+        "@envoy//source/common/grpc:context_lib",
+        "@envoy//source/common/http:headers_lib",
+        "@envoy//source/common/http/http1:codec_lib",
         "//src/common/dso:dso_lib",
         "//api/http/golang/v3:pkg_cc_proto",
     ],

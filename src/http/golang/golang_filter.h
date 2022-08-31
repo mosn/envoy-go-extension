@@ -139,7 +139,11 @@ public:
 
   static std::atomic<uint64_t> global_stream_id_;
 
+  // TODO
+  void requestContinue() {};
+
 private:
+
   // build golang request header
   bool buildGolangRequestHeaders(Request& req, Http::HeaderMap& headers);
   // build golang request data
@@ -168,6 +172,7 @@ private:
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};
   Http::RequestHeaderMap* request_headers_{nullptr};
+  Buffer::Instance* request_data_{nullptr};
   Http::ResponseHeaderMap* response_headers_{nullptr};
   std::string req_body_{};
   std::string resp_body_{};

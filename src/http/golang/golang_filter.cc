@@ -458,6 +458,8 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
     return Http::FilterDataStatus::Continue;
   }
 
+  request_data_ = &data;
+
   try {
     ASSERT(ptr_holder_ != 0);
     dynamicLib_->moeOnRequestData(ptr_holder_, end_stream);
@@ -469,7 +471,7 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
     ENVOY_LOG(error, "golang filter decodeData catch unknown exception.");
   }
 
-  return Http::FilterDataStatus::Continue;
+  return Http::FilterDataStatus::StopIterationAndWatermark;
 }
 
 Http::FilterTrailersStatus Filter::decodeTrailers(Http::RequestTrailerMap& trailers) {
