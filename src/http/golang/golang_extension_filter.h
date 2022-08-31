@@ -1,0 +1,183 @@
+#pragma once
+
+#include <atomic>
+
+#include "envoy/access_log/access_log.h"
+#include "api/http/golang/v3/golang.pb.h"
+#include "envoy/http/filter.h"
+#include "envoy/upstream/cluster_manager.h"
+
+#include "source/common/grpc/context_impl.h"
+
+#include "src/common/dso/dso.h"
+
+namespace Envoy {
+namespace Extensions {
+namespace HttpFilters {
+namespace GolangExtention {
+
+/**
+ * Configuration for the HTTP golang extension filter.
+ */
+class GolangExtentionFilterConfig {
+public:
+  GolangExtentionFilterConfig(
+      const envoy::extensions::filters::http::golang::v3::Config& proto_config)
+      : filter_chain_(proto_config.plugin_name()), so_id_(proto_config.so_id()){};
+
+  const std::string& filter_chain() const { return filter_chain_; }
+  const std::string& so_id() const { return so_id_; }
+
+private:
+  const std::string filter_chain_;
+  const std::string so_id_;
+};
+
+using GolangExtentionFilterConfigSharedPtr = std::shared_ptr<GolangExtentionFilterConfig>;
+
+/**
+ * An enum specific for Golang status.
+ */
+enum class GolangExtentionStatus {
+  // Continue filter chain iteration.
+  Continue,
+  // Directi response
+  DirectResponse,
+  // Need aysnc
+  NeedAsync,
+};
+
+/**
+ * See docs/configuration/http_filters/golang_extension_filter.rst
+ */
+class Filter : public Http::StreamFilter,
+               Logger::Loggable<Logger::Id::http>,
+               public AccessLog::Instance {
+public:
+  explicit Filter(Grpc::Context& context, GolangExtentionFilterConfigSharedPtr config, uint64_t sid,
+                  Dso::DsoInstance* dynamicLib)
+      : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
+    static std::atomic_flag first = ATOMIC_FLAG_INIT;
+    // set callback function handler for async
+    if (!first.test_and_set() && dynamicLib_ != NULL) {
+      dynamicLib_->setPostDecodeCallbackFunc(postDecode);
+      dynamicLib_->setPostEncodeCallbackFunc(postEncode);
+    }
+  }
+
+  // Http::StreamFilterBase
+  void onDestroy() override;
+
+  // Http::StreamDecoderFilter
+  Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap& headers,
+                                          bool end_stream) override;
+  Http::FilterDataStatus decodeData(Buffer::Instance&, bool) override;
+  Http::FilterTrailersStatus decodeTrailers(Http::RequestTrailerMap&) override;
+  void setDecoderFilterCallbacks(Http::StreamDecoderFilterCallbacks& callbacks) override {
+    decoder_callbacks_ = &callbacks;
+  }
+
+  // Http::StreamEncoderFilter
+  Http::FilterHeadersStatus encode1xxHeaders(Http::ResponseHeaderMap&) override {
+    return Http::FilterHeadersStatus::Continue;
+  }
+  Http::FilterHeadersStatus encodeHeaders(Http::ResponseHeaderMap& headers,
+                                          bool end_stream) override;
+  Http::FilterDataStatus encodeData(Buffer::Instance& data, bool end_stream) override;
+  Http::FilterTrailersStatus encodeTrailers(Http::ResponseTrailerMap& trailers) override;
+  Http::FilterMetadataStatus encodeMetadata(Http::MetadataMap&) override {
+    return Http::FilterMetadataStatus::Continue;
+  }
+
+  void setEncoderFilterCallbacks(Http::StreamEncoderFilterCallbacks& callbacks) override {
+    encoder_callbacks_ = &callbacks;
+  }
+
+  // AccessLog::Instance
+  void log(const Http::RequestHeaderMap* request_headers,
+           const Http::ResponseHeaderMap* response_headers,
+           const Http::ResponseTrailerMap* response_trailers,
+           const StreamInfo::StreamInfo& stream_info) override;
+
+  void onStreamComplete() override;
+
+  // process requests for Golang extensions response
+  GolangExtentionStatus doGolangResponseAndCleanup(Request& req, Response& resp,
+                                                   Http::HeaderMap& headers, bool isDecode);
+  // create metadata for golang.extension namespace
+  void addGolangExtentionMetadata(const std::string& k, const uint64_t v);
+
+  void directResponse(Http::ResponseHeaderMapPtr&& headers, Buffer::Instance* body,
+                      Http::ResponseTrailerMapPtr&& trailers);
+
+  Http::RequestHeaderMap* getRequestHeaders();
+  Http::ResponseHeaderMap* getResponseHeaders();
+  Event::Dispatcher* getDispatcher();
+  bool hasDestroyed();
+
+  static void postDecode(void* filter, Response resp);
+  static void postEncode(void* filter, Response resp);
+
+  static std::atomic<uint64_t> global_stream_id_;
+
+private:
+  // build golang request header
+  bool buildGolangRequestHeaders(Request& req, Http::HeaderMap& headers);
+  // build golang request data
+  void buildGolangRequestBodyDecode(Request& req, const Buffer::Instance& data);
+  void buildGolangRequestBodyEncode(Request& req, const Buffer::Instance& data);
+  // build golang request trailer
+  bool buildGolangRequestTrailers(Request& req, Http::HeaderMap& trailers);
+  // build golang request filter chain
+  void buildGolangRequestFilterChain(Request& req, const std::string& filter_chain);
+  // build golang request remote address
+  void buildGolangRequestRemoteAddress(Request& req);
+
+  void onHeadersModified();
+  static void buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* sheaders);
+
+  static std::string buildBody(const Buffer::Instance* buffered, const Buffer::Instance& last);
+
+  static void freeCharPointer(NonConstString* p);
+  static void freeCharPointerArray(NonConstString* p);
+  static void freeReqAndResp(Request& req, Response& resp);
+  static void initReqAndResp(Request& req, Response& resp, size_t headerSize, size_t TrailerSize);
+
+  const GolangExtentionFilterConfigSharedPtr config_;
+  Dso::DsoInstance* dynamicLib_;
+
+  Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
+  Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};
+  Http::RequestHeaderMap* request_headers_{nullptr};
+  Http::ResponseHeaderMap* response_headers_{nullptr};
+  std::string req_body_{};
+  std::string resp_body_{};
+  // TODO get all context
+  Grpc::Context& context_;
+  bool has_async_task_{false};
+  bool has_destroyed_{false};
+  bool decode_goextension_executed_{false};
+  bool encode_goextension_executed_{false};
+  uint64_t cost_time_decode_{0};
+  uint64_t cost_time_encode_{0};
+  uint64_t cost_time_mem_{0};
+  uint64_t stream_id_{0};
+};
+
+// used to count function execution time
+template <typename T = std::chrono::microseconds> struct measure {
+  template <typename F, typename... Args> static typename T::rep execution(F func, Args&&... args) {
+    auto start = std::chrono::steady_clock::now();
+
+    func(std::forward<Args>(args)...);
+
+    auto duration = std::chrono::duration_cast<T>(std::chrono::steady_clock::now() - start);
+
+    return duration.count();
+  }
+};
+
+} // namespace GolangExtention
+} // namespace HttpFilters
+} // namespace Extensions
+} // namespace Envoy
