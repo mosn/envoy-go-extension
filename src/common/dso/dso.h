@@ -37,6 +37,7 @@ public:
   void moeOnUpstreamTlsInfo(GoInt64 p0, GoUint64 p1, TlsInfo* p2);
   void moeOnTlsHandshakerSelectCert(GoUint64 p0, GoUint64 p1, GoUint64 p2);
   void moeOnRequestHeader(GoUint64 p0, GoUint64 p1);
+  void moeOnRequestData(GoUint64 p0, GoUint64 p1);
 
 private:
   const std::string dsoName_;
@@ -65,6 +66,7 @@ private:
   void (*moeOnUpstreamTlsInfo_)(GoInt64 p0, GoUint64 p1, TlsInfo* p2) = {nullptr};
   void (*moeOnTlsHandshakerSelectCert_)(GoUint64 p0, GoUint64 p1, GoUint64 p2) = {nullptr};
   void (*moeOnRequestHeader_)(GoUint64 p0, GoUint64 p1) = {nullptr};
+  void (*moeOnRequestData_)(GoUint64 p0, GoUint64 p1) = {nullptr};
 };
 
 class DsoInstanceManager {

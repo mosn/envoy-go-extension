@@ -211,6 +211,7 @@ DsoInstance::~DsoInstance() {
   moeOnUpstreamTlsInfo_ = nullptr;
   moeOnTlsHandshakerSelectCert_ = nullptr;
   moeOnRequestHeader_ = nullptr;
+  moeOnRequestData_ = nullptr;
 
   dlclose(handler_);
   handler_ = nullptr;
@@ -324,6 +325,12 @@ void DsoInstance::moeOnTlsHandshakerSelectCert(GoUint64 p0, GoUint64 p1, GoUint6
 void DsoInstance::moeOnRequestHeader(GoUint64 p0, GoUint64 p1) {
   if (moeOnRequestHeader_) {
     moeOnRequestHeader_(p0, p1);
+  }
+}
+
+void DsoInstance::moeOnRequestData(GoUint64 p0, GoUint64 p1) {
+  if (moeOnRequestData_) {
+    moeOnRequestData_(p0, p1);
   }
 }
 

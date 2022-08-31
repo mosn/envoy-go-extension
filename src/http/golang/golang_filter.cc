@@ -448,15 +448,10 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
     ENVOY_LOG(error, "golang filter decodeHeaders catch unknown exception.");
   }
 
-  return Http::FilterHeadersStatus::Continue;
+  return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
 }
 
 Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_stream) {
-  if (!end_stream) {
-    // buffer whole datas
-    return Http::FilterDataStatus::StopIterationAndBuffer;
-  }
-
   if (dynamicLib_ == nullptr) {
     ENVOY_LOG(error, "dynamicLib_ is nullPtr, maybe the instance already unpub.");
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
@@ -464,40 +459,14 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
   }
 
   try {
-    Request req{};
-    Response resp{};
-    // create request and response struct
-    cost_time_mem_ +=
-        measure<>::execution([&]() { initReqAndResp(req, resp, request_headers_->size(), 0); });
-
-    // build golang request, if the build fails, then the filter should be
-    // skipped
-    if (!buildGolangRequestHeaders(req, *request_headers_)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterDataStatus::Continue;
-    }
-
-    // build golang request body
-    buildGolangRequestBodyDecode(req, data);
-
-    // call golang request stream filter
-    cost_time_decode_ +=
-        measure<>::execution([&]() { resp = dynamicLib_->runReceiveStreamFilter(req); });
-    switch (doGolangResponseAndCleanup(req, resp, *request_headers_, true)) {
-    case GolangStatus::Continue:
-      return Http::FilterDataStatus::Continue;
-    case GolangStatus::DirectResponse:
-      return Http::FilterDataStatus::StopIterationNoBuffer;
-    case GolangStatus::NeedAsync:
-      return Http::FilterDataStatus::StopIterationAndWatermark;
-    }
+    ASSERT(ptr_holder_ != 0);
+    dynamicLib_->moeOnRequestData(ptr_holder_, end_stream);
 
   } catch (const EnvoyException& e) {
-    ENVOY_LOG(error, "golang extension filter decodeData catch: {}.", e.what());
+    ENVOY_LOG(error, "golang filter decodeData catch: {}.", e.what());
 
   } catch (...) {
-    ENVOY_LOG(error, "golang extension filter decodeData catch unknown exception.");
+    ENVOY_LOG(error, "golang filter decodeData catch unknown exception.");
   }
 
   return Http::FilterDataStatus::Continue;
