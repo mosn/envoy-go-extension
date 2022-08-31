@@ -8,7 +8,7 @@
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
-namespace GolangExtention {
+namespace Golang {
 
 constexpr char CanonicalName[] = "envoy.filters.http.golang";
 
@@ -16,10 +16,10 @@ constexpr char CanonicalName[] = "envoy.filters.http.golang";
  * Config registration for the golang extentions  filter. @see
  * NamedHttpFilterConfigFactory.
  */
-class GolangExtentionFilterConfigFactory
+class GolangFilterConfig
     : public Common::FactoryBase<envoy::extensions::filters::http::golang::v3::Config> {
 public:
-  GolangExtentionFilterConfigFactory() : FactoryBase(CanonicalName) {}
+  GolangFilterConfig() : FactoryBase(CanonicalName) {}
 
   Http::FilterFactoryCb createFilterFactoryFromProtoTyped(
       const envoy::extensions::filters::http::golang::v3::Config& proto_config,
@@ -27,7 +27,7 @@ public:
       Server::Configuration::FactoryContext& factory_context) override;
 };
 
-} // namespace GolangExtention
+} // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy

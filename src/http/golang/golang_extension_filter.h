@@ -14,14 +14,14 @@
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
-namespace GolangExtention {
+namespace Golang {
 
 /**
  * Configuration for the HTTP golang extension filter.
  */
-class GolangExtentionFilterConfig {
+class GolangFilterConfig {
 public:
-  GolangExtentionFilterConfig(
+  GolangFilterConfig(
       const envoy::extensions::filters::http::golang::v3::Config& proto_config)
       : plugin_name_(proto_config.plugin_name()), so_id_(proto_config.so_id()), plugin_config_(proto_config.plugin_config()){};
 
@@ -36,12 +36,12 @@ private:
   const Protobuf::Any plugin_config_;
 };
 
-using GolangExtentionFilterConfigSharedPtr = std::shared_ptr<GolangExtentionFilterConfig>;
+using GolangFilterConfigSharedPtr = std::shared_ptr<GolangFilterConfig>;
 
 /**
  * An enum specific for Golang status.
  */
-enum class GolangExtentionStatus {
+enum class GolangStatus {
   // Continue filter chain iteration.
   Continue,
   // Directi response
@@ -57,7 +57,7 @@ class Filter : public Http::StreamFilter,
                Logger::Loggable<Logger::Id::http>,
                public AccessLog::Instance {
 public:
-  explicit Filter(Grpc::Context& context, GolangExtentionFilterConfigSharedPtr config, uint64_t sid,
+  explicit Filter(Grpc::Context& context, GolangFilterConfigSharedPtr config, uint64_t sid,
                   Dso::DsoInstance* dynamicLib)
       : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
     static std::atomic_flag first = ATOMIC_FLAG_INIT;
@@ -105,10 +105,10 @@ public:
   void onStreamComplete() override;
 
   // process requests for Golang extensions response
-  GolangExtentionStatus doGolangResponseAndCleanup(Request& req, Response& resp,
+  GolangStatus doGolangResponseAndCleanup(Request& req, Response& resp,
                                                    Http::HeaderMap& headers, bool isDecode);
   // create metadata for golang.extension namespace
-  void addGolangExtentionMetadata(const std::string& k, const uint64_t v);
+  void addGolangMetadata(const std::string& k, const uint64_t v);
 
   void directResponse(Http::ResponseHeaderMapPtr&& headers, Buffer::Instance* body,
                       Http::ResponseTrailerMapPtr&& trailers);
@@ -146,7 +146,7 @@ private:
   static void freeReqAndResp(Request& req, Response& resp);
   static void initReqAndResp(Request& req, Response& resp, size_t headerSize, size_t TrailerSize);
 
-  const GolangExtentionFilterConfigSharedPtr config_;
+  const GolangFilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
@@ -180,7 +180,7 @@ template <typename T = std::chrono::microseconds> struct measure {
   }
 };
 
-} // namespace GolangExtention
+} // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy

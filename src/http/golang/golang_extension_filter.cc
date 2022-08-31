@@ -19,7 +19,7 @@
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
-namespace GolangExtention {
+namespace Golang {
 
 std::atomic<uint64_t> Filter::global_stream_id_;
 void Filter::onDestroy() {
@@ -44,7 +44,7 @@ void Filter::onDestroy() {
 
 void Filter::postDecode(void* filter, Response resp) {
 
-  auto golangFilter = static_cast<Envoy::Extensions::HttpFilters::GolangExtention::Filter*>(filter);
+  auto golangFilter = static_cast<Envoy::Extensions::HttpFilters::Golang::Filter*>(filter);
 
   if (golangFilter->hasDestroyed()) {
     ENVOY_LOG(warn, "check the filter has been destroyed on postDecode");
@@ -63,12 +63,12 @@ void Filter::postDecode(void* filter, Response resp) {
 
     switch (golangFilter->doGolangResponseAndCleanup(req, res, *(golangFilter->getRequestHeaders()),
                                                      true)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       golangFilter->decoder_callbacks_->continueDecoding();
       return;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return;
     }
   };
@@ -78,7 +78,7 @@ void Filter::postDecode(void* filter, Response resp) {
 
 void Filter::postEncode(void* filter, Response resp) {
 
-  auto golangFilter = static_cast<Envoy::Extensions::HttpFilters::GolangExtention::Filter*>(filter);
+  auto golangFilter = static_cast<Envoy::Extensions::HttpFilters::Golang::Filter*>(filter);
 
   if (golangFilter->hasDestroyed()) {
     ENVOY_LOG(warn, "check the filter has been destroyed on postEncode");
@@ -97,12 +97,12 @@ void Filter::postEncode(void* filter, Response resp) {
 
     switch (golangFilter->doGolangResponseAndCleanup(
         req, res, *(golangFilter->getResponseHeaders()), false)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       golangFilter->encoder_callbacks_->continueEncoding();
       return;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return;
     }
   };
@@ -110,14 +110,14 @@ void Filter::postEncode(void* filter, Response resp) {
   golangFilter->getDispatcher()->post(postCallback);
 }
 
-GolangExtentionStatus Filter::doGolangResponseAndCleanup(Request& req, Response& resp,
+GolangStatus Filter::doGolangResponseAndCleanup(Request& req, Response& resp,
                                                          Http::HeaderMap& headers, bool isDecode) {
   // check async
   if (resp.need_async) {
     // free memory
     cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
     has_async_task_ = true;
-    return GolangExtentionStatus::NeedAsync;
+    return GolangStatus::NeedAsync;
   }
 
   has_async_task_ = false;
@@ -133,7 +133,7 @@ GolangExtentionStatus Filter::doGolangResponseAndCleanup(Request& req, Response&
                      "resp.headers == NULL");
     // free memory
     cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-    return GolangExtentionStatus::Continue;
+    return GolangStatus::Continue;
   }
 
   int i = 0;
@@ -207,12 +207,12 @@ GolangExtentionStatus Filter::doGolangResponseAndCleanup(Request& req, Response&
 
     // free memory
     cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-    return GolangExtentionStatus::DirectResponse;
+    return GolangStatus::DirectResponse;
   }
 
   // free memory
   cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-  return GolangExtentionStatus::Continue;
+  return GolangStatus::Continue;
 }
 
 void Filter::buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* sheaders) {
@@ -462,11 +462,11 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
         measure<>::execution([&]() { resp = dynamicLib_->runReceiveStreamFilter(req); });
 
     switch (doGolangResponseAndCleanup(req, resp, headers, true)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       return Http::FilterHeadersStatus::Continue;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return Http::FilterHeadersStatus::StopIteration;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
     }
 
@@ -514,11 +514,11 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
     cost_time_decode_ +=
         measure<>::execution([&]() { resp = dynamicLib_->runReceiveStreamFilter(req); });
     switch (doGolangResponseAndCleanup(req, resp, *request_headers_, true)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       return Http::FilterDataStatus::Continue;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return Http::FilterDataStatus::StopIterationNoBuffer;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return Http::FilterDataStatus::StopIterationAndWatermark;
     }
 
@@ -573,11 +573,11 @@ Http::FilterTrailersStatus Filter::decodeTrailers(Http::RequestTrailerMap& trail
     cost_time_decode_ +=
         measure<>::execution([&]() { resp = dynamicLib_->runReceiveStreamFilter(req); });
     switch (doGolangResponseAndCleanup(req, resp, *request_headers_, true)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       return Http::FilterTrailersStatus::Continue;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return Http::FilterTrailersStatus::Continue;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return Http::FilterTrailersStatus::StopIteration;
     }
 
@@ -621,11 +621,11 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
     cost_time_encode_ +=
         measure<>::execution([&]() { resp = dynamicLib_->runSendStreamFilter(req); });
     switch (doGolangResponseAndCleanup(req, resp, headers, false)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       return Http::FilterHeadersStatus::Continue;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return Http::FilterHeadersStatus::StopIteration;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
     }
 
@@ -673,11 +673,11 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
     cost_time_encode_ +=
         measure<>::execution([&]() { resp = dynamicLib_->runSendStreamFilter(req); });
     switch (doGolangResponseAndCleanup(req, resp, *response_headers_, false)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       return Http::FilterDataStatus::Continue;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return Http::FilterDataStatus::StopIterationNoBuffer;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return Http::FilterDataStatus::StopIterationAndWatermark;
     }
 
@@ -731,11 +731,11 @@ Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trai
     cost_time_encode_ +=
         measure<>::execution([&]() { resp = dynamicLib_->runSendStreamFilter(req); });
     switch (doGolangResponseAndCleanup(req, resp, *response_headers_, false)) {
-    case GolangExtentionStatus::Continue:
+    case GolangStatus::Continue:
       return Http::FilterTrailersStatus::Continue;
-    case GolangExtentionStatus::DirectResponse:
+    case GolangStatus::DirectResponse:
       return Http::FilterTrailersStatus::Continue;
-    case GolangExtentionStatus::NeedAsync:
+    case GolangStatus::NeedAsync:
       return Http::FilterTrailersStatus::StopIteration;
     }
 
@@ -750,12 +750,12 @@ Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trai
 }
 
 void Filter::onStreamComplete() {
-  addGolangExtentionMetadata("cost_decode", cost_time_decode_);
-  addGolangExtentionMetadata("cost_encode", cost_time_encode_);
-  addGolangExtentionMetadata("cost_total", cost_time_decode_ + cost_time_encode_ + cost_time_mem_);
+  addGolangMetadata("cost_decode", cost_time_decode_);
+  addGolangMetadata("cost_encode", cost_time_encode_);
+  addGolangMetadata("cost_total", cost_time_decode_ + cost_time_encode_ + cost_time_mem_);
 }
 
-void Filter::addGolangExtentionMetadata(const std::string& k, const uint64_t v) {
+void Filter::addGolangMetadata(const std::string& k, const uint64_t v) {
   ProtobufWkt::Struct value;
   ProtobufWkt::Value val;
   val.set_number_value(static_cast<double>(v));
@@ -769,7 +769,7 @@ void Filter::log(const Http::RequestHeaderMap*, const Http::ResponseHeaderMap*,
   // Todo log phase of stream filter
 }
 
-} // namespace GolangExtention
+} // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy

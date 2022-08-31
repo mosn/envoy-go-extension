@@ -7,14 +7,14 @@
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
-namespace GolangExtention {
+namespace Golang {
 
-Http::FilterFactoryCb GolangExtentionFilterConfigFactory::createFilterFactoryFromProtoTyped(
+Http::FilterFactoryCb GolangFilterConfig::createFilterFactoryFromProtoTyped(
     const envoy::extensions::filters::http::golang::v3::Config& proto_config, const std::string&,
     Server::Configuration::FactoryContext& factory_context) {
 
-  GolangExtentionFilterConfigSharedPtr config =
-      std::make_shared<GolangExtentionFilterConfig>(proto_config);
+  GolangFilterConfigSharedPtr config =
+      std::make_shared<GolangFilterConfig>(proto_config);
 
   return [&factory_context, config](Http::FilterChainFactoryCallbacks& callbacks) {
     auto filter =
@@ -28,10 +28,10 @@ Http::FilterFactoryCb GolangExtentionFilterConfigFactory::createFilterFactoryFro
 /**
  * Static registration for the golang extensions filter. @see RegisterFactory.
  */
-REGISTER_FACTORY(GolangExtentionFilterConfigFactory,
+REGISTER_FACTORY(GolangFilterConfig,
                  Server::Configuration::NamedHttpFilterConfigFactory);
 
-} // namespace GolangExtention
+} // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy
