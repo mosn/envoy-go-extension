@@ -14,7 +14,7 @@ envoy_cc_library(
     hdrs = [
         "api.h",
         "dso.h",
-        "libgolang_extension.h",
+        "libgolang.h",
     ],
     deps = [
         "@envoy//source/common/common:minimal_logger_lib",

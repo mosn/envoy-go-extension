@@ -22,6 +22,7 @@ namespace HttpFilters {
 namespace Golang {
 
 std::atomic<uint64_t> Filter::global_stream_id_;
+
 void Filter::onDestroy() {
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang extension filter has been destroyed");
@@ -34,7 +35,7 @@ void Filter::onDestroy() {
   }
 
   try {
-    dynamicLib_->destoryStream(stream_id_, has_async_task_ ? 1 : 0);
+    // dynamicLib_->destoryStream(stream_id_, has_async_task_ ? 1 : 0);
   } catch (...) {
     ENVOY_LOG(error, "golang extension filter onDestroy do destoryStream catch "
                      "unknown exception.");
@@ -42,179 +43,7 @@ void Filter::onDestroy() {
   has_destroyed_ = true;
 }
 
-void Filter::postDecode(void* filter, Response resp) {
-
-  auto golangFilter = static_cast<Envoy::Extensions::HttpFilters::Golang::Filter*>(filter);
-
-  if (golangFilter->hasDestroyed()) {
-    ENVOY_LOG(warn, "check the filter has been destroyed on postDecode");
-    return;
-  }
-
-  auto postCallback = [golangFilter = golangFilter, resp = resp]() -> void {
-    Request req;
-    memset(&req, 0, sizeof(req));
-    auto res = resp;
-
-    if (golangFilter->hasDestroyed()) {
-      ENVOY_LOG(warn, "check the filter has been destroyed on call postDecode");
-      return;
-    }
-
-    switch (golangFilter->doGolangResponseAndCleanup(req, res, *(golangFilter->getRequestHeaders()),
-                                                     true)) {
-    case GolangStatus::Continue:
-      golangFilter->decoder_callbacks_->continueDecoding();
-      return;
-    case GolangStatus::DirectResponse:
-      return;
-    case GolangStatus::NeedAsync:
-      return;
-    }
-  };
-
-  golangFilter->getDispatcher()->post(postCallback);
-}
-
-void Filter::postEncode(void* filter, Response resp) {
-
-  auto golangFilter = static_cast<Envoy::Extensions::HttpFilters::Golang::Filter*>(filter);
-
-  if (golangFilter->hasDestroyed()) {
-    ENVOY_LOG(warn, "check the filter has been destroyed on postEncode");
-    return;
-  }
-
-  auto postCallback = [golangFilter = golangFilter, resp = resp]() -> void {
-    auto res = resp;
-    Request req;
-    memset(&req, 0, sizeof(req));
-
-    if (golangFilter->hasDestroyed()) {
-      ENVOY_LOG(warn, "check the filter has been destroyed on call postEncode");
-      return;
-    }
-
-    switch (golangFilter->doGolangResponseAndCleanup(
-        req, res, *(golangFilter->getResponseHeaders()), false)) {
-    case GolangStatus::Continue:
-      golangFilter->encoder_callbacks_->continueEncoding();
-      return;
-    case GolangStatus::DirectResponse:
-      return;
-    case GolangStatus::NeedAsync:
-      return;
-    }
-  };
-
-  golangFilter->getDispatcher()->post(postCallback);
-}
-
-GolangStatus Filter::doGolangResponseAndCleanup(Request& req, Response& resp,
-                                                         Http::HeaderMap& headers, bool isDecode) {
-  // check async
-  if (resp.need_async) {
-    // free memory
-    cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-    has_async_task_ = true;
-    return GolangStatus::NeedAsync;
-  }
-
-  has_async_task_ = false;
-
-  if (isDecode) {
-    decode_goextension_executed_ = true;
-  } else {
-    encode_goextension_executed_ = true;
-  }
-
-  if (resp.headers == NULL) {
-    ENVOY_LOG(error, "golang extension filter doGolangResponseAndCleanup failed: "
-                     "resp.headers == NULL");
-    // free memory
-    cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-    return GolangStatus::Continue;
-  }
-
-  int i = 0;
-  // resp.headers ->
-  // |{key0-data,key0-len}|{val0-data,val0-len}|,|{key1-data,key1-len}|{val1-data,val1-len}|null|
-  for (i = 0; resp.headers[i].data != NULL;) {
-    if (resp.headers[i + 1].len == 0) {
-      headers.remove(Http::LowerCaseString(std::string(resp.headers[i].data, resp.headers[i].len)));
-
-    } else {
-      // overwrites any existing header, don't append it
-      headers.setCopy(Http::LowerCaseString(std::string(resp.headers[i].data, resp.headers[i].len)),
-                      absl::string_view(resp.headers[i + 1].data, resp.headers[i + 1].len));
-    }
-
-    i += 2;
-  }
-
-  // The headers has been modifyed
-  if (i != 0) {
-    onHeadersModified();
-  }
-
-  // check direct response
-  if (resp.direct_response) {
-    // TODO remove it
-    // auto modify_headers = [&](Http::ResponseHeaderMap& resp_headers) -> void {
-    //  // resp.headers ->
-    //  //
-    //  |{key0-data,key0-len}|{val0-data,val0-len}|,|{key1-data,key1-len}|{val1-data,val1-len}|null|
-    //  for (i = 0; resp.headers[i].data != NULL;) {
-    //    if (resp.headers[i + 1].len != 0) {
-    //      // overwrites any existing header, don't append it
-    //      resp_headers.setCopy(
-    //          Http::LowerCaseString(std::string(resp.headers[i].data, resp.headers[i].len)),
-    //          absl::string_view(resp.headers[i + 1].data, resp.headers[i + 1].len));
-    //    }
-
-    //    i += 2;
-    //  }
-    //};
-
-    if (isDecode) {
-      auto dheaders = Http::ResponseHeaderMapImpl::create();
-      buildHeadersOrTrailers(*dheaders, resp.headers);
-      // set status when response headers no ":status"
-      // Note: ":status" must be specified and a valid unsigned long.
-      if (!dheaders->Status()) {
-        dheaders->setStatus(std::to_string(resp.status));
-      }
-
-      Buffer::InstancePtr body;
-      uint64_t body_size = 0;
-      if (resp.resp_body.data != nullptr && resp.resp_body.len != 0) {
-        body_size = resp.resp_body.len;
-        body = std::make_unique<Buffer::OwnedImpl>(resp.resp_body.data, body_size);
-        dheaders->setContentLength(body_size);
-      }
-
-      auto dtrailers = Http::ResponseTrailerMapImpl::create();
-      buildHeadersOrTrailers(*dtrailers, resp.trailers);
-
-      directResponse(std::move(dheaders), body.get(), std::move(dtrailers));
-
-    } else {
-      // TODO Check response in response path if nothing has been continued yet
-      // encoder_callbacks_->sendLocalReply(
-      //    Http::Code(resp.status), resp.resp_body, modify_headers,
-      //    absl::nullopt, "golang extension direct response");
-    }
-
-    // free memory
-    cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-    return GolangStatus::DirectResponse;
-  }
-
-  // free memory
-  cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-  return GolangStatus::Continue;
-}
-
+/*
 void Filter::buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* sheaders) {
   // resp.headers ->
   // |{key0-data,key0-len}|{val0-data,val0-len}|,|{key1-data,key1-len}|{val1-data,val1-len}|null|
@@ -228,6 +57,7 @@ void Filter::buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* s
     i += 2;
   }
 }
+*/
 
 void Filter::onHeadersModified() {
   // Any changes to request headers can affect how the request is going to be
@@ -266,6 +96,7 @@ std::string Filter::buildBody(const Buffer::Instance* buffered, const Buffer::In
   return body;
 }
 
+/*
 void Filter::buildGolangRequestBodyDecode(Request& req, const Buffer::Instance& data) {
   req_body_ = buildBody(decoder_callbacks_->decodingBuffer(), data);
   if (!req_body_.empty()) {
@@ -379,6 +210,7 @@ bool Filter::buildGolangRequestTrailers(Request& req, Http::HeaderMap& trailers)
 
   return true;
 }
+*/
 
 Http::RequestHeaderMap* Filter::getRequestHeaders() { return request_headers_; }
 
@@ -386,6 +218,7 @@ Http::ResponseHeaderMap* Filter::getResponseHeaders() { return response_headers_
 
 Event::Dispatcher* Filter::getDispatcher() { return &decoder_callbacks_->dispatcher(); }
 
+/*
 void Filter::initReqAndResp(Request& req, Response&, size_t headerSize, size_t trailerSize) {
   req.headers = static_cast<ConstString*>(calloc(2 * headerSize + 1, sizeof(ConstString)));
   req.header_size = headerSize;
@@ -423,10 +256,13 @@ void Filter::freeCharPointerArray(NonConstString* p) {
 
   free(p);
 }
+*/
 
 bool Filter::hasDestroyed() { return has_destroyed_; }
 
 Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers, bool end_stream) {
+  ENVOY_LOG(info, "golang filter decodeHeaders, end_stream: {}.", end_stream);
+
   if (dynamicLib_ == nullptr) {
     ENVOY_LOG(error, "dynamicLib_ is nullPtr, maybe the instance already unpub.");
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
@@ -439,7 +275,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   try {
     FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
     ptr_holder_ = reinterpret_cast<uint64_t>(holder);
-    dynamicLib_->moeOnRequestHeader(ptr_holder_, end_stream);
+    dynamicLib_->moeOnHttpRequestHeader(ptr_holder_, end_stream);
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeHeaders catch: {}.", e.what());
@@ -462,7 +298,7 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
 
   try {
     ASSERT(ptr_holder_ != 0);
-    dynamicLib_->moeOnRequestData(ptr_holder_, end_stream);
+    dynamicLib_->moeOnHttpRequestData(ptr_holder_, end_stream);
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeData catch: {}.", e.what());
@@ -486,6 +322,7 @@ Http::FilterTrailersStatus Filter::decodeTrailers(Http::RequestTrailerMap& trail
   }
 
   try {
+    /*
     Request req{};
     Response resp{};
     // create request and response struct
@@ -522,6 +359,7 @@ Http::FilterTrailersStatus Filter::decodeTrailers(Http::RequestTrailerMap& trail
     case GolangStatus::NeedAsync:
       return Http::FilterTrailersStatus::StopIteration;
     }
+    */
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang extension filter decodeTrailers catch: {}.", e.what());
@@ -546,6 +384,7 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
   }
 
   try {
+    /*
     Request req{};
     Response resp{};
     // create request and response struct
@@ -570,6 +409,7 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
     case GolangStatus::NeedAsync:
       return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
     }
+    */
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang extension filter encodeHeaders catch: {}.", e.what());
@@ -594,6 +434,7 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
   }
 
   try {
+    /*
     Request req{};
     Response resp{};
     // create request and response struct
@@ -622,6 +463,7 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
     case GolangStatus::NeedAsync:
       return Http::FilterDataStatus::StopIterationAndWatermark;
     }
+    */
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang extension filter encodeData catch: {}.", e.what());
@@ -644,6 +486,7 @@ Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trai
   }
 
   try {
+    /*
     Request req{};
     Response resp{};
     // create request and response struct
@@ -680,6 +523,7 @@ Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trai
     case GolangStatus::NeedAsync:
       return Http::FilterTrailersStatus::StopIteration;
     }
+    */
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang extension filter encodeTrailers catch: {}.", e.what());

@@ -120,9 +120,6 @@ public:
 
   void onStreamComplete() override;
 
-  // process requests for Golang extensions response
-  GolangStatus doGolangResponseAndCleanup(Request& req, Response& resp,
-                                                   Http::HeaderMap& headers, bool isDecode);
   // create metadata for golang.extension namespace
   void addGolangMetadata(const std::string& k, const uint64_t v);
 
@@ -134,8 +131,10 @@ public:
   Event::Dispatcher* getDispatcher();
   bool hasDestroyed();
 
+/*
   static void postDecode(void* filter, Response resp);
   static void postEncode(void* filter, Response resp);
+  */
 
   static std::atomic<uint64_t> global_stream_id_;
 
@@ -144,6 +143,7 @@ public:
 
 private:
 
+  /*
   // build golang request header
   bool buildGolangRequestHeaders(Request& req, Http::HeaderMap& headers);
   // build golang request data
@@ -155,16 +155,21 @@ private:
   void buildGolangRequestFilterChain(Request& req, const std::string& filter_chain);
   // build golang request remote address
   void buildGolangRequestRemoteAddress(Request& req);
+  */
 
   void onHeadersModified();
+  /*
   static void buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* sheaders);
+  */
 
   static std::string buildBody(const Buffer::Instance* buffered, const Buffer::Instance& last);
 
+/*
   static void freeCharPointer(NonConstString* p);
   static void freeCharPointerArray(NonConstString* p);
   static void freeReqAndResp(Request& req, Response& resp);
   static void initReqAndResp(Request& req, Response& resp, size_t headerSize, size_t TrailerSize);
+  */
 
   const FilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;

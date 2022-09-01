@@ -11,7 +11,7 @@ namespace Golang {
 
 const int TlsHandshakerRespSync = 0;
 
-extern "C" void moeRequestContinue(uint64_t filterHolder, int end) {
+extern "C" void moeHttpRequestContinue(unsigned long long int filterHolder, int end) {
   if (filterHolder == 0) {
     return;
   }
