@@ -1,8 +1,8 @@
-#include "src/http/golang/config.h"
+#include "src/envoy/http/golang/config.h"
 
 #include "envoy/registry/registry.h"
 
-#include "src/http/golang/golang_filter.h"
+#include "src/envoy/http/golang/golang_filter.h"
 
 namespace Envoy {
 namespace Extensions {

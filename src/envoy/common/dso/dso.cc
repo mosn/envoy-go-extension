@@ -1,4 +1,4 @@
-#include "src/common/dso/dso.h"
+#include "src/envoy/common/dso/dso.h"
 
 namespace Envoy {
 namespace Dso {

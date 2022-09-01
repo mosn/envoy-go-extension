@@ -6,7 +6,7 @@
 
 #include "source/common/common/logger.h"
 
-#include "src/common/dso/libgolang_extension.h"
+#include "src/envoy/common/dso/libgolang_extension.h"
 
 namespace Envoy {
 namespace Dso {

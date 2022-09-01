@@ -1,4 +1,4 @@
-#include "src/http/golang/golang_filter.h"
+#include "src/envoy/http/golang/golang_filter.h"
 
 #include <cstdint>
 #include <string>

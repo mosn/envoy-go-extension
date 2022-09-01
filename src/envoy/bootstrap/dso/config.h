@@ -6,7 +6,7 @@
 #include "envoy/server/bootstrap_extension_config.h"
 #include "envoy/server/filter_config.h"
 #include "envoy/server/instance.h"
-#include "src/common/dso/dso.h"
+#include "src/envoy/common/dso/dso.h"
 
 #include "source/common/protobuf/protobuf.h"
 

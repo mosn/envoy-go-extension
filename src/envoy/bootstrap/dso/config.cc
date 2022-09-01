@@ -1,4 +1,4 @@
-#include "src/bootstrap/dso/config.h"
+#include "src/envoy/bootstrap/dso/config.h"
 
 #include "envoy/registry/registry.h"
 #include "envoy/server/factory_context.h"

@@ -19,7 +19,7 @@ envoy_cc_extension(
     visibility = ["//visibility:public"],
     deps = [
         "//api/dso/v3:pkg_cc_proto",
-        "//src/common/dso:dso_lib",
+        "//src/envoy/common/dso:dso_lib",
         "@envoy//envoy/registry",
         "@envoy//envoy/server:bootstrap_extension_config_interface",
         "@envoy//envoy/server:factory_context_interface",

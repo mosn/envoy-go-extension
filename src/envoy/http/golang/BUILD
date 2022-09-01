@@ -24,7 +24,7 @@ envoy_cc_library(
         "@envoy//source/common/grpc:context_lib",
         "@envoy//source/common/http:headers_lib",
         "@envoy//source/common/http/http1:codec_lib",
-        "//src/common/dso:dso_lib",
+        "//src/envoy/common/dso:dso_lib",
         "//api/http/golang/v3:pkg_cc_proto",
     ],
 )
@@ -39,7 +39,7 @@ envoy_cc_library(
         "@envoy//envoy/registry",
         "@envoy//envoy/server:filter_config_interface",
         "@envoy//source/extensions/filters/http/common:factory_base_lib",
-        "//src/common/dso:dso_lib",
+        "//src/envoy/common/dso:dso_lib",
         "//api/http/golang/v3:pkg_cc_proto",
     ],
 )
@@ -57,7 +57,7 @@ envoy_cc_library(
         "@envoy//source/common/grpc:context_lib",
         "@envoy//source/common/http:headers_lib",
         "@envoy//source/common/http/http1:codec_lib",
-        "//src/common/dso:dso_lib",
+        "//src/envoy/common/dso:dso_lib",
         "//api/http/golang/v3:pkg_cc_proto",
     ],
 )
