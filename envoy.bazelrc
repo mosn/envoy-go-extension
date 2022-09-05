@@ -41,7 +41,7 @@ build:linux --copt=-Wno-deprecated-declarations
 build:linux --cxxopt=-std=c++17
 build:linux --conlyopt=-fexceptions
 build:linux --fission=dbg,opt
-build:linux --features=per_object_debug_info
+# build:linux --features=per_object_debug_info
 build:linux --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a
 build:linux --action_env=BAZEL_LINKOPTS=-lm
 
