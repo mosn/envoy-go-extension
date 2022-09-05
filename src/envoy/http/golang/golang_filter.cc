@@ -260,9 +260,22 @@ void Filter::freeCharPointerArray(NonConstString* p) {
 
 bool Filter::hasDestroyed() { return has_destroyed_; }
 
-// TODO: make sure it's safe to invoke in another thread
 void Filter::requestContinue() {
-  decoder_callbacks_->continueDecoding();
+  // TODO: skip post event to dispatcher, and return continue in the caller,
+  // when it's invoked in the current envoy thread, for better performance & latency.
+  auto weak_ptr = weak_from_this();
+  getDispatcher()->post([this, weak_ptr]{
+    ASSERT(isThreadSafe());
+    if (weak_ptr.expired()) {
+      ENVOY_LOG(info, "http filter has gone in requestContinue event");
+    } else {
+      decoder_callbacks_->continueDecoding();
+    }
+  });
+}
+
+bool Filter::isThreadSafe() {
+  return decoder_callbacks_->dispatcher().isThreadSafe();
 }
 
 Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers, bool end_stream) {
