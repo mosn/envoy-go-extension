@@ -16,15 +16,15 @@ public:
   DsoInstance(const std::string dsoName);
   ~DsoInstance();
 
-  void moeOnHttpRequestHeader(GoUint64 p0, GoUint64 p1);
-  void moeOnHttpRequestData(GoUint64 p0, GoUint64 p1);
+  void moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1);
+  void moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1);
 
 private:
   const std::string dsoName_;
   void* handler_;
 
-  void (*moeOnHttpRequestHeader_)(GoUint64 p0, GoUint64 p1) = {nullptr};
-  void (*moeOnHttpRequestData_)(GoUint64 p0, GoUint64 p1) = {nullptr};
+  void (*moeOnHttpDecodeHeader_)(GoUint64 p0, GoUint64 p1) = {nullptr};
+  void (*moeOnHttpDecodeData_)(GoUint64 p0, GoUint64 p1) = {nullptr};
 };
 
 class DsoInstanceManager {

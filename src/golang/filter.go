@@ -35,22 +35,22 @@ import "mosn.io/envoy-go-extension/http"
 
 type httpCgoApiImpl struct{}
 
-func (c *httpCgoApiImpl) HttpRequestContinue(filter uint64, end int) {
-	C.moeHttpRequestContinue(C.ulonglong(filter), C.int(end))
+func (c *httpCgoApiImpl) HttpDecodeContinue(filter uint64, end int) {
+	C.moeHttpDecodeContinue(C.ulonglong(filter), C.int(end))
 }
 
 func init() {
 	http.SetCgoAPI(&httpCgoApiImpl{})
 }
 
-//export moeOnHttpRequestHeader
-func moeOnHttpRequestHeader(filter uint64, end_stream int) {
+//export moeOnHttpDecodeHeader
+func moeOnHttpDecodeHeader(filter uint64, end_stream int) {
 	api := http.GetCgoAPI()
-	api.HttpRequestContinue(filter, end_stream)
+	api.HttpDecodeContinue(filter, end_stream)
 }
 
-//export moeOnHttpRequestData
-func moeOnHttpRequestData(filter uint64, end_stream int) {
+//export moeOnHttpDecodeData
+func moeOnHttpDecodeData(filter uint64, end_stream int) {
 	api := http.GetCgoAPI()
-	api.HttpRequestContinue(filter, end_stream)
+	api.HttpDecodeContinue(filter, end_stream)
 }

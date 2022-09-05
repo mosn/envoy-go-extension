@@ -293,7 +293,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   try {
     FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
     ptr_holder_ = reinterpret_cast<uint64_t>(holder);
-    dynamicLib_->moeOnHttpRequestHeader(ptr_holder_, end_stream);
+    dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, end_stream);
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeHeaders catch: {}.", e.what());
@@ -316,7 +316,7 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
 
   try {
     ASSERT(ptr_holder_ != 0);
-    dynamicLib_->moeOnHttpRequestData(ptr_holder_, end_stream);
+    dynamicLib_->moeOnHttpDecodeData(ptr_holder_, end_stream);
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeData catch: {}.", e.what());

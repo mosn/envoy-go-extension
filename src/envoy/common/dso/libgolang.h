@@ -83,9 +83,9 @@ extern "C" {
 #endif
 
 
-extern void moeOnHttpRequestHeader(GoUint64 p0, GoInt p1);
+extern void moeOnHttpDecodeHeader(GoUint64 p0, GoInt p1);
 
-extern void moeOnHttpRequestData(GoUint64 p0, GoInt p1);
+extern void moeOnHttpDecodeData(GoUint64 p0, GoInt p1);
 
 #ifdef __cplusplus
 }

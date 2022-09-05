@@ -1,7 +1,7 @@
 package http
 
 type HttpCgoAPI interface {
-	HttpRequestContinue(filter uint64, end int)
+	HttpDecodeContinue(filter uint64, end int)
 }
 
 var httpCgoAPI HttpCgoAPI
