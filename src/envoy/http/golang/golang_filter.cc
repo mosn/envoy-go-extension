@@ -260,6 +260,11 @@ void Filter::freeCharPointerArray(NonConstString* p) {
 
 bool Filter::hasDestroyed() { return has_destroyed_; }
 
+// TODO: make sure it's safe to invoke in another thread
+void Filter::requestContinue() {
+  decoder_callbacks_->continueDecoding();
+}
+
 Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers, bool end_stream) {
   ENVOY_LOG(info, "golang filter decodeHeaders, end_stream: {}.", end_stream);
 

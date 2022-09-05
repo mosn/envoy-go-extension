@@ -139,7 +139,7 @@ public:
   static std::atomic<uint64_t> global_stream_id_;
 
   // TODO
-  void requestContinue() {};
+  void requestContinue();
 
 private:
 
