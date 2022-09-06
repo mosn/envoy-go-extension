@@ -23,6 +23,37 @@ namespace Golang {
 
 std::atomic<uint64_t> Filter::global_stream_id_;
 
+FilterConfig::FilterConfig(const envoy::extensions::filters::http::golang::v3::Config& proto_config)
+    : plugin_name_(proto_config.plugin_name()), so_id_(proto_config.so_id()),
+      plugin_config_(proto_config.plugin_config()) {
+  ENVOY_LOG(info, "initilizing golang filter config");
+  // NP: dso may not loaded yet, can not invoke moeOnHttpPluginConfig yet.
+};
+
+uint64_t FilterConfig::getConfigId() {
+  if (config_id_ != 0) {
+    return config_id_;
+  }
+  auto dlib = Dso::DsoInstanceManager::getDsoInstanceByID(so_id_);
+  if (dlib == NULL) {
+    ENVOY_LOG(error, "golang extension filter dynamicLib is nullPtr.");
+    return 0;
+  }
+
+  std::string str;
+  if (!plugin_config_.SerializeToString(&str)) {
+    ENVOY_LOG(error, "failed to serialize any pb to string");
+    return 0;
+  }
+  auto ptr = reinterpret_cast<unsigned long long>(str.data());
+  auto len = str.length();
+  config_id_ = dlib->moeOnHttpPluginConfig(ptr, len);
+  if (config_id_ == 0) {
+    ENVOY_LOG(error, "invalid golang plugin config");
+  }
+  return config_id_;
+}
+
 void Filter::onDestroy() {
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang extension filter has been destroyed");
@@ -291,6 +322,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   request_headers_ = &headers;
 
   try {
+    config_->getConfigId();
     FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
     ptr_holder_ = reinterpret_cast<uint64_t>(holder);
     dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, end_stream);

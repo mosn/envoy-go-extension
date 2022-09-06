@@ -56,7 +56,15 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
     return;
   }
 
-  auto func = dlsym(handler_, "moeOnHttpDecodeHeader");
+  auto func = dlsym(handler_, "moeOnHttpPluginConfig");
+  if (func) {
+    moeOnHttpPluginConfig_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1)>(func);
+  } else {
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpPluginConfig, err: {}", dsoName,
+                   dlerror());
+  }
+
+  func = dlsym(handler_, "moeOnHttpDecodeHeader");
   if (func) {
     moeOnHttpDecodeHeader_= reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1)>(func);
   } else {
@@ -79,6 +87,13 @@ DsoInstance::~DsoInstance() {
 
   dlclose(handler_);
   handler_ = nullptr;
+}
+
+GoUint64 DsoInstance::moeOnHttpPluginConfig(GoUint64 p0, GoUint64 p1) {
+  if (moeOnHttpPluginConfig_) {
+    return moeOnHttpPluginConfig_(p0, p1);
+  }
+  return 0;
 }
 
 void DsoInstance::moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1) {

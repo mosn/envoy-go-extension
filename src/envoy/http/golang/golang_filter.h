@@ -19,21 +19,22 @@ namespace Golang {
 /**
  * Configuration for the HTTP golang extension filter.
  */
-class FilterConfig {
+class FilterConfig : Logger::Loggable<Logger::Id::http> {
 public:
   FilterConfig(
-      const envoy::extensions::filters::http::golang::v3::Config& proto_config)
-      : plugin_name_(proto_config.plugin_name()), so_id_(proto_config.so_id()), plugin_config_(proto_config.plugin_config()){};
+      const envoy::extensions::filters::http::golang::v3::Config& proto_config);
 
   const std::string& filter_chain() const { return filter_chain_; }
   const std::string& so_id() const { return so_id_; }
   const std::string& plugin_name() const { return plugin_name_; }
+  uint64_t getConfigId();
 
 private:
   const std::string filter_chain_;
   const std::string plugin_name_;
   const std::string so_id_;
   const Protobuf::Any plugin_config_;
+  uint64_t config_id_ {0};
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;

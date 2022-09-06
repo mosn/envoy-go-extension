@@ -16,6 +16,7 @@ public:
   DsoInstance(const std::string dsoName);
   ~DsoInstance();
 
+  GoUint64 moeOnHttpPluginConfig(GoUint64 p0, GoUint64 p1);
   void moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1);
   void moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1);
 
@@ -23,6 +24,7 @@ private:
   const std::string dsoName_;
   void* handler_;
 
+  GoUint64 (*moeOnHttpPluginConfig_)(GoUint64 p0, GoUint64 p1) = {nullptr};
   void (*moeOnHttpDecodeHeader_)(GoUint64 p0, GoUint64 p1) = {nullptr};
   void (*moeOnHttpDecodeData_)(GoUint64 p0, GoUint64 p1) = {nullptr};
 };

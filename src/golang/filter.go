@@ -33,7 +33,10 @@ import "C"
 
 import (
 	"fmt"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/http"
+	"mosn.io/envoy-go-extension/utils"
 	"time"
 )
 
@@ -66,6 +69,15 @@ func (r *httpRequest) ContinueDecoding() {
 
 func (r *httpRequest) Get(name string) string {
 	return name
+}
+
+//export moeOnHttpPluginConfig
+func moeOnHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
+	buf := utils.BytesToSlice(configPtr, configLen)
+	var any anypb.Any
+	proto.Unmarshal(buf, &any)
+	fmt.Printf("config type_url: %s\n", any.GetTypeUrl())
+	return 1
 }
 
 //export moeOnHttpDecodeHeader

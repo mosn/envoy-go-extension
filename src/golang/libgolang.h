@@ -83,6 +83,8 @@ extern "C" {
 #endif
 
 
+extern GoUint64 moeOnHttpPluginConfig(GoUint64 p0, GoUint64 p1);
+
 extern void moeOnHttpDecodeHeader(GoUint64 p0, GoInt p1);
 
 extern void moeOnHttpDecodeData(GoUint64 p0, GoInt p1);
