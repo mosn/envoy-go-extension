@@ -31,7 +31,17 @@ package main
 */
 import "C"
 
-import "mosn.io/envoy-go-extension/http"
+import (
+	"fmt"
+	"mosn.io/envoy-go-extension/http"
+	"time"
+)
+
+var httpFilterFactory http.HttpFilterFactory
+
+func registerHttpFilterFactory(f http.HttpFilterFactory) {
+	httpFilterFactory = f
+}
 
 type httpCgoApiImpl struct{}
 
@@ -41,16 +51,58 @@ func (c *httpCgoApiImpl) HttpDecodeContinue(filter uint64, end int) {
 
 func init() {
 	http.SetCgoAPI(&httpCgoApiImpl{})
+	registerHttpFilterFactory(factory)
+}
+
+type httpRequest struct {
+	filter     uint64
+	end_stream int
+}
+
+func (r *httpRequest) ContinueDecoding() {
+	api := http.GetCgoAPI()
+	api.HttpDecodeContinue(r.filter, r.end_stream)
+}
+
+func (r *httpRequest) Get(name string) string {
+	return name
 }
 
 //export moeOnHttpDecodeHeader
 func moeOnHttpDecodeHeader(filter uint64, end_stream int) {
-	api := http.GetCgoAPI()
-	api.HttpDecodeContinue(filter, end_stream)
+	cb := &httpRequest{
+		filter:     filter,
+		end_stream: end_stream,
+	}
+	f := httpFilterFactory(cb)
+	go func() {
+		f.DecodeHeaders(cb, end_stream == 1)
+		f.DecoderCallbacks().ContinueDecoding()
+	}()
 }
 
 //export moeOnHttpDecodeData
 func moeOnHttpDecodeData(filter uint64, end_stream int) {
 	api := http.GetCgoAPI()
 	api.HttpDecodeContinue(filter, end_stream)
+}
+
+type httpFilter struct {
+	callbacks http.FilterCallbackHandler
+}
+
+func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, end_stream bool) http.StatusType {
+	fmt.Printf("header foo: %s, end_stream: %v\n", header.Get("foo"), end_stream)
+	time.Sleep(time.Millisecond * 1000)
+	return http.HeaderContinue
+}
+
+func (f *httpFilter) DecoderCallbacks() http.DecoderFilterCallbacks {
+	return f.callbacks
+}
+
+func factory(callbacks http.FilterCallbackHandler) http.HttpFilter {
+	return &httpFilter{
+		callbacks: callbacks,
+	}
 }
