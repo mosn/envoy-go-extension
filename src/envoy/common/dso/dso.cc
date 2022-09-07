@@ -56,17 +56,17 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
     return;
   }
 
-  auto func = dlsym(handler_, "moeOnHttpPluginConfig");
+  auto func = dlsym(handler_, "moeNewHttpPluginConfig");
   if (func) {
-    moeOnHttpPluginConfig_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1)>(func);
+    moeNewHttpPluginConfig_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1)>(func);
   } else {
-    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpPluginConfig, err: {}", dsoName,
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeNewHttpPluginConfig, err: {}", dsoName,
                    dlerror());
   }
 
   func = dlsym(handler_, "moeOnHttpDecodeHeader");
   if (func) {
-    moeOnHttpDecodeHeader_= reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1)>(func);
+    moeOnHttpDecodeHeader_= reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2)>(func);
   } else {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeHeader, err: {}", dsoName,
                    dlerror());
@@ -89,16 +89,16 @@ DsoInstance::~DsoInstance() {
   handler_ = nullptr;
 }
 
-GoUint64 DsoInstance::moeOnHttpPluginConfig(GoUint64 p0, GoUint64 p1) {
-  if (moeOnHttpPluginConfig_) {
-    return moeOnHttpPluginConfig_(p0, p1);
+GoUint64 DsoInstance::moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1) {
+  if (moeNewHttpPluginConfig_) {
+    return moeNewHttpPluginConfig_(p0, p1);
   }
   return 0;
 }
 
-void DsoInstance::moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1) {
+void DsoInstance::moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2) {
   if (moeOnHttpDecodeHeader_) {
-    moeOnHttpDecodeHeader_(p0, p1);
+    moeOnHttpDecodeHeader_(p0, p1, p2);
   }
 }
 

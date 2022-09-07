@@ -32,19 +32,11 @@ package main
 import "C"
 
 import (
-	"fmt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/http"
 	"mosn.io/envoy-go-extension/utils"
-	"time"
 )
-
-var httpFilterFactory http.HttpFilterFactory
-
-func registerHttpFilterFactory(f http.HttpFilterFactory) {
-	httpFilterFactory = f
-}
 
 type httpCgoApiImpl struct{}
 
@@ -54,67 +46,58 @@ func (c *httpCgoApiImpl) HttpDecodeContinue(filter uint64, end int) {
 
 func init() {
 	http.SetCgoAPI(&httpCgoApiImpl{})
-	registerHttpFilterFactory(factory)
 }
 
 type httpRequest struct {
-	filter     uint64
-	end_stream int
+	filter    uint64
+	configId  uint64
+	endStream int
 }
 
 func (r *httpRequest) ContinueDecoding() {
 	api := http.GetCgoAPI()
-	api.HttpDecodeContinue(r.filter, r.end_stream)
+	api.HttpDecodeContinue(r.filter, r.endStream)
 }
 
 func (r *httpRequest) Get(name string) string {
 	return name
 }
 
-//export moeOnHttpPluginConfig
-func moeOnHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
+var configId uint64
+var configCache map[uint64]*anypb.Any = make(map[uint64]*anypb.Any, 16)
+
+//export moeNewHttpPluginConfig
+func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 	buf := utils.BytesToSlice(configPtr, configLen)
 	var any anypb.Any
 	proto.Unmarshal(buf, &any)
-	fmt.Printf("config type_url: %s\n", any.GetTypeUrl())
-	return 1
+	configId++
+	configCache[configId] = &any
+	return configId
+}
+
+//export moeDestoryHttpPluginConfig
+func moeDestoryHttpPluginConfig(id uint64) {
+	delete(configCache, id)
 }
 
 //export moeOnHttpDecodeHeader
-func moeOnHttpDecodeHeader(filter uint64, end_stream int) {
+func moeOnHttpDecodeHeader(filter uint64, configId uint64, endStream int) {
 	cb := &httpRequest{
-		filter:     filter,
-		end_stream: end_stream,
+		filter:    filter,
+		configId:  configId,
+		endStream: endStream,
 	}
-	f := httpFilterFactory(cb)
+	filterFactory := getOrCreateHttpFilterFactory(configId)
+	f := filterFactory(cb)
 	go func() {
-		f.DecodeHeaders(cb, end_stream == 1)
+		f.DecodeHeaders(cb, endStream == 1)
 		f.DecoderCallbacks().ContinueDecoding()
 	}()
 }
 
 //export moeOnHttpDecodeData
-func moeOnHttpDecodeData(filter uint64, end_stream int) {
+func moeOnHttpDecodeData(filter uint64, endStream int) {
 	api := http.GetCgoAPI()
-	api.HttpDecodeContinue(filter, end_stream)
-}
-
-type httpFilter struct {
-	callbacks http.FilterCallbackHandler
-}
-
-func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, end_stream bool) http.StatusType {
-	fmt.Printf("header foo: %s, end_stream: %v\n", header.Get("foo"), end_stream)
-	time.Sleep(time.Millisecond * 1000)
-	return http.HeaderContinue
-}
-
-func (f *httpFilter) DecoderCallbacks() http.DecoderFilterCallbacks {
-	return f.callbacks
-}
-
-func factory(callbacks http.FilterCallbackHandler) http.HttpFilter {
-	return &httpFilter{
-		callbacks: callbacks,
-	}
+	api.HttpDecodeContinue(filter, endStream)
 }
