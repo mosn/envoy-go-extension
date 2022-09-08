@@ -6,9 +6,6 @@ import (
 	"unsafe"
 )
 
-type CStyleString C.char
-type CStyleULongLong C.ulonglong
-
 func BytesToString(ptr uint64, len uint64) string {
 	var s string
 	var sHdr = (*reflect.StringHeader)(unsafe.Pointer(&s))

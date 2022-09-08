@@ -36,12 +36,17 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/http"
 	"mosn.io/envoy-go-extension/utils"
+	"unsafe"
 )
 
 type httpCgoApiImpl struct{}
 
 func (c *httpCgoApiImpl) HttpDecodeContinue(filter uint64, end int) {
 	C.moeHttpDecodeContinue(C.ulonglong(filter), C.int(end))
+}
+
+func (c *httpCgoApiImpl) HttpGetRequestHeader(filter uint64, key *string, value *string) {
+	C.moeHttpGetRequestHeader(C.ulonglong(filter), unsafe.Pointer(key), unsafe.Pointer(value))
 }
 
 func init() {
@@ -60,7 +65,10 @@ func (r *httpRequest) ContinueDecoding() {
 }
 
 func (r *httpRequest) Get(name string) string {
-	return name
+	api := http.GetCgoAPI()
+	var value string
+	api.HttpGetRequestHeader(r.filter, &name, &value)
+	return value
 }
 
 var configId uint64

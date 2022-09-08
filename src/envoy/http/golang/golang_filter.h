@@ -140,6 +140,7 @@ public:
   static std::atomic<uint64_t> global_stream_id_;
 
   void requestContinue();
+  absl::optional<absl::string_view> getRequestHeader(absl::string_view key);
 
 private:
   bool isThreadSafe();

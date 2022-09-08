@@ -305,6 +305,10 @@ void Filter::requestContinue() {
   });
 }
 
+absl::optional<absl::string_view> Filter::getRequestHeader(absl::string_view key) {
+  return request_headers_->getByKey(key);
+}
+
 bool Filter::isThreadSafe() {
   return decoder_callbacks_->dispatcher().isThreadSafe();
 }
@@ -320,6 +324,8 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
 
   // save request headers
   request_headers_ = &headers;
+  // headers.path();
+  // headers.getByKey("foo");
 
   try {
     auto id = config_->getConfigId();
