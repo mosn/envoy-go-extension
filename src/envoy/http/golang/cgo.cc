@@ -6,7 +6,8 @@ namespace HttpFilters {
 namespace Golang {
 
 //
-// DownStream Tls Handshaker
+// These functions may be invoked in another go thread,
+// which means may introduce race between go thread and envoy thread.
 //
 
 const int TlsHandshakerRespSync = 0;
@@ -43,6 +44,20 @@ extern "C" void moeHttpGetRequestHeader(unsigned long long int filterHolder, voi
       goValue->p = v.value().data();
       goValue->n = v.value().length();
     }
+  }
+}
+
+extern "C" void moeHttpCopyRequestHeaders(unsigned long long int filterHolder, void *strs, void *buf) {
+  if (filterHolder == 0) {
+    return;
+  }
+
+  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
+  auto weakFilter = holder->get();
+  if (auto filter = weakFilter.lock()) {
+    auto goStrs = reinterpret_cast<_GoString_*>(strs);
+    auto goBuf = reinterpret_cast<char*>(buf);
+    filter->copyRequestHeaders(goStrs, goBuf);
   }
 }
 

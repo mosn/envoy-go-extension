@@ -141,6 +141,7 @@ public:
 
   void requestContinue();
   absl::optional<absl::string_view> getRequestHeader(absl::string_view key);
+  void copyRequestHeaders(_GoString_ *goStrs, char *goBuf);
 
 private:
   bool isThreadSafe();

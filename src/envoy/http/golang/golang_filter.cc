@@ -309,6 +309,31 @@ absl::optional<absl::string_view> Filter::getRequestHeader(absl::string_view key
   return request_headers_->getByKey(key);
 }
 
+void Filter::copyRequestHeaders(_GoString_ *goStrs, char *goBuf) {
+  auto i = 0;
+  request_headers_->iterate([this, &i, &goStrs, &goBuf](const Http::HeaderEntry& header) -> Http::HeaderMap::Iterate {
+    auto key = std::string(header.key().getStringView());
+    auto value = std::string(header.value().getStringView());
+
+    // std::cout << "idx: " << i << ", key: " << key << ", value: " << value << std::endl;
+
+    auto len = key.length();
+    goStrs[i].n = len;
+    goStrs[i].p = goBuf;
+    memcpy(goBuf, key.data(), len);
+    goBuf += len;
+    i++;
+
+    len = value.length();
+    goStrs[i].n = len;
+    goStrs[i].p = goBuf;
+    memcpy(goBuf, value.data(), len);
+    goBuf += len;
+    i++;
+    return Http::HeaderMap::Iterate::Continue;
+  });
+}
+
 bool Filter::isThreadSafe() {
   return decoder_callbacks_->dispatcher().isThreadSafe();
 }
@@ -331,7 +356,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
     auto id = config_->getConfigId();
     FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
     ptr_holder_ = reinterpret_cast<uint64_t>(holder);
-    dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, id, end_stream);
+    dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, id, end_stream, request_headers_->size(), request_headers_->byteSize());
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeHeaders catch: {}.", e.what());

@@ -36,6 +36,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/http"
 	"mosn.io/envoy-go-extension/utils"
+	"reflect"
 	"unsafe"
 )
 
@@ -49,14 +50,42 @@ func (c *httpCgoApiImpl) HttpGetRequestHeader(filter uint64, key *string, value 
 	C.moeHttpGetRequestHeader(C.ulonglong(filter), unsafe.Pointer(key), unsafe.Pointer(value))
 }
 
+func (c *httpCgoApiImpl) HttpCopyRequestHeaders(filter uint64, num uint64, bytes uint64) map[string]string {
+	// TODO: use a memory pool for better performance,
+	// but, should be very careful, since string is const in go,
+	// and we have to make sure the strings is not using before reusing,
+	// strings may be alive beyond the request life.
+	strs := make([]string, num*2)
+	buf := make([]byte, bytes)
+	sHeader := (*reflect.SliceHeader)(unsafe.Pointer(&strs))
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+	// sHeader.Len = int(num * 2)
+	// bHeader.Len = int(bytes)
+
+	C.moeHttpCopyRequestHeaders(C.ulonglong(filter), unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+
+	m := make(map[string]string, num)
+	for i := uint64(0); i < num*2; i += 2 {
+		key := strs[i]
+		value := strs[i+1]
+		m[key] = value
+
+		// fmt.Printf("value of %s: %s\n", key, value)
+	}
+	return m
+}
+
 func init() {
 	http.SetCgoAPI(&httpCgoApiImpl{})
 }
 
 type httpRequest struct {
-	filter    uint64
-	configId  uint64
-	endStream int
+	filter      uint64
+	configId    uint64
+	endStream   int
+	headers     map[string]string
+	headerNum   uint64
+	headerBytes uint64
 }
 
 func (r *httpRequest) ContinueDecoding() {
@@ -64,11 +93,22 @@ func (r *httpRequest) ContinueDecoding() {
 	api.HttpDecodeContinue(r.filter, r.endStream)
 }
 
-func (r *httpRequest) Get(name string) string {
+func (r *httpRequest) GetSingle(name string) string {
 	api := http.GetCgoAPI()
 	var value string
 	api.HttpGetRequestHeader(r.filter, &name, &value)
 	return value
+}
+
+func (r *httpRequest) Get(name string) string {
+	api := http.GetCgoAPI()
+	if r.headers == nil {
+		r.headers = api.HttpCopyRequestHeaders(r.filter, r.headerNum, r.headerBytes)
+	}
+	if value, ok := r.headers[name]; ok {
+		return value
+	}
+	return ""
 }
 
 var configId uint64
@@ -90,11 +130,13 @@ func moeDestoryHttpPluginConfig(id uint64) {
 }
 
 //export moeOnHttpDecodeHeader
-func moeOnHttpDecodeHeader(filter uint64, configId uint64, endStream int) {
+func moeOnHttpDecodeHeader(filter uint64, configId uint64, endStream int, headerNum uint64, headerBytes uint64) {
 	cb := &httpRequest{
-		filter:    filter,
-		configId:  configId,
-		endStream: endStream,
+		filter:      filter,
+		configId:    configId,
+		endStream:   endStream,
+		headerNum:   headerNum,
+		headerBytes: headerBytes,
 	}
 	filterFactory := getOrCreateHttpFilterFactory(configId)
 	f := filterFactory(cb)

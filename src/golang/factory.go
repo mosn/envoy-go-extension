@@ -15,7 +15,6 @@ type httpFilter struct {
 }
 
 func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool) http.StatusType {
-	fmt.Printf("header foo: %s, endStream: %v\n", header.Get("foo"), endStream)
 	sleep := f.config.AsMap()["sleep"]
 	if v, ok := sleep.(float64); ok {
 		fmt.Printf("sleeping %v ms\n", v)
@@ -23,6 +22,7 @@ func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool)
 	} else {
 		fmt.Printf("config sleep is not number, %T\n", sleep)
 	}
+	fmt.Printf("header foo: %s, endStream: %v\n", header.Get("foo"), endStream)
 	return http.HeaderContinue
 }
 
