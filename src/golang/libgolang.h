@@ -91,6 +91,10 @@ extern void moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p
 
 extern void moeOnHttpDecodeData(GoUint64 p0, GoInt p1);
 
+extern void moeOnHttpEncodeHeader(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p3, GoUint64 p4);
+
+extern void moeOnHttpEncodeData(GoUint64 p0, GoInt p1);
+
 #ifdef __cplusplus
 }
 #endif

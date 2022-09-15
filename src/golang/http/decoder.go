@@ -19,9 +19,9 @@ type HttpFilterFactory func(callbacks FilterCallbackHandler) HttpFilter
 type HttpFilter interface {
 	// http request
 	HttpDecoderFilter
+	// response stream
+	StreamEncoderFilter
 	/*
-		// response stream
-		StreamEncoderFilter
 		// stream complete
 		OnStreamComplete()
 		// error log
@@ -31,16 +31,16 @@ type HttpFilter interface {
 	*/
 }
 
-/*
 // response
 type StreamEncoderFilter interface {
 	EncodeHeaders(ResponseHeaderMap, bool) StatusType
-	EncodeData(BufferInstance, bool) StatusType
-	EncodeTrailers(ResponseTrailerMap) StatusType
-	EncodeMetadata(MetadataMap) StatusType
+	/*
+		EncodeData(BufferInstance, bool) StatusType
+		EncodeTrailers(ResponseTrailerMap) StatusType
+		EncodeMetadata(MetadataMap) StatusType
+	*/
 	EncoderCallbacks() EncoderFilterCallbacks
 }
-*/
 
 // stream info
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/stream_info/stream_info.h
@@ -68,18 +68,16 @@ type DecoderFilterCallbacks interface {
 	*/
 }
 
-/*
 type EncoderFilterCallbacks interface {
-	StreamFilterCallbacks
+	// StreamFilterCallbacks
 	ContinueEncoding()
-	AddEncodedData(buffer BufferInstance, streamingFilter bool)
-	SendLocalReply(response_code int, body_text string, headers map[string]string, details string)
+	/*
+		AddEncodedData(buffer BufferInstance, streamingFilter bool)
+		SendLocalReply(response_code int, body_text string, headers map[string]string, details string)
+	*/
 }
-*/
 
 type FilterCallbackHandler interface {
 	DecoderFilterCallbacks
-	/*
-		EncoderFilterCallbacks
-	*/
+	EncoderFilterCallbacks
 }

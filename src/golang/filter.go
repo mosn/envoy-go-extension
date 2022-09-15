@@ -35,19 +35,58 @@ func (r *httpRequest) ContinueDecoding() {
 	api.HttpDecodeContinue(r.filter, r.endStream)
 }
 
-func (r *httpRequest) GetRaw(name string) string {
+func (r *httpRequest) ContinueEncoding() {
+	api := http.GetCgoAPI()
+	api.HttpEncodeContinue(r.filter, r.endStream)
+}
+
+type httpRequestHeader struct {
+	request     *httpRequest
+	endStream   int
+	headers     map[string]string
+	headerNum   uint64
+	headerBytes uint64
+}
+
+func (h *httpRequestHeader) GetRaw(name string) string {
 	api := http.GetCgoAPI()
 	var value string
-	api.HttpGetRequestHeader(r.filter, &name, &value)
+	api.HttpGetRequestHeader(h.request.filter, &name, &value)
 	return value
 }
 
-func (r *httpRequest) Get(name string) string {
+func (h *httpRequestHeader) Get(name string) string {
 	api := http.GetCgoAPI()
-	if r.headers == nil {
-		r.headers = api.HttpCopyRequestHeaders(r.filter, r.headerNum, r.headerBytes)
+	if h.headers == nil {
+		h.headers = api.HttpCopyRequestHeaders(h.request.filter, h.headerNum, h.headerBytes)
 	}
-	if value, ok := r.headers[name]; ok {
+	if value, ok := h.headers[name]; ok {
+		return value
+	}
+	return ""
+}
+
+type httpResponseHeader struct {
+	request     *httpRequest
+	endStream   int
+	headers     map[string]string
+	headerNum   uint64
+	headerBytes uint64
+}
+
+func (h *httpResponseHeader) GetRaw(name string) string {
+	api := http.GetCgoAPI()
+	var value string
+	api.HttpGetResponseHeader(h.request.filter, &name, &value)
+	return value
+}
+
+func (h *httpResponseHeader) Get(name string) string {
+	api := http.GetCgoAPI()
+	if h.headers == nil {
+		h.headers = api.HttpCopyResponseHeaders(h.request.filter, h.headerNum, h.headerBytes)
+	}
+	if value, ok := h.headers[name]; ok {
 		return value
 	}
 	return ""
