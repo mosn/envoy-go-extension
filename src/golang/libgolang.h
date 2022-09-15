@@ -19,7 +19,7 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 /* Start of preamble from import "C" comments.  */
 
 
-#line 20 "filter.go"
+#line 3 "moe.go"
 
 // ref https://github.com/golang/go/issues/25832
 

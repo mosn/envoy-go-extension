@@ -303,8 +303,9 @@ void Filter::requestContinue() {
   getDispatcher()->post([this, weak_ptr]{
     ASSERT(isThreadSafe());
     if (weak_ptr.expired()) {
-      ENVOY_LOG(info, "http filter has gone in requestContinue event");
+      ENVOY_LOG(info, "golang filter has gone in requestContinue event");
     } else {
+      std::lock_guard<std::mutex> lock(mutex_);
       decoder_callbacks_->continueDecoding();
     }
   });
