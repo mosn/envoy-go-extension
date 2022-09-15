@@ -55,23 +55,28 @@ uint64_t FilterConfig::getConfigId() {
 }
 
 void Filter::onDestroy() {
-  if (has_destroyed_) {
-    ENVOY_LOG(warn, "golang extension filter has been destroyed");
-    return;
+  ENVOY_LOG(info, "golang filter on destroy");
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (has_destroyed_) {
+      ENVOY_LOG(warn, "golang filter has been destroyed");
+      return;
+    }
+    has_destroyed_ = true;
   }
 
   if (dynamicLib_ == NULL) {
-    ENVOY_LOG(error, "golang extension filter dynamicLib is nullPtr.");
+    ENVOY_LOG(error, "golang filter dynamicLib is nullPtr.");
     return;
   }
 
   try {
     // dynamicLib_->destoryStream(stream_id_, has_async_task_ ? 1 : 0);
   } catch (...) {
-    ENVOY_LOG(error, "golang extension filter onDestroy do destoryStream catch "
+    ENVOY_LOG(error, "golang filter onDestroy do destoryStream catch "
                      "unknown exception.");
   }
-  has_destroyed_ = true;
 }
 
 /*
@@ -306,10 +311,20 @@ void Filter::requestContinue() {
 }
 
 absl::optional<absl::string_view> Filter::getRequestHeader(absl::string_view key) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return "";
+  }
   return request_headers_->getByKey(key);
 }
 
 void Filter::copyRequestHeaders(_GoString_ *goStrs, char *goBuf) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
   auto i = 0;
   request_headers_->iterate([this, &i, &goStrs, &goBuf](const Http::HeaderEntry& header) -> Http::HeaderMap::Iterate {
     auto key = std::string(header.key().getStringView());

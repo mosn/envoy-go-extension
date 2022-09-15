@@ -22,7 +22,8 @@ func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool)
 	} else {
 		fmt.Printf("config sleep is not number, %T\n", sleep)
 	}
-	fmt.Printf("header foo: %s, endStream: %v\n", header.Get("foo"), endStream)
+	fmt.Printf("header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
+	fmt.Printf("header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
 	return http.HeaderContinue
 }
 

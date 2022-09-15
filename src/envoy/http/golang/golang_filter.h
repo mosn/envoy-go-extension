@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 
 #include "envoy/access_log/access_log.h"
 #include "api/http/golang/v3/golang.pb.h"
@@ -187,7 +188,6 @@ private:
   // TODO get all context
   Grpc::Context& context_;
   bool has_async_task_{false};
-  bool has_destroyed_{false};
   bool decode_goextension_executed_{false};
   bool encode_goextension_executed_{false};
   uint64_t cost_time_decode_{0};
@@ -196,6 +196,12 @@ private:
   uint64_t stream_id_{0};
 
   uint64_t ptr_holder_{0};
+
+  // lock for has_destroyed_,
+  // to avoid race between envoy c thread and go thread (when calling back from go).
+  // it should also be okay without this lock in most cases, just for extreme case.
+  std::mutex mutex_{};
+  bool has_destroyed_{false};
 };
 
 class FilterWeakPtrHolder {

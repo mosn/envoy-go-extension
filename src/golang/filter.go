@@ -93,7 +93,7 @@ func (r *httpRequest) ContinueDecoding() {
 	api.HttpDecodeContinue(r.filter, r.endStream)
 }
 
-func (r *httpRequest) GetSingle(name string) string {
+func (r *httpRequest) GetRaw(name string) string {
 	api := http.GetCgoAPI()
 	var value string
 	api.HttpGetRequestHeader(r.filter, &name, &value)

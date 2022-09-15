@@ -49,7 +49,10 @@ const (
 // ****************** HeaderMap start ******************//
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/http/header_map.h
 type HeaderMap interface {
+	// Get is safe, but may low performance
 	Get(name string) string
+	// GetRaw is unsafe, reuse the memory from Envoy
+	GetRaw(name string) string
 	/*
 		byteSize() uint64
 		// append header
