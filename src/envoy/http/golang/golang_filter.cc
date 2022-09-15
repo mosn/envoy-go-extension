@@ -302,11 +302,12 @@ void Filter::requestContinue() {
   auto weak_ptr = weak_from_this();
   getDispatcher()->post([this, weak_ptr]{
     ASSERT(isThreadSafe());
-    if (weak_ptr.expired()) {
-      ENVOY_LOG(info, "golang filter has gone in requestContinue event");
-    } else {
-      std::lock_guard<std::mutex> lock(mutex_);
+    // do not need lock here, since it's the work thread now.
+    if (!weak_ptr.expired() && !has_destroyed_) {
+      ENVOY_LOG(debug, "golang filter callback continueDecoding");
       decoder_callbacks_->continueDecoding();
+    } else {
+      ENVOY_LOG(info, "golang filter has gone or destroyed in requestContinue event");
     }
   });
 }
@@ -328,6 +329,66 @@ void Filter::copyRequestHeaders(_GoString_ *goStrs, char *goBuf) {
   }
   auto i = 0;
   request_headers_->iterate([this, &i, &goStrs, &goBuf](const Http::HeaderEntry& header) -> Http::HeaderMap::Iterate {
+    auto key = std::string(header.key().getStringView());
+    auto value = std::string(header.value().getStringView());
+
+    // std::cout << "idx: " << i << ", key: " << key << ", value: " << value << std::endl;
+
+    auto len = key.length();
+    goStrs[i].n = len;
+    goStrs[i].p = goBuf;
+    memcpy(goBuf, key.data(), len);
+    goBuf += len;
+    i++;
+
+    len = value.length();
+    goStrs[i].n = len;
+    goStrs[i].p = goBuf;
+    memcpy(goBuf, value.data(), len);
+    goBuf += len;
+    i++;
+    return Http::HeaderMap::Iterate::Continue;
+  });
+}
+
+void Filter::responseContinue() {
+  // TODO: skip post event to dispatcher, and return continue in the caller,
+  // when it's invoked in the current envoy thread, for better performance & latency.
+  auto weak_ptr = weak_from_this();
+  getDispatcher()->post([this, weak_ptr]{
+    ASSERT(isThreadSafe());
+    // do not need lock here, since it's the work thread now.
+    if (!weak_ptr.expired() && !has_destroyed_) {
+      ENVOY_LOG(debug, "golang filter callback continueEncoding");
+      encoder_callbacks_->continueEncoding();
+    } else {
+      ENVOY_LOG(info, "golang filter has gone or destroyed in requestContinue event");
+    }
+  });
+}
+
+absl::optional<absl::string_view> Filter::getResponseHeader(absl::string_view key) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return "";
+  }
+  auto result = response_headers_->get(Http::LowerCaseString(key));
+
+  if (result.empty()) {
+    return absl::nullopt;
+  }
+  return result[0]->value().getStringView();
+}
+
+void Filter::copyResponseHeaders(_GoString_ *goStrs, char *goBuf) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  auto i = 0;
+  response_headers_->iterate([this, &i, &goStrs, &goBuf](const Http::HeaderEntry& header) -> Http::HeaderMap::Iterate {
     auto key = std::string(header.key().getStringView());
     auto value = std::string(header.value().getStringView());
 
@@ -372,7 +433,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
     auto id = config_->getConfigId();
     FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
     ptr_holder_ = reinterpret_cast<uint64_t>(holder);
-    dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, id, end_stream, request_headers_->size(), request_headers_->byteSize());
+    dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, id, end_stream, headers.size(), headers.byteSize());
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeHeaders catch: {}.", e.what());
@@ -469,10 +530,7 @@ Http::FilterTrailersStatus Filter::decodeTrailers(Http::RequestTrailerMap& trail
 }
 
 Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers, bool end_stream) {
-  if (!end_stream) {
-    response_headers_ = &headers;
-    return Http::FilterHeadersStatus::StopIteration;
-  }
+  ENVOY_LOG(info, "golang filter encodeHeaders, end_stream: {}.", end_stream);
 
   if (dynamicLib_ == nullptr) {
     ENVOY_LOG(error, "dynamicLib_ is nullPtr, maybe the instance already unpub.");
@@ -480,50 +538,27 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
     return Http::FilterHeadersStatus::Continue;
   }
 
+  response_headers_ = &headers;
+
   try {
-    /*
-    Request req{};
-    Response resp{};
-    // create request and response struct
-    cost_time_mem_ += measure<>::execution([&]() { initReqAndResp(req, resp, headers.size(), 0); });
-
-    // build golang request, if the build fails, then the filter should be
-    // skipped
-    if (!buildGolangRequestHeaders(req, headers)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterHeadersStatus::Continue;
-    }
-
-    // call golang request stream filter
-    cost_time_encode_ +=
-        measure<>::execution([&]() { resp = dynamicLib_->runSendStreamFilter(req); });
-    switch (doGolangResponseAndCleanup(req, resp, headers, false)) {
-    case GolangStatus::Continue:
-      return Http::FilterHeadersStatus::Continue;
-    case GolangStatus::DirectResponse:
-      return Http::FilterHeadersStatus::StopIteration;
-    case GolangStatus::NeedAsync:
-      return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
-    }
-    */
+    ASSERT(ptr_holder_ != 0);
+    auto id = config_->getConfigId();
+    dynamicLib_->moeOnHttpEncodeHeader(ptr_holder_, id, end_stream, headers.size(), headers.byteSize());
 
   } catch (const EnvoyException& e) {
-    ENVOY_LOG(error, "golang extension filter encodeHeaders catch: {}.", e.what());
+    ENVOY_LOG(error, "golang filter encodeHeaders catch: {}.", e.what());
 
   } catch (...) {
-    ENVOY_LOG(error, "golang extension filter encodeHeaders catch unknown exception.");
+    ENVOY_LOG(error, "golang filter encodeHeaders catch unknown exception.");
   }
 
-  return Http::FilterHeadersStatus::Continue;
+  // auto status = Http::FilterHeadersStatus::Continue;
+  auto status = Http::FilterHeadersStatus::StopIteration;
+  ENVOY_LOG(info, "golang filter encodeHeaders return with status: {}.", int(status));
+  return status;
 }
 
 Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_stream) {
-  if (!end_stream) {
-    // buffer whole datas
-    return Http::FilterDataStatus::StopIterationAndBuffer;
-  }
-
   if (dynamicLib_ == nullptr) {
     ENVOY_LOG(error, "dynamicLib_ is nullPtr, maybe the instance already unpub.");
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
@@ -531,44 +566,16 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
   }
 
   try {
-    /*
-    Request req{};
-    Response resp{};
-    // create request and response struct
-    cost_time_mem_ +=
-        measure<>::execution([&]() { initReqAndResp(req, resp, response_headers_->size(), 0); });
-
-    // build golang request, if the build fails, then the filter should be
-    // skipped
-    if (!buildGolangRequestHeaders(req, *response_headers_)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterDataStatus::Continue;
-    }
-
-    // build golang request body
-    buildGolangRequestBodyEncode(req, data);
-
-    // call golang request stream filter
-    cost_time_encode_ +=
-        measure<>::execution([&]() { resp = dynamicLib_->runSendStreamFilter(req); });
-    switch (doGolangResponseAndCleanup(req, resp, *response_headers_, false)) {
-    case GolangStatus::Continue:
-      return Http::FilterDataStatus::Continue;
-    case GolangStatus::DirectResponse:
-      return Http::FilterDataStatus::StopIterationNoBuffer;
-    case GolangStatus::NeedAsync:
-      return Http::FilterDataStatus::StopIterationAndWatermark;
-    }
-    */
+    ASSERT(ptr_holder_ != 0);
+    dynamicLib_->moeOnHttpEncodeData(ptr_holder_, end_stream);
 
   } catch (const EnvoyException& e) {
-    ENVOY_LOG(error, "golang extension filter encodeData catch: {}.", e.what());
+    ENVOY_LOG(error, "golang filter encodeData catch: {}.", e.what());
 
   } catch (...) {
-    ENVOY_LOG(error, "golang extension filter encodeData catch unknown exception.");
+    ENVOY_LOG(error, "golang filter encodeData catch unknown exception.");
   }
-  return Http::FilterDataStatus::Continue;
+  return Http::FilterDataStatus::StopIterationAndWatermark;
 }
 
 Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trailers) {

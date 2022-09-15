@@ -22,8 +22,8 @@ func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool)
 	} else {
 		fmt.Printf("config sleep is not number, %T\n", sleep)
 	}
-	fmt.Printf("header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
-	fmt.Printf("header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
+	fmt.Printf("request header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
+	fmt.Printf("request header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
 	return http.HeaderContinue
 }
 
@@ -35,8 +35,8 @@ func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool
 	} else {
 		fmt.Printf("config sleep is not number, %T\n", sleep)
 	}
-	fmt.Printf("header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
-	fmt.Printf("header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
+	fmt.Printf("response header Get date: %s, endStream: %v\n", header.Get("date"), endStream)
+	fmt.Printf("response header GetRaw date: %s, endStream: %v\n", header.GetRaw("date"), endStream)
 	return http.HeaderContinue
 }
 

@@ -141,8 +141,11 @@ public:
   static std::atomic<uint64_t> global_stream_id_;
 
   void requestContinue();
+  void responseContinue();
   absl::optional<absl::string_view> getRequestHeader(absl::string_view key);
   void copyRequestHeaders(_GoString_ *goStrs, char *goBuf);
+  absl::optional<absl::string_view> getResponseHeader(absl::string_view key);
+  void copyResponseHeaders(_GoString_ *goStrs, char *goBuf);
 
 private:
   bool isThreadSafe();

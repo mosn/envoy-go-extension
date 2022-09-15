@@ -2,4 +2,7 @@
      moeHttpDecodeContinue;
      moeHttpGetRequestHeader;
      moeHttpCopyRequestHeaders;
+     moeHttpEncodeContinue;
+     moeHttpGetResponseHeader;
+     moeHttpCopyResponseHeaders;
 };
