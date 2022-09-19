@@ -8,6 +8,7 @@ type HttpCgoAPI interface {
 	HttpEncodeContinue(filter uint64, end int)
 	HttpGetResponseHeader(filter uint64, key *string, value *string)
 	HttpCopyResponseHeaders(filter uint64, num uint64, bytes uint64) map[string]string
+	HttpSetResponseHeader(filter uint64, key *string, value *string)
 }
 
 var httpCgoAPI HttpCgoAPI

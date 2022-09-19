@@ -146,6 +146,7 @@ public:
   void copyRequestHeaders(_GoString_ *goStrs, char *goBuf);
   absl::optional<absl::string_view> getResponseHeader(absl::string_view key);
   void copyResponseHeaders(_GoString_ *goStrs, char *goBuf);
+  void setResponseHeader(absl::string_view key, absl::string_view value);
 
 private:
   bool isThreadSafe();

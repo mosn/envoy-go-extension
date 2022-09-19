@@ -53,12 +53,12 @@ type HeaderMap interface {
 	Get(name string) string
 	// GetRaw is unsafe, reuse the memory from Envoy
 	GetRaw(name string) string
+	// override header
+	Set(name, value string)
 	/*
 		byteSize() uint64
 		// append header
 		AddCopy(name, value string)
-		// override header
-		SetCopy(name, value string)
 		Remove(name string)
 	*/
 }

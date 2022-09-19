@@ -107,6 +107,22 @@ extern "C" void moeHttpCopyResponseHeaders(unsigned long long int filterHolder, 
   }
 }
 
+extern "C" void moeHttpSetResponseHeader(unsigned long long int filterHolder, void *key, void *value) {
+  if (filterHolder == 0) {
+    return;
+  }
+
+  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
+  auto weakFilter = holder->get();
+  if (auto filter = weakFilter.lock()) {
+    auto goKey = reinterpret_cast<_GoString_*>(key);
+    auto goValue = reinterpret_cast<_GoString_*>(value);
+    auto keyStr = absl::string_view(goKey->p, goKey->n);
+    auto valueStr = absl::string_view(goValue->p, goValue->n);
+    filter->setResponseHeader(keyStr, valueStr);
+  }
+}
+
 } // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions

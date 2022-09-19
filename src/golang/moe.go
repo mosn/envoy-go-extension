@@ -68,6 +68,10 @@ func (c *httpCgoApiImpl) HttpGetResponseHeader(filter uint64, key *string, value
 	C.moeHttpGetResponseHeader(C.ulonglong(filter), unsafe.Pointer(key), unsafe.Pointer(value))
 }
 
+func (c *httpCgoApiImpl) HttpSetResponseHeader(filter uint64, key *string, value *string) {
+	C.moeHttpSetResponseHeader(C.ulonglong(filter), unsafe.Pointer(key), unsafe.Pointer(value))
+}
+
 func (c *httpCgoApiImpl) HttpCopyResponseHeaders(filter uint64, num uint64, bytes uint64) map[string]string {
 	// TODO: use a memory pool for better performance,
 	// but, should be very careful, since string is const in go,

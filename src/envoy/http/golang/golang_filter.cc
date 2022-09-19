@@ -411,6 +411,15 @@ void Filter::copyResponseHeaders(_GoString_ *goStrs, char *goBuf) {
   });
 }
 
+void Filter::setResponseHeader(absl::string_view key, absl::string_view value) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  response_headers_->setCopy(Http::LowerCaseString(key), value);
+}
+
 bool Filter::isThreadSafe() {
   return decoder_callbacks_->dispatcher().isThreadSafe();
 }

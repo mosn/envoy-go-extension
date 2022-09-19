@@ -12,6 +12,8 @@ void moeHttpEncodeContinue(unsigned long long int filterHolder, int end);
 void moeHttpGetResponseHeader(unsigned long long int filterHolder, void* key, void *value);
 void moeHttpCopyResponseHeaders(unsigned long long int filterHolder, void* strs, void *buf);
 
+void moeHttpSetResponseHeader(unsigned long long int filterHolder, void* key, void *value);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

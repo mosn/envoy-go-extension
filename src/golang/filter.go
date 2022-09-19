@@ -66,6 +66,10 @@ func (h *httpRequestHeader) Get(name string) string {
 	return ""
 }
 
+func (h *httpRequestHeader) Set(name, value string) {
+	// TODO
+}
+
 type httpResponseHeader struct {
 	request     *httpRequest
 	endStream   int
@@ -90,4 +94,9 @@ func (h *httpResponseHeader) Get(name string) string {
 		return value
 	}
 	return ""
+}
+
+func (h *httpResponseHeader) Set(name, value string) {
+	api := http.GetCgoAPI()
+	api.HttpSetResponseHeader(h.request.filter, &name, &value)
 }
