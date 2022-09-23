@@ -91,9 +91,11 @@ type MetadataMap interface {
 // *************** BufferInstance start **************//
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/buffer/buffer.h
 type BufferInstance interface {
-	CopyOut(start uint64, p []byte) int
-	GetRawSlices() []byte
-	ToString() string
+	/*
+		CopyOut(start uint64, p []byte) int
+		GetRawSlices() []byte
+		ToString() string
+	*/
 	Length() uint64
 }
 

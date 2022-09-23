@@ -139,9 +139,20 @@ func moeOnHttpDecodeHeader(filter uint64, configId uint64, endStream int, header
 }
 
 //export moeOnHttpDecodeData
-func moeOnHttpDecodeData(filter uint64, endStream int) {
-	api := http.GetCgoAPI()
-	api.HttpDecodeContinue(filter, endStream)
+func moeOnHttpDecodeData(filter uint64, configId uint64, endStream int, length uint64) {
+	req := &httpRequest{
+		filter: filter,
+	}
+	filterFactory := getOrCreateHttpFilterFactory(configId)
+	f := filterFactory(req)
+	go func() {
+		buffer := &httpRequestBuffer{
+			request: req,
+			length:  length,
+		}
+		f.DecodeData(buffer, endStream == 1)
+		f.DecoderCallbacks().ContinueDecoding()
+	}()
 }
 
 //export moeOnHttpEncodeHeader
@@ -164,7 +175,18 @@ func moeOnHttpEncodeHeader(filter uint64, configId uint64, endStream int, header
 }
 
 //export moeOnHttpEncodeData
-func moeOnHttpEncodeData(filter uint64, endStream int) {
-	api := http.GetCgoAPI()
-	api.HttpEncodeContinue(filter, endStream)
+func moeOnHttpEncodeData(filter uint64, configId uint64, endStream int, length uint64) {
+	req := &httpRequest{
+		filter: filter,
+	}
+	filterFactory := getOrCreateHttpFilterFactory(configId)
+	f := filterFactory(req)
+	go func() {
+		buffer := &httpResponseBuffer{
+			request: req,
+			length:  length,
+		}
+		f.EncodeData(buffer, endStream == 1)
+		f.EncoderCallbacks().ContinueEncoding()
+	}()
 }

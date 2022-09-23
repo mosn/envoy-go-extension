@@ -100,3 +100,23 @@ func (h *httpResponseHeader) Set(name, value string) {
 	api := http.GetCgoAPI()
 	api.HttpSetResponseHeader(h.request.filter, &name, &value)
 }
+
+type httpRequestBuffer struct {
+	request   *httpRequest
+	endStream int
+	length    uint64
+}
+
+func (b *httpRequestBuffer) Length() uint64 {
+	return b.length
+}
+
+type httpResponseBuffer struct {
+	request   *httpRequest
+	endStream int
+	length    uint64
+}
+
+func (b *httpResponseBuffer) Length() uint64 {
+	return b.length
+}

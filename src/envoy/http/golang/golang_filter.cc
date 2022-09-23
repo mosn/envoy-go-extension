@@ -465,7 +465,8 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
 
   try {
     ASSERT(ptr_holder_ != 0);
-    dynamicLib_->moeOnHttpDecodeData(ptr_holder_, end_stream);
+    auto id = config_->getConfigId();
+    dynamicLib_->moeOnHttpDecodeData(ptr_holder_, id, end_stream, data.length());
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeData catch: {}.", e.what());
@@ -562,7 +563,7 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
   }
 
   // auto status = Http::FilterHeadersStatus::Continue;
-  auto status = Http::FilterHeadersStatus::StopIteration;
+  auto status = Http::FilterHeadersStatus::StopAllIterationAndWatermark;
   ENVOY_LOG(info, "golang filter encodeHeaders return with status: {}.", int(status));
   return status;
 }
@@ -576,7 +577,8 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
 
   try {
     ASSERT(ptr_holder_ != 0);
-    dynamicLib_->moeOnHttpEncodeData(ptr_holder_, end_stream);
+    auto id = config_->getConfigId();
+    dynamicLib_->moeOnHttpEncodeData(ptr_holder_, id, end_stream, data.length());
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter encodeData catch: {}.", e.what());
@@ -584,7 +586,9 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
   } catch (...) {
     ENVOY_LOG(error, "golang filter encodeData catch unknown exception.");
   }
-  return Http::FilterDataStatus::StopIterationAndWatermark;
+  auto status = Http::FilterDataStatus::StopIterationAndWatermark;
+  ENVOY_LOG(info, "golang filter encodeData return with status: {}.", int(status));
+  return status;
 }
 
 Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trailers) {

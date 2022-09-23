@@ -5,8 +5,8 @@ import "google.golang.org/protobuf/types/known/anypb"
 // request
 type HttpDecoderFilter interface {
 	DecodeHeaders(RequestHeaderMap, bool) StatusType
+	DecodeData(BufferInstance, bool) StatusType
 	/*
-		DecodeData(BufferInstance, bool) StatusType
 		DecodeTrailers(RequestTrailerMap) StatusType
 		DecodeMetadata(MetadataMap) StatusType
 	*/
@@ -34,8 +34,8 @@ type HttpFilter interface {
 // response
 type StreamEncoderFilter interface {
 	EncodeHeaders(ResponseHeaderMap, bool) StatusType
+	EncodeData(BufferInstance, bool) StatusType
 	/*
-		EncodeData(BufferInstance, bool) StatusType
 		EncodeTrailers(ResponseTrailerMap) StatusType
 		EncodeMetadata(MetadataMap) StatusType
 	*/

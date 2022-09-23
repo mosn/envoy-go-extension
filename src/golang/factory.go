@@ -17,7 +17,7 @@ type httpFilter struct {
 func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool) http.StatusType {
 	sleep := f.config.AsMap()["sleep"]
 	if v, ok := sleep.(float64); ok {
-		fmt.Printf("sleeping %v ms\n", v)
+		fmt.Printf("decode headers, sleeping %v ms\n", v)
 		time.Sleep(time.Millisecond * time.Duration(v))
 	} else {
 		fmt.Printf("config sleep is not number, %T\n", sleep)
@@ -27,10 +27,22 @@ func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool)
 	return http.HeaderContinue
 }
 
+func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
+	sleep := f.config.AsMap()["sleep"]
+	if v, ok := sleep.(float64); ok {
+		fmt.Printf("decode data, sleeping %v ms\n", v)
+		time.Sleep(time.Millisecond * time.Duration(v))
+	} else {
+		fmt.Printf("config sleep is not number, %T\n", sleep)
+	}
+	fmt.Printf("request data, length: %d, endStream: %v\n", buffer.Length(), endStream)
+	return http.DataContinue
+}
+
 func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool) http.StatusType {
 	sleep := f.config.AsMap()["sleep"]
 	if v, ok := sleep.(float64); ok {
-		fmt.Printf("sleeping %v ms\n", v)
+		fmt.Printf("encode headers, sleeping %v ms\n", v)
 		time.Sleep(time.Millisecond * time.Duration(v))
 	} else {
 		fmt.Printf("config sleep is not number, %T\n", sleep)
@@ -40,6 +52,18 @@ func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool
 
 	header.Set("Foo", "Bar")
 	return http.HeaderContinue
+}
+
+func (f *httpFilter) EncodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
+	sleep := f.config.AsMap()["sleep"]
+	if v, ok := sleep.(float64); ok {
+		fmt.Printf("encode data, sleeping %v ms\n", v)
+		time.Sleep(time.Millisecond * time.Duration(v))
+	} else {
+		fmt.Printf("config sleep is not number, %T\n", sleep)
+	}
+	fmt.Printf("response data, length: %d, endStream: %v\n", buffer.Length(), endStream)
+	return http.DataContinue
 }
 
 func (f *httpFilter) DecoderCallbacks() http.DecoderFilterCallbacks {
