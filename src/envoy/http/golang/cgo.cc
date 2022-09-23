@@ -123,6 +123,19 @@ extern "C" void moeHttpSetResponseHeader(unsigned long long int filterHolder, vo
   }
 }
 
+extern "C" void moeHttpGetBuffer(unsigned long long int filterHolder, unsigned long long int bufferPtr, void *data) {
+  if (filterHolder == 0) {
+    return;
+  }
+
+  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
+  auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
+  auto weakFilter = holder->get();
+  if (auto filter = weakFilter.lock()) {
+    filter->copyBuffer(buffer, reinterpret_cast<char*>(data));
+  }
+}
+
 } // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions

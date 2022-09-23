@@ -94,8 +94,8 @@ type BufferInstance interface {
 	/*
 		CopyOut(start uint64, p []byte) int
 		GetRawSlices() []byte
-		ToString() string
 	*/
+	GetString() string
 	Length() uint64
 }
 

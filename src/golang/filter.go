@@ -101,22 +101,19 @@ func (h *httpResponseHeader) Set(name, value string) {
 	api.HttpSetResponseHeader(h.request.filter, &name, &value)
 }
 
-type httpRequestBuffer struct {
+type httpBuffer struct {
 	request   *httpRequest
-	endStream int
+	bufferPtr uint64
 	length    uint64
+	value     string
 }
 
-func (b *httpRequestBuffer) Length() uint64 {
-	return b.length
+func (b *httpBuffer) GetString() string {
+	api := http.GetCgoAPI()
+	api.HttpGetBuffer(b.request.filter, b.bufferPtr, &b.value, b.length)
+	return b.value
 }
 
-type httpResponseBuffer struct {
-	request   *httpRequest
-	endStream int
-	length    uint64
-}
-
-func (b *httpResponseBuffer) Length() uint64 {
+func (b *httpBuffer) Length() uint64 {
 	return b.length
 }

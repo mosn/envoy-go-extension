@@ -14,6 +14,8 @@ void moeHttpCopyResponseHeaders(unsigned long long int filterHolder, void* strs,
 
 void moeHttpSetResponseHeader(unsigned long long int filterHolder, void* key, void *value);
 
+void moeHttpGetBuffer(unsigned long long int filterHolder, unsigned long long int buffer, void *value);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

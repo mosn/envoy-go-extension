@@ -74,7 +74,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
 
   func = dlsym(handler_, "moeOnHttpDecodeData");
   if (func) {
-    moeOnHttpDecodeData_ = reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p3)>(func);
+    moeOnHttpDecodeData_ = reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4)>(func);
   } else {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeData, err: {}", dsoName,
                    dlerror());
@@ -90,7 +90,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
 
   func = dlsym(handler_, "moeOnHttpEncodeData");
   if (func) {
-    moeOnHttpEncodeData_ = reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p3)>(func);
+    moeOnHttpEncodeData_ = reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4)>(func);
   } else {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpEncodeData, err: {}", dsoName,
                    dlerror());
@@ -120,9 +120,9 @@ void DsoInstance::moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, G
   }
 }
 
-void DsoInstance::moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p3) {
+void DsoInstance::moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4) {
   if (moeOnHttpDecodeData_) {
-    moeOnHttpDecodeData_(p0, p1, p2, p3);
+    moeOnHttpDecodeData_(p0, p1, p2, p3, p4);
   }
 }
 
@@ -132,9 +132,9 @@ void DsoInstance::moeOnHttpEncodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, G
   }
 }
 
-void DsoInstance::moeOnHttpEncodeData(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p3) {
+void DsoInstance::moeOnHttpEncodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4) {
   if (moeOnHttpEncodeData_) {
-    moeOnHttpEncodeData_(p0, p1, p2, p3);
+    moeOnHttpEncodeData_(p0, p1, p2, p3, p4);
   }
 }
 

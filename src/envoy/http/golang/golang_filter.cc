@@ -420,6 +420,18 @@ void Filter::setResponseHeader(absl::string_view key, absl::string_view value) {
   response_headers_->setCopy(Http::LowerCaseString(key), value);
 }
 
+void Filter::copyBuffer(Buffer::Instance* buffer, char *data) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  for (const Buffer::RawSlice& slice : buffer->getRawSlices()) {
+    memcpy(data, static_cast<const char*>(slice.mem_), slice.len_);
+    data += slice.len_;
+  }
+}
+
 bool Filter::isThreadSafe() {
   return decoder_callbacks_->dispatcher().isThreadSafe();
 }
@@ -466,7 +478,7 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
   try {
     ASSERT(ptr_holder_ != 0);
     auto id = config_->getConfigId();
-    dynamicLib_->moeOnHttpDecodeData(ptr_holder_, id, end_stream, data.length());
+    dynamicLib_->moeOnHttpDecodeData(ptr_holder_, id, reinterpret_cast<uint64_t>(&data), data.length(), end_stream);
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeData catch: {}.", e.what());
@@ -578,7 +590,7 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
   try {
     ASSERT(ptr_holder_ != 0);
     auto id = config_->getConfigId();
-    dynamicLib_->moeOnHttpEncodeData(ptr_holder_, id, end_stream, data.length());
+    dynamicLib_->moeOnHttpEncodeData(ptr_holder_, id, reinterpret_cast<uint64_t>(&data), data.length(), end_stream);
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter encodeData catch: {}.", e.what());
