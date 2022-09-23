@@ -148,6 +148,7 @@ public:
   void copyResponseHeaders(_GoString_ *goStrs, char *goBuf);
   void setResponseHeader(absl::string_view key, absl::string_view value);
   void copyBuffer(Buffer::Instance* buffer, char *data);
+  void setBuffer(Buffer::Instance* buffer, absl::string_view &value);
 
 private:
   bool isThreadSafe();

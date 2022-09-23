@@ -114,6 +114,11 @@ func (b *httpBuffer) GetString() string {
 	return b.value
 }
 
+func (b *httpBuffer) Set(value string) {
+	api := http.GetCgoAPI()
+	api.HttpSetBuffer(b.request.filter, b.bufferPtr, value)
+}
+
 func (b *httpBuffer) Length() uint64 {
 	return b.length
 }

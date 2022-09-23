@@ -432,6 +432,16 @@ void Filter::copyBuffer(Buffer::Instance* buffer, char *data) {
   }
 }
 
+void Filter::setBuffer(Buffer::Instance* buffer, absl::string_view& value) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  buffer->drain(buffer->length());
+  buffer->add(value);
+}
+
 bool Filter::isThreadSafe() {
   return decoder_callbacks_->dispatcher().isThreadSafe();
 }

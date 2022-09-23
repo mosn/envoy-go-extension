@@ -7,4 +7,5 @@
      moeHttpCopyResponseHeaders;
      moeHttpSetResponseHeader;
      moeHttpGetBuffer;
+     moeHttpSetBuffer;
 };

@@ -106,6 +106,11 @@ func (c *httpCgoApiImpl) HttpGetBuffer(filter uint64, bufferPtr uint64, value *s
 	C.moeHttpGetBuffer(C.ulonglong(filter), C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
 }
 
+func (c *httpCgoApiImpl) HttpSetBuffer(filter uint64, bufferPtr uint64, value string) {
+	sHeader := (*reflect.StringHeader)(unsafe.Pointer(&value))
+	C.moeHttpSetBuffer(C.ulonglong(filter), C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len))
+}
+
 func init() {
 	http.SetCgoAPI(&httpCgoApiImpl{})
 }

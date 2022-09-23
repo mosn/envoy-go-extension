@@ -136,6 +136,20 @@ extern "C" void moeHttpGetBuffer(unsigned long long int filterHolder, unsigned l
   }
 }
 
+extern "C" void moeHttpSetBuffer(unsigned long long int filterHolder, unsigned long long int bufferPtr, void *data, int length) {
+  if (filterHolder == 0) {
+    return;
+  }
+
+  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
+  auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
+  auto weakFilter = holder->get();
+  if (auto filter = weakFilter.lock()) {
+    auto value = absl::string_view(reinterpret_cast<const char*>(data), length);
+    filter->setBuffer(buffer, value);
+  }
+}
+
 } // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions
