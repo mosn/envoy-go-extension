@@ -356,9 +356,9 @@ void Filter::responseContinue() {
   // when it's invoked in the current envoy thread, for better performance & latency.
   auto weak_ptr = weak_from_this();
   getDispatcher()->post([this, weak_ptr]{
-    ASSERT(isThreadSafe());
     // do not need lock here, since it's the work thread now.
     if (!weak_ptr.expired() && !has_destroyed_) {
+      ASSERT(isThreadSafe());
       ENVOY_LOG(debug, "golang filter callback continueEncoding");
       encoder_callbacks_->continueEncoding();
     } else {
