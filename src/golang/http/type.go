@@ -98,6 +98,28 @@ type BufferInstance interface {
 	Set(string)
 	GetString() string
 	Length() uint64
+	// Send() // send to next filter
 }
 
 //*************** BufferInstance end **************//
+
+// similar to Lua filter
+type HttpRequestFilter interface {
+	OnRequest(RequestHeaderMap, RequestBody) StatusType
+}
+
+type RequestBody interface {
+	Set(string)
+	Get() string
+	Length() uint64
+	NextBuffer() BufferInstance
+}
+
+// filter manager
+func OnRequest(header RequestHeaderMap, body RequestBody) {
+	var filter HttpRequestFilter
+	// wrapper body
+	for i := 1; i < 10; i++ {
+		filter.OnRequest(header, body)
+	}
+}

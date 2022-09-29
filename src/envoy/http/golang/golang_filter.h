@@ -12,6 +12,9 @@
 
 #include "src/envoy/common/dso/dso.h"
 
+#include "source/common/common/linked_object.h"
+#include "source/common/buffer/watermark_buffer.h"
+
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
@@ -63,6 +66,21 @@ enum class GolangStatus {
   DirectResponse,
   // Need aysnc
   NeedAsync,
+  StopAndBuffer,
+  StopAndBufferWatermark,
+  StopNoBuffer,
+};
+
+/*
+ * state
+ */
+enum class FilterState {
+  WaitHeader,
+  DoHeader,
+  WaitData,
+  WaitFullData,
+  DoData,
+  Done,
 };
 
 /**
@@ -130,7 +148,7 @@ public:
 
   Http::RequestHeaderMap* getRequestHeaders();
   Http::ResponseHeaderMap* getResponseHeaders();
-  Event::Dispatcher* getDispatcher();
+  Event::Dispatcher& getDispatcher();
   bool hasDestroyed();
 
 /*
@@ -140,7 +158,7 @@ public:
 
   static std::atomic<uint64_t> global_stream_id_;
 
-  void requestContinue();
+  void requestContinue(GolangStatus status);
   void responseContinue();
   absl::optional<absl::string_view> getRequestHeader(absl::string_view key);
   void copyRequestHeaders(_GoString_ *goStrs, char *goBuf);
@@ -152,6 +170,14 @@ public:
 
 private:
   bool isThreadSafe();
+
+  bool doData(Buffer::Instance&, bool);
+  bool handleGolangStatus(GolangStatus status);
+
+  void wantData();
+  void dataBufferFull();
+
+  Buffer::InstancePtr createWatermarkBuffer();
 
   /*
   // build golang request header
@@ -183,6 +209,14 @@ private:
 
   const FilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;
+
+  FilterState state_{FilterState::WaitHeader};
+
+  Buffer::InstancePtr request_data_buffer_;
+  Buffer::InstancePtr response_data_buffer_;
+
+  Buffer::OwnedImpl request_do_data_buffer_;
+  bool end_stream_;
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};

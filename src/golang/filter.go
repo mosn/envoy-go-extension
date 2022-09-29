@@ -109,6 +109,9 @@ type httpBuffer struct {
 }
 
 func (b *httpBuffer) GetString() string {
+	if b.length == 0 {
+		return ""
+	}
 	api := http.GetCgoAPI()
 	api.HttpGetBuffer(b.request.filter, b.bufferPtr, &b.value, b.length)
 	return b.value

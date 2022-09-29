@@ -15,6 +15,7 @@ package main
 import "C"
 
 import (
+	"fmt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/http"
@@ -134,7 +135,7 @@ func moeDestoryHttpPluginConfig(id uint64) {
 }
 
 //export moeOnHttpDecodeHeader
-func moeOnHttpDecodeHeader(filter uint64, configId uint64, endStream int, headerNum uint64, headerBytes uint64) {
+func moeOnHttpDecodeHeader(filter uint64, configId uint64, endStream int, headerNum uint64, headerBytes uint64) uint64 {
 	req := &httpRequest{
 		filter: filter,
 	}
@@ -153,19 +154,25 @@ func moeOnHttpDecodeHeader(filter uint64, configId uint64, endStream int, header
 }
 
 //export moeOnHttpDecodeData
-func moeOnHttpDecodeData(filter uint64, configId uint64, buffer uint64, length uint64, endStream int) {
+func moeOnHttpDecodeData(filter uint64, configId uint64, buffer uint64, length uint64, endStream int) uint64 {
 	req := &httpRequest{
 		filter: filter,
 	}
 	filterFactory := getOrCreateHttpFilterFactory(configId)
 	f := filterFactory(req)
+	buf := &httpBuffer{
+		request:   req,
+		bufferPtr: buffer,
+		length:    length,
+	}
+	id := ""
+	if hf, ok := f.(*httpFilter); ok {
+		id = hf.config.AsMap()["id"].(string)
+	}
+	fmt.Printf("id: %s, buffer ptr: %p, buffer data: %s\n", id, buffer, buf.GetString())
 	go func() {
-		buffer := &httpBuffer{
-			request:   req,
-			bufferPtr: buffer,
-			length:    length,
-		}
-		f.DecodeData(buffer, endStream == 1)
+		f.DecodeData(buf, endStream == 1)
+		fmt.Printf("id: %s, decode data continue\n", id)
 		f.DecoderCallbacks().ContinueDecoding()
 	}()
 }

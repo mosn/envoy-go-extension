@@ -252,7 +252,7 @@ Http::RequestHeaderMap* Filter::getRequestHeaders() { return request_headers_; }
 
 Http::ResponseHeaderMap* Filter::getResponseHeaders() { return response_headers_; }
 
-Event::Dispatcher* Filter::getDispatcher() { return &decoder_callbacks_->dispatcher(); }
+Event::Dispatcher& Filter::getDispatcher() { return decoder_callbacks_->dispatcher(); }
 
 /*
 void Filter::initReqAndResp(Request& req, Response&, size_t headerSize, size_t trailerSize) {
@@ -296,16 +296,31 @@ void Filter::freeCharPointerArray(NonConstString* p) {
 
 bool Filter::hasDestroyed() { return has_destroyed_; }
 
-void Filter::requestContinue() {
+void Filter::requestContinue(GolangStatus status) {
   // TODO: skip post event to dispatcher, and return continue in the caller,
   // when it's invoked in the current envoy thread, for better performance & latency.
   auto weak_ptr = weak_from_this();
-  getDispatcher()->post([this, weak_ptr]{
+  getDispatcher().post([this, weak_ptr, status]{
     ASSERT(isThreadSafe());
     // do not need lock here, since it's the work thread now.
     if (!weak_ptr.expired() && !has_destroyed_) {
       ENVOY_LOG(debug, "golang filter callback continueDecoding");
-      decoder_callbacks_->continueDecoding();
+      auto done = handleGolangStatus(status);
+      if (done) {
+        Buffer::OwnedImpl data_to_write;
+        data_to_write.move(request_do_data_buffer_);
+        decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, end_stream_);
+      }
+      if ((state_ == FilterState::WaitData && (request_data_buffer_->length() > 0 || end_stream_))
+          || (state_ == FilterState::WaitFullData && end_stream_))
+      {
+        auto done = doData(*request_data_buffer_, end_stream_);
+        if (done) {
+          Buffer::OwnedImpl data_to_write;
+          data_to_write.move(request_do_data_buffer_);
+          decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, end_stream_);
+        }
+      }
     } else {
       ENVOY_LOG(info, "golang filter has gone or destroyed in requestContinue event");
     }
@@ -355,7 +370,7 @@ void Filter::responseContinue() {
   // TODO: skip post event to dispatcher, and return continue in the caller,
   // when it's invoked in the current envoy thread, for better performance & latency.
   auto weak_ptr = weak_from_this();
-  getDispatcher()->post([this, weak_ptr]{
+  getDispatcher().post([this, weak_ptr]{
     // do not need lock here, since it's the work thread now.
     if (!weak_ptr.expired() && !has_destroyed_) {
       ASSERT(isThreadSafe());
@@ -460,11 +475,13 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   // headers.path();
   // headers.getByKey("foo");
 
+  bool done = true;
   try {
     auto id = config_->getConfigId();
     FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
     ptr_holder_ = reinterpret_cast<uint64_t>(holder);
-    dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, id, end_stream, headers.size(), headers.byteSize());
+    auto status = dynamicLib_->moeOnHttpDecodeHeader(ptr_holder_, id, end_stream, headers.size(), headers.byteSize());
+    done = handleGolangStatus(static_cast<GolangStatus>(status));
 
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang filter decodeHeaders catch: {}.", e.what());
@@ -473,7 +490,95 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
     ENVOY_LOG(error, "golang filter decodeHeaders catch unknown exception.");
   }
 
-  return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
+  return done ? Http::FilterHeadersStatus::Continue : Http::FilterHeadersStatus::StopIteration;
+}
+
+bool Filter::handleGolangStatus(GolangStatus status) {
+  ASSERT(state_ == FilterState::DoHeader || state_ == FilterState::DoData);
+
+  switch (status) {
+  case GolangStatus::Continue:
+    state_ = end_stream_ ? FilterState::WaitData : FilterState::Done;
+    return true;
+
+  case GolangStatus::StopAndBuffer:
+    if (end_stream_) {
+      // error
+    }
+    state_ = FilterState::WaitFullData;
+    break;
+
+  case GolangStatus::StopAndBufferWatermark:
+    if (end_stream_) {
+      // error
+    }
+    state_ = FilterState::WaitData;
+    break;
+
+  case GolangStatus::StopNoBuffer:
+    if (end_stream_) {
+      // error
+    }
+    request_do_data_buffer_.drain(request_do_data_buffer_.length());
+    state_ = FilterState::WaitData;
+    break;
+
+  case GolangStatus::NeedAsync:
+    // keep state_
+    break;
+  
+  default:
+    // error
+    break;
+  }
+  return false;
+}
+
+bool Filter::doData(Buffer::Instance& data, bool end_stream) {
+  ASSERT(state_ == FilterState::WaitData || (state_ == FilterState::WaitFullData && end_stream));
+  state_ = FilterState::DoData;
+
+  // TODO: use a buffer list, for more flexible API in go side.
+  request_do_data_buffer_.move(data);
+  end_stream_ = end_stream;
+
+  try {
+    ASSERT(ptr_holder_ != 0);
+    auto id = config_->getConfigId();
+    auto status = dynamicLib_->moeOnHttpDecodeData(ptr_holder_, id, reinterpret_cast<uint64_t>(&request_do_data_buffer_), request_do_data_buffer_.length(), end_stream);
+
+    return handleGolangStatus(static_cast<GolangStatus>(status));
+
+  } catch (const EnvoyException& e) {
+    ENVOY_LOG(error, "golang filter decodeData catch: {}.", e.what());
+
+  } catch (...) {
+    ENVOY_LOG(error, "golang filter decodeData catch unknown exception.");
+  }
+
+  return false;
+}
+
+void Filter::wantData() {
+  ENVOY_LOG(debug, "golang filter watermark buffer want more data");
+  decoder_callbacks_->onDecoderFilterBelowWriteBufferLowWatermark();
+}
+
+void Filter::dataBufferFull() {
+  ENVOY_LOG(debug, "golang filter watermark buffer is full");
+  if (state_ == FilterState::WaitFullData) {
+    // TODO: 413.
+  }
+  decoder_callbacks_->onDecoderFilterAboveWriteBufferHighWatermark();
+}
+
+Buffer::InstancePtr Filter::createWatermarkBuffer() {
+  auto buffer = getDispatcher().getWatermarkFactory().createBuffer(
+    [this]() -> void { this->wantData(); },
+    [this]() -> void { this->dataBufferFull(); },
+    []() -> void { /* TODO: Handle overflow watermark */ });
+  buffer->setWatermarks(decoder_callbacks_->decoderBufferLimit());
+  return buffer;
 }
 
 Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_stream) {
@@ -483,21 +588,35 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
     return Http::FilterDataStatus::Continue;
   }
 
-  request_data_ = &data;
+  bool done = false;
 
-  try {
-    ASSERT(ptr_holder_ != 0);
-    auto id = config_->getConfigId();
-    dynamicLib_->moeOnHttpDecodeData(ptr_holder_, id, reinterpret_cast<uint64_t>(&data), data.length(), end_stream);
-
-  } catch (const EnvoyException& e) {
-    ENVOY_LOG(error, "golang filter decodeData catch: {}.", e.what());
-
-  } catch (...) {
-    ENVOY_LOG(error, "golang filter decodeData catch unknown exception.");
+  switch (state_) {
+  case FilterState::WaitData:
+    done = doData(data, end_stream);
+    break;
+  case FilterState::WaitFullData:
+    if (end_stream) {
+      done = doData(data, end_stream);
+    }
+    break;
+  case FilterState::DoData:
+  case FilterState::DoHeader:
+    if (request_data_buffer_ == nullptr) {
+      request_data_buffer_ = createWatermarkBuffer();
+    }
+    request_data_buffer_->move(data);
+    break;
+  default:
+    // die.
+    break;
   }
 
-  return Http::FilterDataStatus::StopIterationAndWatermark;
+  if (done) {
+    data.move(request_do_data_buffer_);
+    return Http::FilterDataStatus::Continue;
+  }
+
+  return Http::FilterDataStatus::StopIterationNoBuffer;
 }
 
 Http::FilterTrailersStatus Filter::decodeTrailers(Http::RequestTrailerMap& trailers) {

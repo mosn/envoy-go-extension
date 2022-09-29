@@ -35,7 +35,8 @@ func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http
 	} else {
 		fmt.Printf("config sleep is not number, %T\n", sleep)
 	}
-	fmt.Printf("request data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.GetString())
+	fmt.Printf("request data, length: %d, endStream: %v\n", buffer.Length(), endStream)
+	// fmt.Printf("request data: %s\n", buffer.GetString())
 	return http.DataContinue
 }
 
@@ -51,7 +52,7 @@ func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool
 	fmt.Printf("response header GetRaw date: %s, endStream: %v\n", header.GetRaw("date"), endStream)
 
 	header.Set("Foo", "Bar")
-	header.Set("content-length", "7")
+	// header.Set("content-length", "7")
 	return http.HeaderContinue
 }
 

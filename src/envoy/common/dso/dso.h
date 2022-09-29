@@ -17,8 +17,8 @@ public:
   ~DsoInstance();
 
   GoUint64 moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1);
-  void moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4);
-  void moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4);
+  GoUint64 moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4);
+  GoUint64 moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4);
   void moeOnHttpEncodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4);
   void moeOnHttpEncodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4);
 
@@ -27,8 +27,8 @@ private:
   void* handler_;
 
   GoUint64 (*moeNewHttpPluginConfig_)(GoUint64 p0, GoUint64 p1) = {nullptr};
-  void (*moeOnHttpDecodeHeader_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4) = {nullptr};
-  void (*moeOnHttpDecodeData_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4) = {nullptr};
+  GoUint64 (*moeOnHttpDecodeHeader_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4) = {nullptr};
+  GoUint64 (*moeOnHttpDecodeData_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4) = {nullptr};
   void (*moeOnHttpEncodeHeader_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4) = {nullptr};
   void (*moeOnHttpEncodeData_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4) = {nullptr};
 };
