@@ -306,17 +306,33 @@ void Filter::continueStatus(GolangStatus status) {
     if (!weak_ptr.expired() && !has_destroyed_) {
       ENVOY_LOG(debug, "golang filter callback continue, status: {}, state: {}, phase: {}", int(status), int(state_), int(phase_));
       auto is_decode = isDecodePhase();
+      auto is_header = isHeaderPhase();
+      auto is_end = isEnd();
       auto done = handleGolangStatus(status);
+      ENVOY_LOG(debug, "golang filter callback continue, status: {}, state: {}, phase: {}", int(status), int(state_), int(phase_));
       if (done) {
-        Buffer::OwnedImpl data_to_write;
-        data_to_write.move(do_data_buffer_);
-        if (is_decode) {
-          decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, end_stream_);
+        // we should process data first when end_stream_ = true.
+        if (is_header && !end_stream_) {
+          if (is_decode) {
+            ENVOY_LOG(debug, "golang filter callback continue, continueDecoding");
+            decoder_callbacks_->continueDecoding();
+          } else {
+            ENVOY_LOG(debug, "golang filter callback continue, continueEncoding");
+            encoder_callbacks_->continueEncoding();
+          }
         } else {
-          encoder_callbacks_->injectEncodedDataToFilterChain(data_to_write, end_stream_);
+          Buffer::OwnedImpl data_to_write;
+          data_to_write.move(do_data_buffer_);
+          if (is_decode) {
+            ENVOY_LOG(debug, "golang filter callback continue, injectDecodedDataToFilterChain");
+            decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, is_end);
+          } else {
+            ENVOY_LOG(debug, "golang filter callback continue, injectEncodedDataToFilterChain");
+            encoder_callbacks_->injectEncodedDataToFilterChain(data_to_write, is_end);
+          }
         }
       }
-      if ((state_ == FilterState::WaitData && (data_buffer_->length() > 0 || end_stream_))
+      if ((state_ == FilterState::WaitData && (!isEmptyBuffer() || end_stream_))
           || (state_ == FilterState::WaitFullData && end_stream_))
       {
         auto done = doDataGo(*data_buffer_, end_stream_);
@@ -324,9 +340,11 @@ void Filter::continueStatus(GolangStatus status) {
           Buffer::OwnedImpl data_to_write;
           data_to_write.move(do_data_buffer_);
           if (is_decode) {
-            decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, end_stream_);
+            ENVOY_LOG(debug, "golang filter callback continue, injectDecodedDataToFilterChain, end_stream: {}", isEnd());
+            decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, isEnd());
           } else {
-            encoder_callbacks_->injectEncodedDataToFilterChain(data_to_write, end_stream_);
+            ENVOY_LOG(debug, "golang filter callback continue, injectEncodedDataToFilterChain, end_stream: {}", isEnd());
+            encoder_callbacks_->injectEncodedDataToFilterChain(data_to_write, isEnd());
           }
         }
       }
@@ -478,10 +496,18 @@ bool Filter::isHeaderPhase() {
   return phase_ == Phase::DecodeHeader || phase_ == Phase::EncodeHeader;
 }
 
+bool Filter::isEmptyBuffer() {
+  return data_buffer_ == nullptr || data_buffer_->length() == 0;
+}
+
+bool Filter::isEnd() {
+  return end_stream_ && isEmptyBuffer();
+}
+
 bool Filter::handleGolangStatus(GolangStatus status) {
   ASSERT(state_ == FilterState::DoHeader || state_ == FilterState::DoData);
 
-  auto is_end = end_stream_ && (data_buffer_ == nullptr || data_buffer_->length() == 0);
+  auto is_end = isEnd();
   ENVOY_LOG(debug, "before handle golang status, status: {}, state: {}, phase: {}, end_stream: {}, is_end: {}", int(status), int(state_), int(phase_), end_stream_, is_end);
 
   bool done = false;

@@ -183,6 +183,9 @@ public:
 private:
   bool isDecodePhase();
   bool isHeaderPhase();
+  bool isEmptyBuffer();
+  bool isEnd();
+
   bool isThreadSafe();
 
   bool doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
