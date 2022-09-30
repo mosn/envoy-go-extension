@@ -4,11 +4,11 @@
 extern "C" {
 #endif
 
-void moeHttpDecodeContinue(unsigned long long int filterHolder, int end);
+void moeHttpContinue(unsigned long long int filterHolder, int status);
+
 void moeHttpGetRequestHeader(unsigned long long int filterHolder, void* key, void *value);
 void moeHttpCopyRequestHeaders(unsigned long long int filterHolder, void* strs, void *buf);
 
-void moeHttpEncodeContinue(unsigned long long int filterHolder, int end);
 void moeHttpGetResponseHeader(unsigned long long int filterHolder, void* key, void *value);
 void moeHttpCopyResponseHeaders(unsigned long long int filterHolder, void* strs, void *buf);
 

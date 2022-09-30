@@ -10,7 +10,6 @@ type HttpDecoderFilter interface {
 		DecodeTrailers(RequestTrailerMap) StatusType
 		DecodeMetadata(MetadataMap) StatusType
 	*/
-	DecoderCallbacks() DecoderFilterCallbacks
 }
 
 type HttpFilterConfigFactory func(config *anypb.Any) HttpFilterFactory
@@ -29,6 +28,7 @@ type HttpFilter interface {
 		// destroy filter
 		OnDestroy()
 	*/
+	Callbacks() FilterCallbacks
 }
 
 // response
@@ -38,8 +38,8 @@ type StreamEncoderFilter interface {
 	/*
 		EncodeTrailers(ResponseTrailerMap) StatusType
 		EncodeMetadata(MetadataMap) StatusType
+		EncoderCallbacks() EncoderFilterCallbacks
 	*/
-	EncoderCallbacks() EncoderFilterCallbacks
 }
 
 // stream info
@@ -59,9 +59,9 @@ type StreamFilterCallbacks interface {
 	StreamInfo() StreamInfo
 }
 
-type DecoderFilterCallbacks interface {
+type FilterCallbacks interface {
 	// StreamFilterCallbacks
-	ContinueDecoding()
+	Continue(StatusType)
 	/*
 		AddDecodedData(buffer BufferInstance, streamingFilter bool)
 		SendLocalReply(response_code int, body_text string, headers map[string]string, details string)
@@ -78,6 +78,5 @@ type EncoderFilterCallbacks interface {
 }
 
 type FilterCallbackHandler interface {
-	DecoderFilterCallbacks
-	EncoderFilterCallbacks
+	FilterCallbacks
 }

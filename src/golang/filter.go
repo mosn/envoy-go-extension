@@ -24,25 +24,27 @@ import (
 type httpRequest struct {
 	filter      uint64
 	configId    uint64
-	endStream   int
+	endStream   uint64
 	headers     map[string]string
 	headerNum   uint64
 	headerBytes uint64
 }
 
-func (r *httpRequest) ContinueDecoding() {
+/*
+func (r *httpRequest) ContinueDecoding(status http.StatusType) {
 	api := http.GetCgoAPI()
-	api.HttpDecodeContinue(r.filter, r.endStream)
+	api.HttpDecodeContinue(r.filter, int(status))
 }
+*/
 
-func (r *httpRequest) ContinueEncoding() {
+func (r *httpRequest) Continue(status http.StatusType) {
 	api := http.GetCgoAPI()
-	api.HttpEncodeContinue(r.filter, r.endStream)
+	api.HttpContinue(r.filter, uint64(status))
 }
 
 type httpRequestHeader struct {
 	request     *httpRequest
-	endStream   int
+	endStream   uint64
 	headers     map[string]string
 	headerNum   uint64
 	headerBytes uint64
@@ -72,7 +74,7 @@ func (h *httpRequestHeader) Set(name, value string) {
 
 type httpResponseHeader struct {
 	request     *httpRequest
-	endStream   int
+	endStream   uint64
 	headers     map[string]string
 	headerNum   uint64
 	headerBytes uint64

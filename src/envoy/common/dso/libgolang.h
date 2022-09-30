@@ -87,13 +87,9 @@ extern GoUint64 moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1);
 
 extern void moeDestoryHttpPluginConfig(GoUint64 p0);
 
-extern GoUint64 moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p3, GoUint64 p4);
+extern GoUint64 moeOnHttpHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5);
 
-extern GoUint64 moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4);
-
-extern void moeOnHttpEncodeHeader(GoUint64 p0, GoUint64 p1, GoInt p2, GoUint64 p3, GoUint64 p4);
-
-extern void moeOnHttpEncodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4);
+extern GoUint64 moeOnHttpData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5);
 
 #ifdef __cplusplus
 }

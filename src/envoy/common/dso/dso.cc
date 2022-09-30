@@ -64,44 +64,26 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
                    dlerror());
   }
 
-  func = dlsym(handler_, "moeOnHttpDecodeHeader");
+  func = dlsym(handler_, "moeOnHttpHeader");
   if (func) {
-    moeOnHttpDecodeHeader_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4)>(func);
+    moeOnHttpHeader_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5)>(func);
   } else {
-    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeHeader, err: {}", dsoName,
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpHeader, err: {}", dsoName,
                    dlerror());
   }
 
-  func = dlsym(handler_, "moeOnHttpDecodeData");
+  func = dlsym(handler_, "moeOnHttpData");
   if (func) {
-    moeOnHttpDecodeData_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4)>(func);
+    moeOnHttpData_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5)>(func);
   } else {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeData, err: {}", dsoName,
-                   dlerror());
-  }
-
-  func = dlsym(handler_, "moeOnHttpEncodeHeader");
-  if (func) {
-    moeOnHttpEncodeHeader_ = reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4)>(func);
-  } else {
-    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpEncodeHeader, err: {}", dsoName,
-                   dlerror());
-  }
-
-  func = dlsym(handler_, "moeOnHttpEncodeData");
-  if (func) {
-    moeOnHttpEncodeData_ = reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4)>(func);
-  } else {
-    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpEncodeData, err: {}", dsoName,
                    dlerror());
   }
 }
 
 DsoInstance::~DsoInstance() {
-  moeOnHttpDecodeHeader_ = nullptr;
-  moeOnHttpDecodeData_ = nullptr;
-  moeOnHttpEncodeHeader_ = nullptr;
-  moeOnHttpEncodeData_ = nullptr;
+  moeOnHttpHeader_ = nullptr;
+  moeOnHttpData_ = nullptr;
 
   dlclose(handler_);
   handler_ = nullptr;
@@ -114,30 +96,18 @@ GoUint64 DsoInstance::moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1) {
   return 0;
 }
 
-GoUint64 DsoInstance::moeOnHttpDecodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4) {
-  if (moeOnHttpDecodeHeader_) {
-    return moeOnHttpDecodeHeader_(p0, p1, p2, p3, p4);
+GoUint64 DsoInstance::moeOnHttpHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5) {
+  if (moeOnHttpHeader_) {
+    return moeOnHttpHeader_(p0, p1, p2, p3, p4, p5);
   }
   return 0;
 }
 
-GoUint64 DsoInstance::moeOnHttpDecodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4) {
-  if (moeOnHttpDecodeData_) {
-    return moeOnHttpDecodeData_(p0, p1, p2, p3, p4);
+GoUint64 DsoInstance::moeOnHttpData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5) {
+  if (moeOnHttpData_) {
+    return moeOnHttpData_(p0, p1, p2, p3, p4, p5);
   }
   return 0;
-}
-
-void DsoInstance::moeOnHttpEncodeHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4) {
-  if (moeOnHttpEncodeHeader_) {
-    moeOnHttpEncodeHeader_(p0, p1, p2, p3, p4);
-  }
-}
-
-void DsoInstance::moeOnHttpEncodeData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoInt p4) {
-  if (moeOnHttpEncodeData_) {
-    moeOnHttpEncodeData_(p0, p1, p2, p3, p4);
-  }
 }
 
 } // namespace Dso

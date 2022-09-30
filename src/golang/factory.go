@@ -24,7 +24,7 @@ func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool)
 	}
 	fmt.Printf("request header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
 	fmt.Printf("request header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
-	return http.HeaderContinue
+	return http.Continue
 }
 
 func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
@@ -37,7 +37,7 @@ func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http
 	}
 	fmt.Printf("request data, length: %d, endStream: %v\n", buffer.Length(), endStream)
 	// fmt.Printf("request data: %s\n", buffer.GetString())
-	return http.DataContinue
+	return http.Continue
 }
 
 func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool) http.StatusType {
@@ -53,7 +53,7 @@ func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool
 
 	header.Set("Foo", "Bar")
 	// header.Set("content-length", "7")
-	return http.HeaderContinue
+	return http.Continue
 }
 
 func (f *httpFilter) EncodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
@@ -66,14 +66,10 @@ func (f *httpFilter) EncodeData(buffer http.BufferInstance, endStream bool) http
 	}
 	fmt.Printf("response data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.GetString())
 	buffer.Set("foo=bar")
-	return http.DataContinue
+	return http.Continue
 }
 
-func (f *httpFilter) DecoderCallbacks() http.DecoderFilterCallbacks {
-	return f.callbacks
-}
-
-func (f *httpFilter) EncoderCallbacks() http.EncoderFilterCallbacks {
+func (f *httpFilter) Callbacks() http.FilterCallbacks {
 	return f.callbacks
 }
 

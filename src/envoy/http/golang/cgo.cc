@@ -12,7 +12,7 @@ namespace Golang {
 
 const int TlsHandshakerRespSync = 0;
 
-extern "C" void moeHttpDecodeContinue(unsigned long long int filterHolder, int status) {
+extern "C" void moeHttpContinue(unsigned long long int filterHolder, int status) {
   if (filterHolder == 0) {
     return;
   }
@@ -20,7 +20,7 @@ extern "C" void moeHttpDecodeContinue(unsigned long long int filterHolder, int s
   auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
   auto weakFilter = holder->get();
   if (auto filter = weakFilter.lock()) {
-    filter->requestContinue(static_cast<GolangStatus>(status));
+    filter->continueStatus(static_cast<GolangStatus>(status));
   }
 }
 
@@ -57,6 +57,7 @@ extern "C" void moeHttpCopyRequestHeaders(unsigned long long int filterHolder, v
   }
 }
 
+/*
 extern "C" void moeHttpEncodeContinue(unsigned long long int filterHolder, int end) {
   if (filterHolder == 0) {
     return;
@@ -73,6 +74,7 @@ extern "C" void moeHttpEncodeContinue(unsigned long long int filterHolder, int e
     delete holder;
   }
 }
+*/
 
 extern "C" void moeHttpGetResponseHeader(unsigned long long int filterHolder, void *key, void *value) {
   if (filterHolder == 0) {

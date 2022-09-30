@@ -83,6 +83,18 @@ enum class FilterState {
   Done,
 };
 
+/*
+ * request phase
+ */
+enum class Phase {
+  Init,
+  DecodeHeader,
+  DecodeData,
+  EncodeHeader,
+  EncodeData,
+  Done,
+};
+
 /**
  * See docs/configuration/http_filters/golang_extension_filter.rst
  */
@@ -158,7 +170,7 @@ public:
 
   static std::atomic<uint64_t> global_stream_id_;
 
-  void requestContinue(GolangStatus status);
+  void continueStatus(GolangStatus status);
   void responseContinue();
   absl::optional<absl::string_view> getRequestHeader(absl::string_view key);
   void copyRequestHeaders(_GoString_ *goStrs, char *goBuf);
@@ -169,9 +181,13 @@ public:
   void setBuffer(Buffer::Instance* buffer, absl::string_view &value);
 
 private:
+  bool isDecodePhase();
+  bool isHeaderPhase();
   bool isThreadSafe();
 
+  bool doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
   bool doData(Buffer::Instance&, bool);
+  bool doDataGo(Buffer::Instance& data, bool end_stream);
   bool handleGolangStatus(GolangStatus status);
 
   void wantData();
@@ -210,12 +226,14 @@ private:
   const FilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;
 
+  Phase phase_{Phase::Init};
   FilterState state_{FilterState::WaitHeader};
 
-  Buffer::InstancePtr request_data_buffer_;
-  Buffer::InstancePtr response_data_buffer_;
+  Http::RequestOrResponseHeaderMap* headers_; 
 
-  Buffer::OwnedImpl request_do_data_buffer_;
+  Buffer::InstancePtr data_buffer_;
+
+  Buffer::OwnedImpl do_data_buffer_;
   bool end_stream_;
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};

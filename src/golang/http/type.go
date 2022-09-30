@@ -3,6 +3,15 @@ package http
 // ****************** filter status start ******************//
 type StatusType int
 
+const (
+	Continue               StatusType = 0
+	DirectResponse         StatusType = 1
+	NeedAsync              StatusType = 2
+	StopAndBuffer          StatusType = 3
+	StopAndBufferWatermark StatusType = 4
+	StopNoBuffer           StatusType = 5
+)
+
 // header status
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/http/filter.h
 const (
