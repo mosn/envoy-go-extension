@@ -59,7 +59,9 @@ func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool
 		fmt.Printf("response header GetRaw date: %s, endStream: %v\n", header.GetRaw("date"), endStream)
 
 		header.Set("Foo", "Bar")
-		// header.Set("content-length", "7")
+		if !endStream {
+			header.Set("content-length", "3")
+		}
 		f.callbacks.Continue(http.Continue)
 	}()
 	return http.Running

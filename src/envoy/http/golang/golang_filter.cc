@@ -109,9 +109,9 @@ void Filter::continueStatusInternal(GolangStatus status) {
   auto done = handleGolangStatus(status);
   ENVOY_LOG(debug, "golang filter callback continue, status: {}, state: {}, phase: {}", int(status), int(state_), int(phase_));
   if (done) {
-    // we should process data first when end_stream_ = true,
+    // we should process data first when end_stream_ = true and do_end_stream_ = false,
     // otherwise, the next filter will continue with end_stream = true.
-    if (is_header && !end_stream_) {
+    if (is_header && (!end_stream_ || do_end_stream_)) {
       continueHeader(is_decode);
     } else if (do_data_buffer_.length() > 0) {
       continueData(is_decode);
