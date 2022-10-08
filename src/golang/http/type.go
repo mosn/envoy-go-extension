@@ -4,9 +4,9 @@ package http
 type StatusType int
 
 const (
-	Continue               StatusType = 0
+	Running                StatusType = 0
 	DirectResponse         StatusType = 1
-	NeedAsync              StatusType = 2
+	Continue               StatusType = 2
 	StopAndBuffer          StatusType = 3
 	StopAndBufferWatermark StatusType = 4
 	StopNoBuffer           StatusType = 5

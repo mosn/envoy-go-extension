@@ -164,7 +164,7 @@ func moeOnHttpHeader(filter, configId, endStream, isRequest, headerNum, headerBy
 		}
 		f.Callbacks().Continue(status)
 	}()
-	return uint64(http.NeedAsync)
+	return uint64(http.Running)
 }
 
 //export moeOnHttpData
@@ -194,7 +194,7 @@ func moeOnHttpData(filter, configId, endStream, isRequest, buffer, length uint64
 		fmt.Printf("id: %s, data continue\n", id)
 		f.Callbacks().Continue(status)
 	}()
-	return uint64(http.NeedAsync)
+	return uint64(http.Running)
 }
 
 /*

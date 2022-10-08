@@ -60,12 +60,11 @@ public:
  * An enum specific for Golang status.
  */
 enum class GolangStatus {
-  // Continue filter chain iteration.
-  Continue,
+  Running,
   // Directi response
   DirectResponse,
-  // Need aysnc
-  NeedAsync,
+  // Continue filter chain iteration.
+  Continue,
   StopAndBuffer,
   StopAndBufferWatermark,
   StopNoBuffer,
@@ -216,8 +215,6 @@ private:
   /*
   static void buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* sheaders);
   */
-
-  static std::string buildBody(const Buffer::Instance* buffered, const Buffer::Instance& last);
 
 /*
   static void freeCharPointer(NonConstString* p);

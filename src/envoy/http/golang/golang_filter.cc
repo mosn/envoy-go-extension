@@ -79,22 +79,6 @@ void Filter::onDestroy() {
   }
 }
 
-/*
-void Filter::buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* sheaders) {
-  // resp.headers ->
-  // |{key0-data,key0-len}|{val0-data,val0-len}|,|{key1-data,key1-len}|{val1-data,val1-len}|null|
-  for (int i = 0; sheaders[i].data != NULL;) {
-    if (sheaders[i + 1].len != 0) {
-      // overwrites any existing header, don't append it
-      dheaders.setCopy(Http::LowerCaseString(std::string(sheaders[i].data, sheaders[i].len)),
-                       absl::string_view(sheaders[i + 1].data, sheaders[i + 1].len));
-    }
-
-    i += 2;
-  }
-}
-*/
-
 void Filter::onHeadersModified() {
   // Any changes to request headers can affect how the request is going to be
   // routed. If we are changing the headers we also need to clear the route
@@ -116,51 +100,7 @@ void Filter::directResponse(Http::ResponseHeaderMapPtr&& headers, Buffer::Instan
   }
 }
 
-std::string Filter::buildBody(const Buffer::Instance* buffered, const Buffer::Instance& last) {
-  std::string body;
-  body.reserve((buffered ? buffered->length() : 0) + last.length());
-  if (buffered) {
-    for (const Buffer::RawSlice& slice : buffered->getRawSlices()) {
-      body.append(static_cast<const char*>(slice.mem_), slice.len_);
-    }
-  }
-
-  for (const Buffer::RawSlice& slice : last.getRawSlices()) {
-    body.append(static_cast<const char*>(slice.mem_), slice.len_);
-  }
-
-  return body;
-}
-
 /*
-void Filter::buildGolangRequestBodyDecode(Request& req, const Buffer::Instance& data) {
-  req_body_ = buildBody(decoder_callbacks_->decodingBuffer(), data);
-  if (!req_body_.empty()) {
-    // req_body.data save data pointer
-    // req_body.len save data length
-    req.req_body.data = req_body_.data();
-    req.req_body.len = req_body_.length();
-  }
-}
-
-void Filter::buildGolangRequestBodyEncode(Request& req, const Buffer::Instance& data) {
-  resp_body_ = buildBody(encoder_callbacks_->encodingBuffer(), data);
-  if (!resp_body_.empty()) {
-    // req_body.data save data pointer
-    // req_body.len save data length
-    req.req_body.data = resp_body_.data();
-    req.req_body.len = resp_body_.length();
-  }
-}
-
-void Filter::buildGolangRequestFilterChain(Request& req, const std::string& filter_chain) {
-  if (!filter_chain.empty()) {
-    // filter_chain.data save data pointer
-    // filter_chain.len save data length
-    req.filter_chain.data = filter_chain.data();
-    req.filter_chain.len = filter_chain.length();
-  }
-}
 
 void Filter::buildGolangRequestRemoteAddress(Request& req) {
   // downstream
@@ -183,68 +123,6 @@ void Filter::buildGolangRequestRemoteAddress(Request& req) {
       req.upstream_address.len = upStreamAddress.length();
     }
   }
-}
-
-bool Filter::buildGolangRequestHeaders(Request& req, Http::HeaderMap& headers) {
-  if (req.headers == NULL) {
-    ENVOY_LOG(error, "golang extension filter buildGolangRequestHeaders failed: "
-                     "req.headers == NULL");
-    return false;
-  }
-
-  buildGolangRequestFilterChain(req, config_->filter_chain());
-
-  int i = 0;
-  // initialize the CGO request with headers's reference key and val
-  // req.headers ->
-  // |key0-data|key0-len|val0-data|val0-len|,|key1-data|key1-len|val1-data|val1-len|null|
-  headers.iterate([&req, &i](const Http::HeaderEntry& entry) -> Http::HeaderMap::Iterate {
-    req.headers[i].data = entry.key().getStringView().data();
-    req.headers[i].len = entry.key().getStringView().length();
-
-    req.headers[i + 1].data = entry.value().getStringView().data();
-    req.headers[i + 1].len = entry.value().getStringView().length();
-    i += 2;
-    return Http::HeaderMap::Iterate::Continue;
-  });
-
-  // init connection id and stream id
-  req.cid = decoder_callbacks_->streamInfo().downstreamAddressProvider().connectionID().value();
-  // Global increment ID, unique for each request.
-  // The max value is 0xFFFFFFFFFFFFFFFF, So it can run for 5849424
-  // (0xFFFFFFFFFFFFFFFF/(100000*86400.0*365.0)) years.
-  req.sid = stream_id_;
-
-  buildGolangRequestRemoteAddress(req);
-
-  // save golang http filter for async callback
-  req.filter = this;
-
-  return true;
-}
-
-bool Filter::buildGolangRequestTrailers(Request& req, Http::HeaderMap& trailers) {
-  if (req.trailers == NULL) {
-    ENVOY_LOG(error, "golang extension filter buildGolangRequestTrailers failed: "
-                     "req.trailers == NULL");
-    return false;
-  }
-
-  int i = 0;
-  // initialize the CGO request with trailers's reference key and val
-  // req.trailers ->
-  // |key0-data|key0-len|val0-data|val0-len|,|key1-data|key1-len|val1-data|val1-len|null|
-  trailers.iterate([&req, &i](const Http::HeaderEntry& entry) -> Http::HeaderMap::Iterate {
-    req.trailers[i].data = entry.key().getStringView().data();
-    req.trailers[i].len = entry.key().getStringView().length();
-
-    req.trailers[i + 1].data = entry.value().getStringView().data();
-    req.trailers[i + 1].len = entry.value().getStringView().length();
-    i += 2;
-    return Http::HeaderMap::Iterate::Continue;
-  });
-
-  return true;
 }
 */
 
@@ -546,7 +424,7 @@ bool Filter::handleGolangStatus(GolangStatus status) {
     state_ = FilterState::WaitData;
     break;
 
-  case GolangStatus::NeedAsync:
+  case GolangStatus::Running:
     // keep state_
     break;
   
@@ -719,45 +597,7 @@ Http::FilterTrailersStatus Filter::decodeTrailers(Http::RequestTrailerMap& trail
   }
 
   try {
-    /*
-    Request req{};
-    Response resp{};
-    // create request and response struct
-    cost_time_mem_ += measure<>::execution(
-        [&]() { initReqAndResp(req, resp, request_headers_->size(), trailers.size()); });
-
-    // build golang request, if the build fails, then the filter should be
-    // skipped
-    if (!buildGolangRequestHeaders(req, *request_headers_)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterTrailersStatus::Continue;
-    }
-
-    // build golang request body
-    Buffer::OwnedImpl empty;
-    buildGolangRequestBodyDecode(req, empty);
-
-    // build golang request trailers
-    if (!buildGolangRequestTrailers(req, trailers)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterTrailersStatus::Continue;
-    }
-
-    // call golang request stream filter
-    cost_time_decode_ +=
-        measure<>::execution([&]() { resp = dynamicLib_->runReceiveStreamFilter(req); });
-    switch (doGolangResponseAndCleanup(req, resp, *request_headers_, true)) {
-    case GolangStatus::Continue:
-      return Http::FilterTrailersStatus::Continue;
-    case GolangStatus::DirectResponse:
-      return Http::FilterTrailersStatus::Continue;
-    case GolangStatus::NeedAsync:
-      return Http::FilterTrailersStatus::StopIteration;
-    }
-    */
-
+    // TODO
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang extension filter decodeTrailers catch: {}.", e.what());
 
@@ -820,45 +660,7 @@ Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trai
   }
 
   try {
-    /*
-    Request req{};
-    Response resp{};
-    // create request and response struct
-    cost_time_mem_ += measure<>::execution(
-        [&]() { initReqAndResp(req, resp, response_headers_->size(), trailers.size()); });
-
-    // build golang request, if the build fails, then the filter should be
-    // skipped
-    if (!buildGolangRequestHeaders(req, *response_headers_)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterTrailersStatus::Continue;
-    }
-
-    // build golang request body
-    Buffer::OwnedImpl empty;
-    buildGolangRequestBodyEncode(req, empty);
-
-    // build golang request trailers
-    if (!buildGolangRequestTrailers(req, trailers)) {
-      // free memory
-      cost_time_mem_ += measure<>::execution([&]() { freeReqAndResp(req, resp); });
-      return Http::FilterTrailersStatus::Continue;
-    }
-
-    // call golang request stream filter
-    cost_time_encode_ +=
-        measure<>::execution([&]() { resp = dynamicLib_->runSendStreamFilter(req); });
-    switch (doGolangResponseAndCleanup(req, resp, *response_headers_, false)) {
-    case GolangStatus::Continue:
-      return Http::FilterTrailersStatus::Continue;
-    case GolangStatus::DirectResponse:
-      return Http::FilterTrailersStatus::Continue;
-    case GolangStatus::NeedAsync:
-      return Http::FilterTrailersStatus::StopIteration;
-    }
-    */
-
+    // TODO
   } catch (const EnvoyException& e) {
     ENVOY_LOG(error, "golang extension filter encodeTrailers catch: {}.", e.what());
 
