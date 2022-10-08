@@ -75,77 +75,7 @@ void Filter::directResponse(Http::ResponseHeaderMapPtr&& headers, Buffer::Instan
   }
 }
 
-/*
-
-void Filter::buildGolangRequestRemoteAddress(Request& req) {
-  // downstream
-  const std::string& downStreamAddress = decoder_callbacks_->streamInfo()
-                                             .downstreamAddressProvider()
-                                             .directRemoteAddress()
-                                             ->asString();
-  if (!downStreamAddress.empty()) {
-    req.downstream_address.data = downStreamAddress.data();
-    req.downstream_address.len = downStreamAddress.length();
-  }
-
-  // upstream
-  Upstream::HostDescriptionConstSharedPtr upstreamHost =
-      encoder_callbacks_->streamInfo().upstreamInfo()->upstreamHost();
-  if (upstreamHost != nullptr) {
-    const std::string& upStreamAddress = upstreamHost->address()->asString();
-    if (!upStreamAddress.empty()) {
-      req.upstream_address.data = upStreamAddress.data();
-      req.upstream_address.len = upStreamAddress.length();
-    }
-  }
-}
-*/
-
-Http::RequestHeaderMap* Filter::getRequestHeaders() { return request_headers_; }
-
-Http::ResponseHeaderMap* Filter::getResponseHeaders() { return response_headers_; }
-
 Event::Dispatcher& Filter::getDispatcher() { return decoder_callbacks_->dispatcher(); }
-
-/*
-void Filter::initReqAndResp(Request& req, Response&, size_t headerSize, size_t trailerSize) {
-  req.headers = static_cast<ConstString*>(calloc(2 * headerSize + 1, sizeof(ConstString)));
-  req.header_size = headerSize;
-
-  req.trailers = static_cast<ConstString*>(calloc(2 * trailerSize + 1, sizeof(ConstString)));
-  req.trailer_size = trailerSize;
-}
-
-void Filter::freeReqAndResp(Request& req, Response& resp) {
-  // free req
-  if (req.headers != nullptr) {
-    free(req.headers);
-  }
-  if (req.trailers != nullptr) {
-    free(req.trailers);
-  }
-
-  // free resp
-  freeCharPointerArray(resp.headers);
-  freeCharPointerArray(resp.trailers);
-  if (resp.resp_body.data != nullptr) {
-    free(resp.resp_body.data);
-  }
-}
-
-void Filter::freeCharPointerArray(NonConstString* p) {
-  if (p == nullptr) {
-    return;
-  }
-
-  NonConstString* temp = p;
-  for (; temp != nullptr && temp->data != nullptr; temp++) {
-    free(temp->data);
-  }
-
-  free(p);
-}
-*/
 
 bool Filter::hasDestroyed() { return has_destroyed_; }
 

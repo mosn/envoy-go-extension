@@ -110,14 +110,6 @@ public:
   explicit Filter(Grpc::Context& context, FilterConfigSharedPtr config, uint64_t sid,
                   Dso::DsoInstance* dynamicLib)
       : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
-    /*
-    static std::atomic_flag first = ATOMIC_FLAG_INIT;
-    // set callback function handler for async
-    if (!first.test_and_set() && dynamicLib_ != NULL) {
-      dynamicLib_->setPostDecodeCallbackFunc(postDecode);
-      dynamicLib_->setPostEncodeCallbackFunc(postEncode);
-    }
-    */
   }
 
   // Http::StreamFilterBase
@@ -162,15 +154,9 @@ public:
   void directResponse(Http::ResponseHeaderMapPtr&& headers, Buffer::Instance* body,
                       Http::ResponseTrailerMapPtr&& trailers);
 
-  Http::RequestHeaderMap* getRequestHeaders();
-  Http::ResponseHeaderMap* getResponseHeaders();
   Event::Dispatcher& getDispatcher();
   bool hasDestroyed();
 
-/*
-  static void postDecode(void* filter, Response resp);
-  static void postEncode(void* filter, Response resp);
-  */
 
   static std::atomic<uint64_t> global_stream_id_;
 
@@ -204,31 +190,8 @@ private:
   void continueHeader(bool is_decode);
   void continueData(bool is_decode);
 
-  /*
-  // build golang request header
-  bool buildGolangRequestHeaders(Request& req, Http::HeaderMap& headers);
-  // build golang request data
-  void buildGolangRequestBodyDecode(Request& req, const Buffer::Instance& data);
-  void buildGolangRequestBodyEncode(Request& req, const Buffer::Instance& data);
-  // build golang request trailer
-  bool buildGolangRequestTrailers(Request& req, Http::HeaderMap& trailers);
-  // build golang request filter chain
-  void buildGolangRequestFilterChain(Request& req, const std::string& filter_chain);
-  // build golang request remote address
-  void buildGolangRequestRemoteAddress(Request& req);
-  */
 
   void onHeadersModified();
-  /*
-  static void buildHeadersOrTrailers(Http::HeaderMap& dheaders, NonConstString* sheaders);
-  */
-
-/*
-  static void freeCharPointer(NonConstString* p);
-  static void freeCharPointerArray(NonConstString* p);
-  static void freeReqAndResp(Request& req, Response& resp);
-  static void initReqAndResp(Request& req, Response& resp, size_t headerSize, size_t TrailerSize);
-  */
 
   const FilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;
@@ -246,14 +209,9 @@ private:
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};
-  Http::RequestHeaderMap* request_headers_{nullptr};
-  Buffer::Instance* request_data_{nullptr};
-  Http::ResponseHeaderMap* response_headers_{nullptr};
-  std::string req_body_{};
-  std::string resp_body_{};
+
   // TODO get all context
   Grpc::Context& context_;
-  bool has_async_task_{false};
   bool decode_goextension_executed_{false};
   bool encode_goextension_executed_{false};
   uint64_t cost_time_decode_{0};
