@@ -237,62 +237,7 @@ void Filter::continueStatus(GolangStatus status) {
   });
 }
 
-absl::optional<absl::string_view> Filter::getRequestHeader(absl::string_view key) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (has_destroyed_) {
-    ENVOY_LOG(warn, "golang filter has been destroyed");
-    return "";
-  }
-  return reinterpret_cast<Http::RequestHeaderMap*>(headers_)->getByKey(key);
-}
-
-void Filter::copyRequestHeaders(_GoString_ *goStrs, char *goBuf) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (has_destroyed_) {
-    ENVOY_LOG(warn, "golang filter has been destroyed");
-    return;
-  }
-  auto i = 0;
-  headers_->iterate([this, &i, &goStrs, &goBuf](const Http::HeaderEntry& header) -> Http::HeaderMap::Iterate {
-    auto key = std::string(header.key().getStringView());
-    auto value = std::string(header.value().getStringView());
-
-    // std::cout << "idx: " << i << ", key: " << key << ", value: " << value << std::endl;
-
-    auto len = key.length();
-    goStrs[i].n = len;
-    goStrs[i].p = goBuf;
-    memcpy(goBuf, key.data(), len);
-    goBuf += len;
-    i++;
-
-    len = value.length();
-    goStrs[i].n = len;
-    goStrs[i].p = goBuf;
-    memcpy(goBuf, value.data(), len);
-    goBuf += len;
-    i++;
-    return Http::HeaderMap::Iterate::Continue;
-  });
-}
-
-void Filter::responseContinue() {
-  // TODO: skip post event to dispatcher, and return continue in the caller,
-  // when it's invoked in the current envoy thread, for better performance & latency.
-  auto weak_ptr = weak_from_this();
-  getDispatcher().post([this, weak_ptr]{
-    // do not need lock here, since it's the work thread now.
-    if (!weak_ptr.expired() && !has_destroyed_) {
-      ASSERT(isThreadSafe());
-      ENVOY_LOG(debug, "golang filter callback continueEncoding");
-      encoder_callbacks_->continueEncoding();
-    } else {
-      ENVOY_LOG(info, "golang filter has gone or destroyed in requestContinue event");
-    }
-  });
-}
-
-absl::optional<absl::string_view> Filter::getResponseHeader(absl::string_view key) {
+absl::optional<absl::string_view> Filter::getHeader(absl::string_view key) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -306,7 +251,7 @@ absl::optional<absl::string_view> Filter::getResponseHeader(absl::string_view ke
   return result[0]->value().getStringView();
 }
 
-void Filter::copyResponseHeaders(_GoString_ *goStrs, char *goBuf) {
+void Filter::copyHeaders(_GoString_ *goStrs, char *goBuf) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -336,7 +281,7 @@ void Filter::copyResponseHeaders(_GoString_ *goStrs, char *goBuf) {
   });
 }
 
-void Filter::setResponseHeader(absl::string_view key, absl::string_view value) {
+void Filter::setHeader(absl::string_view key, absl::string_view value) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");

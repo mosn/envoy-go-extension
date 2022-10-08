@@ -171,11 +171,9 @@ public:
 
   void continueStatus(GolangStatus status);
 
-  absl::optional<absl::string_view> getRequestHeader(absl::string_view key);
-  void copyRequestHeaders(_GoString_ *goStrs, char *goBuf);
-  absl::optional<absl::string_view> getResponseHeader(absl::string_view key);
-  void copyResponseHeaders(_GoString_ *goStrs, char *goBuf);
-  void setResponseHeader(absl::string_view key, absl::string_view value);
+  absl::optional<absl::string_view> getHeader(absl::string_view key);
+  void copyHeaders(_GoString_ *goStrs, char *goBuf);
+  void setHeader(absl::string_view key, absl::string_view value);
   void copyBuffer(Buffer::Instance* buffer, char *data);
   void setBuffer(Buffer::Instance* buffer, absl::string_view &value);
 

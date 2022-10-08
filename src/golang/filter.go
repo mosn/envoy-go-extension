@@ -42,25 +42,24 @@ func (r *httpRequest) Continue(status http.StatusType) {
 	api.HttpContinue(r.filter, uint64(status))
 }
 
-type httpRequestHeader struct {
+type httpHeader struct {
 	request     *httpRequest
-	endStream   uint64
 	headers     map[string]string
 	headerNum   uint64
 	headerBytes uint64
 }
 
-func (h *httpRequestHeader) GetRaw(name string) string {
+func (h *httpHeader) GetRaw(name string) string {
 	api := http.GetCgoAPI()
 	var value string
-	api.HttpGetRequestHeader(h.request.filter, &name, &value)
+	api.HttpGetHeader(h.request.filter, &name, &value)
 	return value
 }
 
-func (h *httpRequestHeader) Get(name string) string {
+func (h *httpHeader) Get(name string) string {
 	api := http.GetCgoAPI()
 	if h.headers == nil {
-		h.headers = api.HttpCopyRequestHeaders(h.request.filter, h.headerNum, h.headerBytes)
+		h.headers = api.HttpCopyHeaders(h.request.filter, h.headerNum, h.headerBytes)
 	}
 	if value, ok := h.headers[name]; ok {
 		return value
@@ -68,39 +67,12 @@ func (h *httpRequestHeader) Get(name string) string {
 	return ""
 }
 
-func (h *httpRequestHeader) Set(name, value string) {
-	// TODO
-}
-
-type httpResponseHeader struct {
-	request     *httpRequest
-	endStream   uint64
-	headers     map[string]string
-	headerNum   uint64
-	headerBytes uint64
-}
-
-func (h *httpResponseHeader) GetRaw(name string) string {
+func (h *httpHeader) Set(name, value string) {
 	api := http.GetCgoAPI()
-	var value string
-	api.HttpGetResponseHeader(h.request.filter, &name, &value)
-	return value
-}
-
-func (h *httpResponseHeader) Get(name string) string {
-	api := http.GetCgoAPI()
-	if h.headers == nil {
-		h.headers = api.HttpCopyResponseHeaders(h.request.filter, h.headerNum, h.headerBytes)
+	if h.headers != nil {
+		h.headers[name] = value
 	}
-	if value, ok := h.headers[name]; ok {
-		return value
-	}
-	return ""
-}
-
-func (h *httpResponseHeader) Set(name, value string) {
-	api := http.GetCgoAPI()
-	api.HttpSetResponseHeader(h.request.filter, &name, &value)
+	api.HttpSetHeader(h.request.filter, &name, &value)
 }
 
 type httpBuffer struct {

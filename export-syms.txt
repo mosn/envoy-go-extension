@@ -1,10 +1,8 @@
 {
      moeHttpContinue;
-     moeHttpGetRequestHeader;
-     moeHttpCopyRequestHeaders;
-     moeHttpGetResponseHeader;
-     moeHttpCopyResponseHeaders;
-     moeHttpSetResponseHeader;
+     moeHttpGetHeader;
+     moeHttpCopyHeaders;
+     moeHttpSetHeader;
      moeHttpGetBuffer;
      moeHttpSetBuffer;
 };
