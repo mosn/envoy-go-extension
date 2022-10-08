@@ -21,6 +21,8 @@ public:
   GoUint64 moeOnHttpHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5);
   GoUint64 moeOnHttpData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5);
 
+  void moeOnHttpDestroy(GoUint64 p0, int p1);
+
 private:
   const std::string dsoName_;
   void* handler_;
@@ -29,6 +31,8 @@ private:
 
   GoUint64 (*moeOnHttpHeader_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5) = {nullptr};
   GoUint64 (*moeOnHttpData_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5) = {nullptr};
+
+  void (*moeOnHttpDestroy_)(GoUint64 p0, GoUint64 p1);
 };
 
 class DsoInstanceManager {

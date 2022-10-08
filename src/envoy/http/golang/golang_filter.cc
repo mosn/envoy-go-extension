@@ -54,31 +54,6 @@ uint64_t FilterConfig::getConfigId() {
   return config_id_;
 }
 
-void Filter::onDestroy() {
-  ENVOY_LOG(info, "golang filter on destroy");
-
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (has_destroyed_) {
-      ENVOY_LOG(warn, "golang filter has been destroyed");
-      return;
-    }
-    has_destroyed_ = true;
-  }
-
-  if (dynamicLib_ == NULL) {
-    ENVOY_LOG(error, "golang filter dynamicLib is nullPtr.");
-    return;
-  }
-
-  try {
-    // dynamicLib_->destoryStream(stream_id_, has_async_task_ ? 1 : 0);
-  } catch (...) {
-    ENVOY_LOG(error, "golang filter onDestroy do destoryStream catch "
-                     "unknown exception.");
-  }
-}
-
 void Filter::onHeadersModified() {
   // Any changes to request headers can affect how the request is going to be
   // routed. If we are changing the headers we also need to clear the route
@@ -639,6 +614,35 @@ Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trai
   }
 
   return Http::FilterTrailersStatus::Continue;
+}
+
+void Filter::onDestroy() {
+  ENVOY_LOG(info, "golang filter on destroy");
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (has_destroyed_) {
+      ENVOY_LOG(warn, "golang filter has been destroyed");
+      return;
+    }
+    has_destroyed_ = true;
+  }
+
+  if (dynamicLib_ == NULL) {
+    ENVOY_LOG(error, "golang filter dynamicLib is nullPtr.");
+    return;
+  }
+
+  try {
+    ASSERT(ptr_holder_ != 0);
+    auto reason = (state_ == FilterState::DoHeader || state_ == FilterState::DoData)
+                  ? DestroyReason::Terminate : DestroyReason::Normal;
+
+    dynamicLib_->moeOnHttpDestroy(ptr_holder_, int(reason));
+  } catch (...) {
+    ENVOY_LOG(error, "golang filter onDestroy do destoryStream catch "
+                     "unknown exception.");
+  }
 }
 
 void Filter::onStreamComplete() {

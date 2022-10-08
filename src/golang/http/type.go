@@ -112,6 +112,20 @@ type BufferInstance interface {
 
 //*************** BufferInstance end **************//
 
+type DestroyReason int
+
+const (
+	Normal    DestroyReason = 0
+	Terminate DestroyReason = 1
+)
+
+const (
+	NormalFinalize int = 0 // normal, finalize on destroy
+	GCFinalize     int = 1 // finalize in GC sweep
+)
+
+//*** Just test code ***//
+
 // similar to Lua filter
 type HttpRequestFilter interface {
 	OnRequest(RequestHeaderMap, RequestBody) StatusType

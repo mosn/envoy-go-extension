@@ -25,9 +25,9 @@ type HttpFilter interface {
 		OnStreamComplete()
 		// error log
 		Log(LogType, string)
-		// destroy filter
-		OnDestroy()
 	*/
+	// destroy filter
+	OnDestroy(DestroyReason)
 	Callbacks() FilterCallbacks
 }
 

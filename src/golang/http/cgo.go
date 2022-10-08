@@ -10,6 +10,8 @@ type HttpCgoAPI interface {
 
 	HttpGetBuffer(filter uint64, bufferPtr uint64, value *string, length uint64)
 	HttpSetBuffer(filter uint64, bufferPtr uint64, value string)
+
+	HttpFinalize(filter uint64, reason int)
 }
 
 var httpCgoAPI HttpCgoAPI

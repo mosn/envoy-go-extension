@@ -22,24 +22,18 @@ import (
 )
 
 type httpRequest struct {
-	filter      uint64
-	configId    uint64
-	endStream   uint64
-	headers     map[string]string
-	headerNum   uint64
-	headerBytes uint64
+	filter     uint64
+	httpFilter http.HttpFilter
 }
-
-/*
-func (r *httpRequest) ContinueDecoding(status http.StatusType) {
-	api := http.GetCgoAPI()
-	api.HttpDecodeContinue(r.filter, int(status))
-}
-*/
 
 func (r *httpRequest) Continue(status http.StatusType) {
 	api := http.GetCgoAPI()
 	api.HttpContinue(r.filter, uint64(status))
+}
+
+func (r *httpRequest) Finalize(reason int) {
+	api := http.GetCgoAPI()
+	api.HttpFinalize(r.filter, reason)
 }
 
 type httpHeader struct {

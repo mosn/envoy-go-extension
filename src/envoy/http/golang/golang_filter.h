@@ -94,6 +94,11 @@ enum class Phase {
   Done,
 };
 
+enum class DestroyReason {
+  Normal,
+  Terminate,
+};
+
 /**
  * See docs/configuration/http_filters/golang_extension_filter.rst
  */

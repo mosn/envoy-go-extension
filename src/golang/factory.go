@@ -15,58 +15,74 @@ type httpFilter struct {
 }
 
 func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool) http.StatusType {
-	sleep := f.config.AsMap()["sleep"]
-	if v, ok := sleep.(float64); ok {
-		fmt.Printf("decode headers, sleeping %v ms\n", v)
-		time.Sleep(time.Millisecond * time.Duration(v))
-	} else {
-		fmt.Printf("config sleep is not number, %T\n", sleep)
-	}
-	fmt.Printf("request header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
-	fmt.Printf("request header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
-	return http.Continue
+	go func() {
+		sleep := f.config.AsMap()["sleep"]
+		if v, ok := sleep.(float64); ok {
+			fmt.Printf("decode headers, sleeping %v ms\n", v)
+			time.Sleep(time.Millisecond * time.Duration(v))
+		} else {
+			fmt.Printf("config sleep is not number, %T\n", sleep)
+		}
+		fmt.Printf("request header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
+		fmt.Printf("request header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
+		f.callbacks.Continue(http.Continue)
+	}()
+	return http.Running
 }
 
 func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
-	sleep := f.config.AsMap()["sleep"]
-	if v, ok := sleep.(float64); ok {
-		fmt.Printf("decode data, sleeping %v ms\n", v)
-		time.Sleep(time.Millisecond * time.Duration(v))
-	} else {
-		fmt.Printf("config sleep is not number, %T\n", sleep)
-	}
-	fmt.Printf("request data, length: %d, endStream: %v\n", buffer.Length(), endStream)
-	// fmt.Printf("request data: %s\n", buffer.GetString())
-	return http.Continue
+	go func() {
+		sleep := f.config.AsMap()["sleep"]
+		if v, ok := sleep.(float64); ok {
+			fmt.Printf("decode data, sleeping %v ms\n", v)
+			time.Sleep(time.Millisecond * time.Duration(v))
+		} else {
+			fmt.Printf("config sleep is not number, %T\n", sleep)
+		}
+		fmt.Printf("request data, length: %d, endStream: %v\n", buffer.Length(), endStream)
+		// fmt.Printf("request data: %s\n", buffer.GetString())
+		f.callbacks.Continue(http.Continue)
+	}()
+	return http.Running
 }
 
 func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool) http.StatusType {
-	sleep := f.config.AsMap()["sleep"]
-	if v, ok := sleep.(float64); ok {
-		fmt.Printf("encode headers, sleeping %v ms\n", v)
-		time.Sleep(time.Millisecond * time.Duration(v))
-	} else {
-		fmt.Printf("config sleep is not number, %T\n", sleep)
-	}
-	fmt.Printf("response header Get date: %s, endStream: %v\n", header.Get("date"), endStream)
-	fmt.Printf("response header GetRaw date: %s, endStream: %v\n", header.GetRaw("date"), endStream)
+	go func() {
+		sleep := f.config.AsMap()["sleep"]
+		if v, ok := sleep.(float64); ok {
+			fmt.Printf("encode headers, sleeping %v ms\n", v)
+			time.Sleep(time.Millisecond * time.Duration(v))
+		} else {
+			fmt.Printf("config sleep is not number, %T\n", sleep)
+		}
+		fmt.Printf("response header Get date: %s, endStream: %v\n", header.Get("date"), endStream)
+		fmt.Printf("response header GetRaw date: %s, endStream: %v\n", header.GetRaw("date"), endStream)
 
-	header.Set("Foo", "Bar")
-	// header.Set("content-length", "7")
-	return http.Continue
+		header.Set("Foo", "Bar")
+		// header.Set("content-length", "7")
+		f.callbacks.Continue(http.Continue)
+	}()
+	return http.Running
 }
 
 func (f *httpFilter) EncodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
-	sleep := f.config.AsMap()["sleep"]
-	if v, ok := sleep.(float64); ok {
-		fmt.Printf("encode data, sleeping %v ms\n", v)
-		time.Sleep(time.Millisecond * time.Duration(v))
-	} else {
-		fmt.Printf("config sleep is not number, %T\n", sleep)
-	}
-	fmt.Printf("response data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.GetString())
-	buffer.Set("foo=bar")
-	return http.Continue
+	go func() {
+		sleep := f.config.AsMap()["sleep"]
+		if v, ok := sleep.(float64); ok {
+			fmt.Printf("encode data, sleeping %v ms\n", v)
+			time.Sleep(time.Millisecond * time.Duration(v))
+		} else {
+			fmt.Printf("config sleep is not number, %T\n", sleep)
+		}
+		fmt.Printf("response data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.GetString())
+		buffer.Set("foo=bar")
+		f.callbacks.Continue(http.Continue)
+	}()
+	return http.Running
+}
+
+func (f *httpFilter) OnDestroy(reason http.DestroyReason) {
+	fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
 func (f *httpFilter) Callbacks() http.FilterCallbacks {

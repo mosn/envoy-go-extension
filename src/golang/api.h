@@ -19,6 +19,8 @@ void moeHttpSetHeader(unsigned long long int filterHolder, void* key, void *valu
 void moeHttpGetBuffer(unsigned long long int filterHolder, unsigned long long int buffer, void *value);
 void moeHttpSetBuffer(unsigned long long int filterHolder, unsigned long long int buffer, void *data, int length);
 
+void moeHttpFinalize(unsigned long long int filterHolder, int reason);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

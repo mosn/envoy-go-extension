@@ -101,6 +101,15 @@ extern "C" void moeHttpSetBuffer(unsigned long long int filterHolder, unsigned l
   }
 }
 
+extern "C" void moeHttpFinalize(unsigned long long int filterHolder, int reason) {
+  if (filterHolder == 0) {
+    return;
+  }
+
+  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
+  delete holder;
+}
+
 } // namespace Golang
 } // namespace HttpFilters
 } // namespace Extensions

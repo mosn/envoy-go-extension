@@ -79,11 +79,21 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeData, err: {}", dsoName,
                    dlerror());
   }
+
+  func = dlsym(handler_, "moeOnHttpDestroy");
+  if (func) {
+    moeOnHttpDestroy_ = reinterpret_cast<void (*)(GoUint64 p0, GoUint64 p1)>(func);
+  } else {
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeDestroy, err: {}", dsoName,
+                   dlerror());
+  }
 }
 
 DsoInstance::~DsoInstance() {
+  moeNewHttpPluginConfig_ = nullptr;
   moeOnHttpHeader_ = nullptr;
   moeOnHttpData_ = nullptr;
+  moeOnHttpDestroy_ = nullptr;
 
   dlclose(handler_);
   handler_ = nullptr;
@@ -108,6 +118,12 @@ GoUint64 DsoInstance::moeOnHttpData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUin
     return moeOnHttpData_(p0, p1, p2, p3, p4, p5);
   }
   return 0;
+}
+
+void DsoInstance::moeOnHttpDestroy(GoUint64 p0, int p1) {
+  if (moeOnHttpDestroy_) {
+    moeOnHttpDestroy_(p0, GoUint64(p1));
+  }
 }
 
 } // namespace Dso
