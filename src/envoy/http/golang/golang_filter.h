@@ -170,7 +170,7 @@ public:
   static std::atomic<uint64_t> global_stream_id_;
 
   void continueStatus(GolangStatus status);
-  void responseContinue();
+
   absl::optional<absl::string_view> getRequestHeader(absl::string_view key);
   void copyRequestHeaders(_GoString_ *goStrs, char *goBuf);
   absl::optional<absl::string_view> getResponseHeader(absl::string_view key);
@@ -192,10 +192,14 @@ private:
   bool doDataGo(Buffer::Instance& data, bool end_stream);
   bool handleGolangStatus(GolangStatus status);
 
-  void wantData();
+  void wantMoreData();
   void dataBufferFull();
 
   Buffer::InstancePtr createWatermarkBuffer();
+
+  void continueStatusInternal(GolangStatus status);
+  void continueHeader(bool is_decode);
+  void continueData(bool is_decode);
 
   /*
   // build golang request header
@@ -232,9 +236,10 @@ private:
   Http::RequestOrResponseHeaderMap* headers_; 
 
   Buffer::InstancePtr data_buffer_;
-
   Buffer::OwnedImpl do_data_buffer_;
-  bool end_stream_;
+
+  bool end_stream_; // end_stream flag that c has received.
+  bool do_end_stream_; // end_stream flag that go is proccessing.
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};

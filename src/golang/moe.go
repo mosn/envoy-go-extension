@@ -136,6 +136,8 @@ func moeDestoryHttpPluginConfig(id uint64) {
 	delete(configCache, id)
 }
 
+var Requests map[*uint64]*httpRequest
+
 //export moeOnHttpHeader
 func moeOnHttpHeader(filter, configId, endStream, isRequest, headerNum, headerBytes uint64) uint64 {
 	req := &httpRequest{

@@ -4,6 +4,11 @@
 extern "C" {
 #endif
 
+typedef struct {
+    unsigned long long int configId;
+    int phase;
+} Request;
+
 void moeHttpContinue(unsigned long long int filterHolder, int status);
 
 void moeHttpGetRequestHeader(unsigned long long int filterHolder, void* key, void *value);
