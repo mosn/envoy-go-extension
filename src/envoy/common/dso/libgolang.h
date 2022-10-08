@@ -87,11 +87,11 @@ extern GoUint64 moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1);
 
 extern void moeDestoryHttpPluginConfig(GoUint64 p0);
 
-extern GoUint64 moeOnHttpHeader(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5);
+extern GoUint64 moeOnHttpHeader(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3);
 
-extern GoUint64 moeOnHttpData(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3, GoUint64 p4, GoUint64 p5);
+extern GoUint64 moeOnHttpData(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3);
 
-extern void moeOnHttpDestroy(GoUint64 p0, GoUint64 p1);
+extern void moeOnHttpDestroy(httpRequest* p0, GoUint64 p1);
 
 #ifdef __cplusplus
 }

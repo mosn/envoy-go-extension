@@ -7,19 +7,19 @@ extern "C" {
 typedef struct {
     unsigned long long int configId;
     int phase;
-} Request;
+} httpRequest;
 
-void moeHttpContinue(unsigned long long int filterHolder, int status);
+void moeHttpContinue(void* r, int status);
 
-void moeHttpGetHeader(unsigned long long int filterHolder, void* key, void *value);
-void moeHttpCopyHeaders(unsigned long long int filterHolder, void* strs, void *buf);
+void moeHttpGetHeader(void* r, void* key, void *value);
+void moeHttpCopyHeaders(void* r, void* strs, void *buf);
 
-void moeHttpSetHeader(unsigned long long int filterHolder, void* key, void *value);
+void moeHttpSetHeader(void* r, void* key, void *value);
 
-void moeHttpGetBuffer(unsigned long long int filterHolder, unsigned long long int buffer, void *value);
-void moeHttpSetBuffer(unsigned long long int filterHolder, unsigned long long int buffer, void *data, int length);
+void moeHttpGetBuffer(void* r, unsigned long long int buffer, void *value);
+void moeHttpSetBuffer(void* r, unsigned long long int buffer, void *data, int length);
 
-void moeHttpFinalize(unsigned long long int filterHolder, int reason);
+void moeHttpFinalize(void* r, int reason);
 
 #ifdef __cplusplus
 } // extern "C"

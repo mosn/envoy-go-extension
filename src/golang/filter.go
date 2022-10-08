@@ -17,23 +17,37 @@
 
 package main
 
+/*
+// ref https://github.com/golang/go/issues/25832
+
+#cgo linux LDFLAGS: -Wl,-unresolved-symbols=ignore-all
+#cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "api.h"
+
+*/
+import "C"
 import (
 	"mosn.io/envoy-go-extension/http"
+	"unsafe"
 )
 
 type httpRequest struct {
-	filter     uint64
+	req        *C.httpRequest
 	httpFilter http.HttpFilter
 }
 
 func (r *httpRequest) Continue(status http.StatusType) {
 	api := http.GetCgoAPI()
-	api.HttpContinue(r.filter, uint64(status))
+	api.HttpContinue(unsafe.Pointer(r.req), uint64(status))
 }
 
 func (r *httpRequest) Finalize(reason int) {
 	api := http.GetCgoAPI()
-	api.HttpFinalize(r.filter, reason)
+	api.HttpFinalize(unsafe.Pointer(r.req), reason)
 }
 
 type httpHeader struct {
@@ -46,14 +60,14 @@ type httpHeader struct {
 func (h *httpHeader) GetRaw(name string) string {
 	api := http.GetCgoAPI()
 	var value string
-	api.HttpGetHeader(h.request.filter, &name, &value)
+	api.HttpGetHeader(unsafe.Pointer(h.request.req), &name, &value)
 	return value
 }
 
 func (h *httpHeader) Get(name string) string {
 	api := http.GetCgoAPI()
 	if h.headers == nil {
-		h.headers = api.HttpCopyHeaders(h.request.filter, h.headerNum, h.headerBytes)
+		h.headers = api.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
 	}
 	if value, ok := h.headers[name]; ok {
 		return value
@@ -66,7 +80,7 @@ func (h *httpHeader) Set(name, value string) {
 	if h.headers != nil {
 		h.headers[name] = value
 	}
-	api.HttpSetHeader(h.request.filter, &name, &value)
+	api.HttpSetHeader(unsafe.Pointer(h.request.req), &name, &value)
 }
 
 type httpBuffer struct {
@@ -81,13 +95,13 @@ func (b *httpBuffer) GetString() string {
 		return ""
 	}
 	api := http.GetCgoAPI()
-	api.HttpGetBuffer(b.request.filter, b.bufferPtr, &b.value, b.length)
+	api.HttpGetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, &b.value, b.length)
 	return b.value
 }
 
 func (b *httpBuffer) Set(value string) {
 	api := http.GetCgoAPI()
-	api.HttpSetBuffer(b.request.filter, b.bufferPtr, value)
+	api.HttpSetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, value)
 }
 
 func (b *httpBuffer) Length() uint64 {

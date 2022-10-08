@@ -86,7 +86,7 @@ enum class FilterState {
  * request phase
  */
 enum class Phase {
-  Init,
+  Init = 0,
   DecodeHeader,
   DecodeData,
   EncodeHeader,
@@ -261,7 +261,7 @@ private:
   uint64_t cost_time_mem_{0};
   uint64_t stream_id_{0};
 
-  uint64_t ptr_holder_{0};
+  httpRequest* req_{0};
 
   // lock for has_destroyed_,
   // to avoid race between envoy c thread and go thread (when calling back from go).
@@ -270,14 +270,16 @@ private:
   bool has_destroyed_{false};
 };
 
-class FilterWeakPtrHolder {
-public:
-  FilterWeakPtrHolder(std::weak_ptr<Filter> ptr) : ptr_(ptr) {}
-  ~FilterWeakPtrHolder(){};
-  std::weak_ptr<Filter>& get() { return ptr_; }
-
-private:
-  std::weak_ptr<Filter> ptr_{};
+struct httpRequestInternal {
+  uint64_t configId_;
+  int phase_;
+  std::weak_ptr<Filter> filter_;
+  httpRequestInternal(std::weak_ptr<Filter> f) {
+    filter_ = f;
+  }
+  std::weak_ptr<Filter> weakFilter() {
+    return filter_;
+  };
 };
 
 // used to count function execution time

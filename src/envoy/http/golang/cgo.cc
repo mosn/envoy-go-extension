@@ -12,26 +12,18 @@ namespace Golang {
 
 const int TlsHandshakerRespSync = 0;
 
-extern "C" void moeHttpContinue(unsigned long long int filterHolder, int status) {
-  if (filterHolder == 0) {
-    return;
-  }
-
-  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
-  auto weakFilter = holder->get();
+extern "C" void moeHttpContinue(void *r, int status) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
     filter->continueStatus(static_cast<GolangStatus>(status));
   }
 }
 
 // unsafe API, without copy memory from c to go.
-extern "C" void moeHttpGetHeader(unsigned long long int filterHolder, void *key, void *value) {
-  if (filterHolder == 0) {
-    return;
-  }
-
-  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
-  auto weakFilter = holder->get();
+extern "C" void moeHttpGetHeader(void *r, void *key, void *value) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
     auto goKey = reinterpret_cast<_GoString_*>(key);
     auto keyStr = absl::string_view(goKey->p, goKey->n);
@@ -44,13 +36,9 @@ extern "C" void moeHttpGetHeader(unsigned long long int filterHolder, void *key,
   }
 }
 
-extern "C" void moeHttpCopyHeaders(unsigned long long int filterHolder, void *strs, void *buf) {
-  if (filterHolder == 0) {
-    return;
-  }
-
-  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
-  auto weakFilter = holder->get();
+extern "C" void moeHttpCopyHeaders(void *r, void *strs, void *buf) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
     auto goStrs = reinterpret_cast<_GoString_*>(strs);
     auto goBuf = reinterpret_cast<char*>(buf);
@@ -58,13 +46,9 @@ extern "C" void moeHttpCopyHeaders(unsigned long long int filterHolder, void *st
   }
 }
 
-extern "C" void moeHttpSetHeader(unsigned long long int filterHolder, void *key, void *value) {
-  if (filterHolder == 0) {
-    return;
-  }
-
-  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
-  auto weakFilter = holder->get();
+extern "C" void moeHttpSetHeader(void *r, void *key, void *value) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
     auto goKey = reinterpret_cast<_GoString_*>(key);
     auto goValue = reinterpret_cast<_GoString_*>(value);
@@ -74,40 +58,28 @@ extern "C" void moeHttpSetHeader(unsigned long long int filterHolder, void *key,
   }
 }
 
-extern "C" void moeHttpGetBuffer(unsigned long long int filterHolder, unsigned long long int bufferPtr, void *data) {
-  if (filterHolder == 0) {
-    return;
-  }
-
-  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
+extern "C" void moeHttpGetBuffer(void *r, unsigned long long int bufferPtr, void *data) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
   auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
-  auto weakFilter = holder->get();
   if (auto filter = weakFilter.lock()) {
     filter->copyBuffer(buffer, reinterpret_cast<char*>(data));
   }
 }
 
-extern "C" void moeHttpSetBuffer(unsigned long long int filterHolder, unsigned long long int bufferPtr, void *data, int length) {
-  if (filterHolder == 0) {
-    return;
-  }
-
-  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
+extern "C" void moeHttpSetBuffer(void *r, unsigned long long int bufferPtr, void *data, int length) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
   auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
-  auto weakFilter = holder->get();
   if (auto filter = weakFilter.lock()) {
     auto value = absl::string_view(reinterpret_cast<const char*>(data), length);
     filter->setBuffer(buffer, value);
   }
 }
 
-extern "C" void moeHttpFinalize(unsigned long long int filterHolder, int reason) {
-  if (filterHolder == 0) {
-    return;
-  }
-
-  auto holder = reinterpret_cast<FilterWeakPtrHolder*>(filterHolder);
-  delete holder;
+extern "C" void moeHttpFinalize(void *r, int reason) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  delete req;
 }
 
 } // namespace Golang

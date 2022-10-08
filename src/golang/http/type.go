@@ -124,6 +124,13 @@ const (
 	GCFinalize     int = 1 // finalize in GC sweep
 )
 
+const (
+	DecodeHeaderPhase int = 1
+	DecodeDataPhase   int = 2
+	EncodeHeaderPhase int = 3
+	EncodeDataPhase   int = 4
+)
+
 //*** Just test code ***//
 
 // similar to Lua filter

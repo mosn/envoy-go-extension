@@ -373,10 +373,11 @@ bool Filter::doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_strea
   ASSERT(isHeaderPhase());
   ASSERT(data_buffer_ == nullptr || data_buffer_->length() == 0);
 
-  if (ptr_holder_ == 0) {
+  if (req_ == nullptr) {
     ASSERT(phase_ == Phase::DecodeHeader);
-    FilterWeakPtrHolder* holder = new FilterWeakPtrHolder(weak_from_this());
-    ptr_holder_ = reinterpret_cast<uint64_t>(holder);
+    httpRequestInternal* req = new httpRequestInternal(weak_from_this());
+    req_ = reinterpret_cast<httpRequest*>(req);
+    req_->configId = config_->getConfigId();
   }
 
   state_ = FilterState::DoHeader;
@@ -384,13 +385,12 @@ bool Filter::doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_strea
 
   bool done = true;
   try {
-    ASSERT(ptr_holder_ != 0);
+    ASSERT(req_ != nullptr);
 
-    auto id = config_->getConfigId();
+    req_->phase = int(phase_);
     headers_ = &headers;
     do_end_stream_ = end_stream;
-    auto is_request = isDecodePhase() ? 1 : 0;
-    auto status = dynamicLib_->moeOnHttpHeader(ptr_holder_, id, end_stream ? 1 : 0, is_request, headers.size(), headers.byteSize());
+    auto status = dynamicLib_->moeOnHttpHeader(req_, end_stream ? 1 : 0, headers.size(), headers.byteSize());
     done = handleGolangStatus(static_cast<GolangStatus>(status));
 
   } catch (const EnvoyException& e) {
@@ -463,11 +463,10 @@ bool Filter::doDataGo(Buffer::Instance& data, bool end_stream) {
   do_data_buffer_.move(data);
 
   try {
-    ASSERT(ptr_holder_ != 0);
-    auto id = config_->getConfigId();
-    auto is_request = isDecodePhase() ? 1 : 0;
+    ASSERT(req_ != nullptr);
+    req_->phase = int(phase_);
     do_end_stream_ = end_stream;
-    auto status = dynamicLib_->moeOnHttpData(ptr_holder_, id, end_stream ? 1 : 0, is_request, reinterpret_cast<uint64_t>(&do_data_buffer_), do_data_buffer_.length());
+    auto status = dynamicLib_->moeOnHttpData(req_, end_stream ? 1 : 0, reinterpret_cast<uint64_t>(&do_data_buffer_), do_data_buffer_.length());
     return handleGolangStatus(static_cast<GolangStatus>(status));
 
   } catch (const EnvoyException& e) {
@@ -634,11 +633,11 @@ void Filter::onDestroy() {
   }
 
   try {
-    ASSERT(ptr_holder_ != 0);
+    ASSERT(req_ != nullptr);
     auto reason = (state_ == FilterState::DoHeader || state_ == FilterState::DoData)
                   ? DestroyReason::Terminate : DestroyReason::Normal;
 
-    dynamicLib_->moeOnHttpDestroy(ptr_holder_, int(reason));
+    dynamicLib_->moeOnHttpDestroy(req_, int(reason));
   } catch (...) {
     ENVOY_LOG(error, "golang filter onDestroy do destoryStream catch "
                      "unknown exception.");

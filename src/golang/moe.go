@@ -26,15 +26,15 @@ import (
 
 type httpCgoApiImpl struct{}
 
-func (c *httpCgoApiImpl) HttpContinue(filter uint64, status uint64) {
-	C.moeHttpContinue(C.ulonglong(filter), C.int(status))
+func (c *httpCgoApiImpl) HttpContinue(r unsafe.Pointer, status uint64) {
+	C.moeHttpContinue(r, C.int(status))
 }
 
-func (c *httpCgoApiImpl) HttpGetHeader(filter uint64, key *string, value *string) {
-	C.moeHttpGetHeader(C.ulonglong(filter), unsafe.Pointer(key), unsafe.Pointer(value))
+func (c *httpCgoApiImpl) HttpGetHeader(r unsafe.Pointer, key *string, value *string) {
+	C.moeHttpGetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
 }
 
-func (c *httpCgoApiImpl) HttpCopyHeaders(filter uint64, num uint64, bytes uint64) map[string]string {
+func (c *httpCgoApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string]string {
 	// TODO: use a memory pool for better performance,
 	// but, should be very careful, since string is const in go,
 	// and we have to make sure the strings is not using before reusing,
@@ -46,7 +46,7 @@ func (c *httpCgoApiImpl) HttpCopyHeaders(filter uint64, num uint64, bytes uint64
 	// sHeader.Len = int(num * 2)
 	// bHeader.Len = int(bytes)
 
-	C.moeHttpCopyHeaders(C.ulonglong(filter), unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+	C.moeHttpCopyHeaders(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
 
 	m := make(map[string]string, num)
 	for i := uint64(0); i < num*2; i += 2 {
@@ -59,26 +59,26 @@ func (c *httpCgoApiImpl) HttpCopyHeaders(filter uint64, num uint64, bytes uint64
 	return m
 }
 
-func (c *httpCgoApiImpl) HttpSetHeader(filter uint64, key *string, value *string) {
-	C.moeHttpSetHeader(C.ulonglong(filter), unsafe.Pointer(key), unsafe.Pointer(value))
+func (c *httpCgoApiImpl) HttpSetHeader(r unsafe.Pointer, key *string, value *string) {
+	C.moeHttpSetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
 }
 
-func (c *httpCgoApiImpl) HttpGetBuffer(filter uint64, bufferPtr uint64, value *string, length uint64) {
+func (c *httpCgoApiImpl) HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *string, length uint64) {
 	buf := make([]byte, length)
 	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
 	sHeader := (*reflect.StringHeader)(unsafe.Pointer(value))
 	sHeader.Data = bHeader.Data
 	sHeader.Len = int(length)
-	C.moeHttpGetBuffer(C.ulonglong(filter), C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
+	C.moeHttpGetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
 }
 
-func (c *httpCgoApiImpl) HttpSetBuffer(filter uint64, bufferPtr uint64, value string) {
+func (c *httpCgoApiImpl) HttpSetBuffer(r unsafe.Pointer, bufferPtr uint64, value string) {
 	sHeader := (*reflect.StringHeader)(unsafe.Pointer(&value))
-	C.moeHttpSetBuffer(C.ulonglong(filter), C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len))
+	C.moeHttpSetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len))
 }
 
-func (c *httpCgoApiImpl) HttpFinalize(filter uint64, reason int) {
-	C.moeHttpFinalize(C.ulonglong(filter), C.int(reason))
+func (c *httpCgoApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
+	C.moeHttpFinalize(r, C.int(reason))
 }
 
 func init() {
@@ -103,24 +103,25 @@ func moeDestoryHttpPluginConfig(id uint64) {
 	delete(configCache, id)
 }
 
-var Requests = make(map[uint64]*httpRequest, 64)
+var Requests = make(map[*C.httpRequest]*httpRequest, 64)
 
 func requestFinalize(r *httpRequest) {
 	r.Finalize(http.NormalFinalize)
 }
 
-func createRequest(filter, configId uint64) *httpRequest {
+func createRequest(r *C.httpRequest) *httpRequest {
 	req := &httpRequest{
-		filter: filter,
+		req: r,
 	}
 	// NP: make sure filter will be deleted.
 	runtime.SetFinalizer(req, requestFinalize)
 
-	if _, ok := Requests[filter]; ok {
+	if _, ok := Requests[r]; ok {
 		// TODO: error
 	}
-	Requests[filter] = req
+	Requests[r] = req
 
+	configId := uint64(r.configId)
 	filterFactory := getOrCreateHttpFilterFactory(configId)
 	f := filterFactory(req)
 	req.httpFilter = f
@@ -128,8 +129,8 @@ func createRequest(filter, configId uint64) *httpRequest {
 	return req
 }
 
-func getRequest(filter uint64) *httpRequest {
-	req, ok := Requests[filter]
+func getRequest(r *C.httpRequest) *httpRequest {
+	req, ok := Requests[r]
 	if !ok {
 		// TODO: error
 	}
@@ -137,12 +138,13 @@ func getRequest(filter uint64) *httpRequest {
 }
 
 //export moeOnHttpHeader
-func moeOnHttpHeader(filter, configId, endStream, isRequest, headerNum, headerBytes uint64) uint64 {
+func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64) uint64 {
 	var req *httpRequest
-	if isRequest == 1 {
-		req = createRequest(filter, configId)
+	isDecode := int(r.phase) == http.DecodeHeaderPhase
+	if isDecode {
+		req = createRequest(r)
 	} else {
-		req = getRequest(filter)
+		req = getRequest(r)
 	}
 	f := req.httpFilter
 
@@ -153,7 +155,7 @@ func moeOnHttpHeader(filter, configId, endStream, isRequest, headerNum, headerBy
 	}
 
 	var status http.StatusType
-	if isRequest == 1 {
+	if isDecode {
 		status = f.DecodeHeaders(header, endStream == 1)
 	} else {
 		status = f.EncodeHeaders(header, endStream == 1)
@@ -163,10 +165,11 @@ func moeOnHttpHeader(filter, configId, endStream, isRequest, headerNum, headerBy
 }
 
 //export moeOnHttpData
-func moeOnHttpData(filter, configId, endStream, isRequest, buffer, length uint64) uint64 {
-	req := getRequest(filter)
+func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
+	req := getRequest(r)
 
 	f := req.httpFilter
+	isDecode := int(r.phase) == http.DecodeDataPhase
 
 	buf := &httpBuffer{
 		request:   req,
@@ -181,7 +184,7 @@ func moeOnHttpData(filter, configId, endStream, isRequest, buffer, length uint64
 		fmt.Printf("id: %s, buffer ptr: %p, buffer data: %s\n", id, buffer, buf.GetString())
 	*/
 	var status http.StatusType
-	if isRequest == 1 {
+	if isDecode {
 		status = f.DecodeData(buf, endStream == 1)
 	} else {
 		status = f.EncodeData(buf, endStream == 1)
@@ -191,18 +194,18 @@ func moeOnHttpData(filter, configId, endStream, isRequest, buffer, length uint64
 }
 
 //export moeOnHttpDestroy
-func moeOnHttpDestroy(filter, reason uint64) {
-	req := getRequest(filter)
+func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
+	req := getRequest(r)
 
-	r := http.DestroyReason(reason)
+	v := http.DestroyReason(reason)
 
 	f := req.httpFilter
-	f.OnDestroy(r)
+	f.OnDestroy(v)
 
-	Requests[filter] = nil
+	Requests[r] = nil
 
 	// no one is using req now, we can remove it manually, for better performance.
-	if r == http.Normal {
+	if v == http.Normal {
 		runtime.SetFinalizer(req, nil)
 		req.Finalize(http.GCFinalize)
 	}
