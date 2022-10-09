@@ -79,6 +79,8 @@ enum class FilterState {
   WaitData,
   WaitFullData,
   DoData,
+  WaitTrailer,
+  DoTrailer,
   Done,
 };
 
@@ -89,8 +91,10 @@ enum class Phase {
   Init = 0,
   DecodeHeader,
   DecodeData,
+  DecodeTrailer,
   EncodeHeader,
   EncodeData,
+  EncodeTrailer,
   Done,
 };
 
@@ -157,7 +161,6 @@ public:
   Event::Dispatcher& getDispatcher();
   bool hasDestroyed();
 
-
   static std::atomic<uint64_t> global_stream_id_;
 
   void continueStatus(GolangStatus status);
@@ -172,13 +175,19 @@ private:
   bool isDecodePhase();
   bool isHeaderPhase();
   bool isEmptyBuffer();
-  bool isEnd();
+
+  void phaseGrow(int n=1);
+  bool handleGolangStatusInHeader(GolangStatus status);
+  bool handleGolangStatusInData(GolangStatus status);
+  bool handleGolangStatusInTrailer(GolangStatus status);
 
   bool isThreadSafe();
 
   bool doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
   bool doData(Buffer::Instance&, bool);
   bool doDataGo(Buffer::Instance& data, bool end_stream);
+  bool doTrailer(Http::HeaderMap& trailers);
+  bool doTrailerGo(Http::HeaderMap& trailers);
   bool handleGolangStatus(GolangStatus status);
 
   void wantMoreData();
@@ -187,7 +196,7 @@ private:
   Buffer::InstancePtr createWatermarkBuffer();
 
   void continueStatusInternal(GolangStatus status);
-  void continueHeader(bool is_decode);
+  void commonContinue(bool is_decode);
   void continueData(bool is_decode);
 
 
@@ -199,7 +208,8 @@ private:
   Phase phase_{Phase::Init};
   FilterState state_{FilterState::WaitHeader};
 
-  Http::RequestOrResponseHeaderMap* headers_; 
+  Http::RequestOrResponseHeaderMap* headers_{nullptr}; 
+  Http::HeaderMap* trailers_{nullptr}; 
 
   Buffer::InstancePtr data_buffer_;
   Buffer::OwnedImpl do_data_buffer_;
@@ -212,8 +222,6 @@ private:
 
   // TODO get all context
   Grpc::Context& context_;
-  bool decode_goextension_executed_{false};
-  bool encode_goextension_executed_{false};
   uint64_t cost_time_decode_{0};
   uint64_t cost_time_encode_{0};
   uint64_t cost_time_mem_{0};

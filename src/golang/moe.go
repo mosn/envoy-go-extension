@@ -140,8 +140,8 @@ func getRequest(r *C.httpRequest) *httpRequest {
 //export moeOnHttpHeader
 func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64) uint64 {
 	var req *httpRequest
-	isDecode := int(r.phase) == http.DecodeHeaderPhase
-	if isDecode {
+	phase := int(r.phase)
+	if phase == http.DecodeHeaderPhase {
 		req = createRequest(r)
 	} else {
 		req = getRequest(r)
@@ -155,10 +155,15 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 	}
 
 	var status http.StatusType
-	if isDecode {
+	switch phase {
+	case http.DecodeHeaderPhase:
 		status = f.DecodeHeaders(header, endStream == 1)
-	} else {
+	case http.DecodeTailerPhase:
+		status = f.DecodeTrailers(header)
+	case http.EncodeHeaderPhase:
 		status = f.EncodeHeaders(header, endStream == 1)
+	case http.EncodeTailerPhase:
+		status = f.EncodeTrailers(header)
 	}
 	// f.Callbacks().Continue(status)
 	return uint64(status)

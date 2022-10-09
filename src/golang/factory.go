@@ -46,6 +46,15 @@ func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http
 	return http.Running
 }
 
+func (f *httpFilter) DecodeTrailers(trailers http.RequestTrailerMap) http.StatusType {
+	go func() {
+		time.Sleep(time.Millisecond * 10)
+		fmt.Printf("get request trailers, foo: %v\n", trailers.Get("foo"))
+		f.callbacks.Continue(http.Continue)
+	}()
+	return http.Running
+}
+
 func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool) http.StatusType {
 	go func() {
 		sleep := f.config.AsMap()["sleep"]
@@ -60,7 +69,7 @@ func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool
 
 		header.Set("Foo", "Bar")
 		if !endStream {
-			header.Set("content-length", "3")
+			// header.Set("content-length", "3")
 		}
 		f.callbacks.Continue(http.Continue)
 	}()
@@ -77,7 +86,16 @@ func (f *httpFilter) EncodeData(buffer http.BufferInstance, endStream bool) http
 			fmt.Printf("config sleep is not number, %T\n", sleep)
 		}
 		fmt.Printf("response data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.GetString())
-		buffer.Set("foo=bar")
+		// buffer.Set("foo=bar")
+		f.callbacks.Continue(http.Continue)
+	}()
+	return http.Running
+}
+
+func (f *httpFilter) EncodeTrailers(trailers http.ResponseTrailerMap) http.StatusType {
+	go func() {
+		time.Sleep(time.Millisecond * 10)
+		fmt.Printf("get response trailers, AtEnd1: %v\n", trailers.Get("AtEnd1"))
 		f.callbacks.Continue(http.Continue)
 	}()
 	return http.Running

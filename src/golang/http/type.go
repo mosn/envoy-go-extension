@@ -127,8 +127,10 @@ const (
 const (
 	DecodeHeaderPhase int = 1
 	DecodeDataPhase   int = 2
-	EncodeHeaderPhase int = 3
-	EncodeDataPhase   int = 4
+	DecodeTailerPhase int = 3
+	EncodeHeaderPhase int = 4
+	EncodeDataPhase   int = 5
+	EncodeTailerPhase int = 6
 )
 
 //*** Just test code ***//
