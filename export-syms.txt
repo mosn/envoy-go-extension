@@ -1,9 +1,10 @@
 {
-     moeHttpContinue;
      moeHttpGetHeader;
      moeHttpCopyHeaders;
      moeHttpSetHeader;
      moeHttpGetBuffer;
      moeHttpSetBuffer;
      moeHttpFinalize;
+     moeHttpContinue;
+     moeHttpSendLocalReply;
 };

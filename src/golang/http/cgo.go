@@ -4,6 +4,7 @@ import "unsafe"
 
 type HttpCgoAPI interface {
 	HttpContinue(r unsafe.Pointer, status uint64)
+	HttpSendLocalReply(r unsafe.Pointer, response_code int, body_text string, headers map[string]string, grpc_status int64, details string)
 
 	HttpGetHeader(r unsafe.Pointer, key *string, value *string)
 	HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string]string

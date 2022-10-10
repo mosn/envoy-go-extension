@@ -25,7 +25,8 @@ func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool)
 		}
 		fmt.Printf("request header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
 		fmt.Printf("request header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
-		f.callbacks.Continue(http.Continue)
+		f.callbacks.SendLocalReply(403, "forbidden from go", map[string]string{}, -1, "test-from-go")
+		// f.callbacks.Continue(http.Continue)
 	}()
 	return http.Running
 }

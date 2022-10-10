@@ -82,6 +82,7 @@ enum class FilterState {
   WaitTrailer,
   DoTrailer,
   Done,
+  LocalReply,
 };
 
 /*
@@ -165,8 +166,13 @@ public:
 
   void continueStatus(GolangStatus status);
 
+  void sendLocalReply(Http::Code response_code, absl::string_view body_text,
+                      std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
+                      Grpc::Status::GrpcStatus grpc_status,
+                      absl::string_view details);
+
   absl::optional<absl::string_view> getHeader(absl::string_view key);
-  void copyHeaders(_GoString_ *goStrs, char *goBuf);
+  void copyHeaders(GoString *goStrs, char *goBuf);
   void setHeader(absl::string_view key, absl::string_view value);
   void copyBuffer(Buffer::Instance* buffer, char *data);
   void setBuffer(Buffer::Instance* buffer, absl::string_view &value);
@@ -198,7 +204,6 @@ private:
   void continueStatusInternal(GolangStatus status);
   void commonContinue(bool is_decode);
   void continueData(bool is_decode);
-
 
   void onHeadersModified();
 

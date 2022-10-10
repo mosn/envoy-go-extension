@@ -10,8 +10,6 @@ namespace Golang {
 // which means may introduce race between go thread and envoy thread.
 //
 
-const int TlsHandshakerRespSync = 0;
-
 extern "C" void moeHttpContinue(void *r, int status) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
@@ -20,16 +18,36 @@ extern "C" void moeHttpContinue(void *r, int status) {
   }
 }
 
+absl::string_view copyGoString(void *str) {
+  if (str == nullptr) {
+    return "";
+  }
+  auto goStr = reinterpret_cast<GoString*>(str);
+  return absl::string_view(goStr->p, goStr->n);
+}
+
+extern "C" void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void *headers, long long int grpc_status, void* details) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
+  if (auto filter = weakFilter.lock()) {
+    // TODO: headers
+    auto grpcStatus = static_cast<Grpc::Status::GrpcStatus>(grpc_status);
+    filter->sendLocalReply(static_cast<Http::Code>(response_code), copyGoString(body_text),
+                           nullptr,
+                           grpcStatus,
+                           copyGoString(details));
+  }
+}
+
 // unsafe API, without copy memory from c to go.
 extern "C" void moeHttpGetHeader(void *r, void *key, void *value) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
-    auto goKey = reinterpret_cast<_GoString_*>(key);
-    auto keyStr = absl::string_view(goKey->p, goKey->n);
+    auto keyStr = copyGoString(key);
     auto v = filter->getHeader(keyStr);
     if (v.has_value()) {
-      auto goValue = reinterpret_cast<_GoString_*>(value);
+      auto goValue = reinterpret_cast<GoString*>(value);
       goValue->p = v.value().data();
       goValue->n = v.value().length();
     }
@@ -40,7 +58,7 @@ extern "C" void moeHttpCopyHeaders(void *r, void *strs, void *buf) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
-    auto goStrs = reinterpret_cast<_GoString_*>(strs);
+    auto goStrs = reinterpret_cast<GoString*>(strs);
     auto goBuf = reinterpret_cast<char*>(buf);
     filter->copyHeaders(goStrs, goBuf);
   }
@@ -50,10 +68,8 @@ extern "C" void moeHttpSetHeader(void *r, void *key, void *value) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
-    auto goKey = reinterpret_cast<_GoString_*>(key);
-    auto goValue = reinterpret_cast<_GoString_*>(value);
-    auto keyStr = absl::string_view(goKey->p, goKey->n);
-    auto valueStr = absl::string_view(goValue->p, goValue->n);
+    auto keyStr = copyGoString(key);
+    auto valueStr = copyGoString(value);
     filter->setHeader(keyStr, valueStr);
   }
 }

@@ -45,6 +45,11 @@ func (r *httpRequest) Continue(status http.StatusType) {
 	api.HttpContinue(unsafe.Pointer(r.req), uint64(status))
 }
 
+func (r *httpRequest) SendLocalReply(response_code int, body_text string, headers map[string]string, grpc_status int64, details string) {
+	api := http.GetCgoAPI()
+	api.HttpSendLocalReply(unsafe.Pointer(r.req), response_code, body_text, headers, grpc_status, details)
+}
+
 func (r *httpRequest) Finalize(reason int) {
 	api := http.GetCgoAPI()
 	api.HttpFinalize(unsafe.Pointer(r.req), reason)

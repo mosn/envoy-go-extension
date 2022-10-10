@@ -10,6 +10,7 @@ typedef struct {
 } httpRequest;
 
 void moeHttpContinue(void* r, int status);
+void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void *headers, long long int grpc_status, void* details);
 
 void moeHttpGetHeader(void* r, void* key, void *value);
 void moeHttpCopyHeaders(void* r, void* strs, void *buf);

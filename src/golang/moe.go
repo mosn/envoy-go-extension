@@ -30,6 +30,15 @@ func (c *httpCgoApiImpl) HttpContinue(r unsafe.Pointer, status uint64) {
 	C.moeHttpContinue(r, C.int(status))
 }
 
+func (c *httpCgoApiImpl) HttpSendLocalReply(r unsafe.Pointer, response_code int, body_text string, headers map[string]string, grpc_status int64, details string) {
+	hLen := len(headers)
+	strs := make([]string, 0, hLen)
+	for k, v := range headers {
+		strs = append(strs, k, v)
+	}
+	C.moeHttpSendLocalReply(r, C.int(response_code), unsafe.Pointer(&body_text), unsafe.Pointer(&strs), C.longlong(grpc_status), unsafe.Pointer(&details))
+}
+
 func (c *httpCgoApiImpl) HttpGetHeader(r unsafe.Pointer, key *string, value *string) {
 	C.moeHttpGetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
 }
@@ -86,7 +95,7 @@ func init() {
 }
 
 var configNum uint64
-var configCache map[uint64]*anypb.Any = make(map[uint64]*anypb.Any, 16)
+var configCache = make(map[uint64]*anypb.Any, 16)
 
 //export moeNewHttpPluginConfig
 func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
