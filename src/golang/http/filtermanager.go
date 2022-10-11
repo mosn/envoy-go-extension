@@ -7,6 +7,7 @@ import (
 // pass through by default
 var httpFilterConfigFactory api.HttpFilterConfigFactory = passThroughFactory
 
+// raw mode, sync by default
 func RegisterHttpFilterConfigFactory(f api.HttpFilterConfigFactory) {
 	httpFilterConfigFactory = f
 }
@@ -17,4 +18,9 @@ func getOrCreateHttpFilterFactory(configId uint64) api.HttpFilterFactory {
 		// TODO: panic
 	}
 	return httpFilterConfigFactory(config)
+}
+
+// streaming and async supported by default
+func RegisterStreamingHttpFilterConfigFactory(f api.HttpFilterConfigFactory) {
+	httpFilterConfigFactory = f
 }
