@@ -41,18 +41,15 @@ type httpRequest struct {
 }
 
 func (r *httpRequest) Continue(status api.StatusType) {
-	api := api.GetCgoAPI()
-	api.HttpContinue(unsafe.Pointer(r.req), uint64(status))
+	cAPI.HttpContinue(unsafe.Pointer(r.req), uint64(status))
 }
 
 func (r *httpRequest) SendLocalReply(response_code int, body_text string, headers map[string]string, grpc_status int64, details string) {
-	api := api.GetCgoAPI()
-	api.HttpSendLocalReply(unsafe.Pointer(r.req), response_code, body_text, headers, grpc_status, details)
+	cAPI.HttpSendLocalReply(unsafe.Pointer(r.req), response_code, body_text, headers, grpc_status, details)
 }
 
 func (r *httpRequest) Finalize(reason int) {
-	api := api.GetCgoAPI()
-	api.HttpFinalize(unsafe.Pointer(r.req), reason)
+	cAPI.HttpFinalize(unsafe.Pointer(r.req), reason)
 }
 
 type httpHeader struct {
@@ -63,16 +60,14 @@ type httpHeader struct {
 }
 
 func (h *httpHeader) GetRaw(name string) string {
-	api := api.GetCgoAPI()
 	var value string
-	api.HttpGetHeader(unsafe.Pointer(h.request.req), &name, &value)
+	cAPI.HttpGetHeader(unsafe.Pointer(h.request.req), &name, &value)
 	return value
 }
 
 func (h *httpHeader) Get(name string) string {
-	api := api.GetCgoAPI()
 	if h.headers == nil {
-		h.headers = api.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
 	}
 	if value, ok := h.headers[name]; ok {
 		return value
@@ -81,11 +76,10 @@ func (h *httpHeader) Get(name string) string {
 }
 
 func (h *httpHeader) Set(name, value string) {
-	api := api.GetCgoAPI()
 	if h.headers != nil {
 		h.headers[name] = value
 	}
-	api.HttpSetHeader(unsafe.Pointer(h.request.req), &name, &value)
+	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &name, &value)
 }
 
 type httpBuffer struct {
@@ -99,14 +93,12 @@ func (b *httpBuffer) GetString() string {
 	if b.length == 0 {
 		return ""
 	}
-	api := api.GetCgoAPI()
-	api.HttpGetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, &b.value, b.length)
+	cAPI.HttpGetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, &b.value, b.length)
 	return b.value
 }
 
 func (b *httpBuffer) Set(value string) {
-	api := api.GetCgoAPI()
-	api.HttpSetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, value)
+	cAPI.HttpSetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, value)
 }
 
 func (b *httpBuffer) Length() uint64 {

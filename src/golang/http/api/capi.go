@@ -2,7 +2,7 @@ package api
 
 import "unsafe"
 
-type HttpCgoAPI interface {
+type HttpCAPI interface {
 	HttpContinue(r unsafe.Pointer, status uint64)
 	HttpSendLocalReply(r unsafe.Pointer, response_code int, body_text string, headers map[string]string, grpc_status int64, details string)
 
@@ -15,14 +15,4 @@ type HttpCgoAPI interface {
 	HttpSetBuffer(r unsafe.Pointer, bufferPtr uint64, value string)
 
 	HttpFinalize(r unsafe.Pointer, reason int)
-}
-
-var httpCgoAPI HttpCgoAPI
-
-func SetCgoAPI(api HttpCgoAPI) {
-	httpCgoAPI = api
-}
-
-func GetCgoAPI() HttpCgoAPI {
-	return httpCgoAPI
 }
