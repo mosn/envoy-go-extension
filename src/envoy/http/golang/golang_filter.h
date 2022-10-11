@@ -176,6 +176,8 @@ public:
   void setHeader(absl::string_view key, absl::string_view value);
   void copyBuffer(Buffer::Instance* buffer, char *data);
   void setBuffer(Buffer::Instance* buffer, absl::string_view &value);
+  void copyTrailers(GoString *goStrs, char *goBuf);
+  void setTrailer(absl::string_view key, absl::string_view value);
 
 private:
   bool isDecodePhase();

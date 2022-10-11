@@ -464,10 +464,10 @@ bool Filter::doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_strea
     done = handleGolangStatusInHeader(static_cast<GolangStatus>(status));
 
   } catch (const EnvoyException& e) {
-    ENVOY_LOG(error, "golang filter decodeHeaders catch: {}.", e.what());
+    ENVOY_LOG(error, "golang filter doHeaders catch: {}.", e.what());
 
   } catch (...) {
-    ENVOY_LOG(error, "golang filter decodeHeaders catch unknown exception.");
+    ENVOY_LOG(error, "golang filter doHeaders catch unknown exception.");
   }
   return done;
 }
@@ -557,6 +557,8 @@ bool Filter::doTrailerGo(Http::HeaderMap& trailers) {
 }
 
 bool Filter::doTrailer(Http::HeaderMap& trailers) {
+  ENVOY_LOG(error, "golang filter doTrailer, state: {}, phase: {}", int(state_), int(phase_));
+
   ASSERT(end_stream_ == false && do_end_stream_ == false);
 
   trailers_ = &trailers;
@@ -571,8 +573,8 @@ bool Filter::doTrailer(Http::HeaderMap& trailers) {
     done = doTrailerGo(trailers);
     break;
   case FilterState::WaitFullData:
-    // data is complete
-    if (data_buffer_ != nullptr && data_buffer_->length() > 0) {
+    // do data first
+    if (!isEmptyBuffer()) {
       done = doDataGo(*data_buffer_, false);
     }
     // continue trailers if data return continue
@@ -738,15 +740,9 @@ absl::optional<absl::string_view> Filter::getHeader(absl::string_view key) {
   return result[0]->value().getStringView();
 }
 
-void Filter::copyHeaders(GoString *goStrs, char *goBuf) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (has_destroyed_) {
-    ENVOY_LOG(warn, "golang filter has been destroyed");
-    return;
-  }
-  auto m = isHeaderPhase() ? headers_ : trailers_;
+void copyHeaderMapToGo(Http::HeaderMap &m, GoString *goStrs, char *goBuf) {
   auto i = 0;
-  m->iterate([this, &i, &goStrs, &goBuf](const Http::HeaderEntry& header) -> Http::HeaderMap::Iterate {
+  m.iterate([&i, &goStrs, &goBuf](const Http::HeaderEntry& header) -> Http::HeaderMap::Iterate {
     auto key = std::string(header.key().getStringView());
     auto value = std::string(header.value().getStringView());
 
@@ -769,14 +765,24 @@ void Filter::copyHeaders(GoString *goStrs, char *goBuf) {
   });
 }
 
+void Filter::copyHeaders(GoString *goStrs, char *goBuf) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  ASSERT(headers_ != nullptr, "headers is empty, may already continue to next filter");
+  copyHeaderMapToGo(*headers_, goStrs, goBuf);
+}
+
 void Filter::setHeader(absl::string_view key, absl::string_view value) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
     return;
   }
-  auto m = isHeaderPhase() ? headers_ : trailers_;
-  m->setCopy(Http::LowerCaseString(key), value);
+  ASSERT(headers_ != nullptr, "headers is empty, may already continue to next filter");
+  headers_->setCopy(Http::LowerCaseString(key), value);
 }
 
 void Filter::copyBuffer(Buffer::Instance* buffer, char *data) {
@@ -799,6 +805,26 @@ void Filter::setBuffer(Buffer::Instance* buffer, absl::string_view& value) {
   }
   buffer->drain(buffer->length());
   buffer->add(value);
+}
+
+void Filter::copyTrailers(GoString *goStrs, char *goBuf) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  ASSERT(trailers_ != nullptr, "trailers is empty");
+  copyHeaderMapToGo(*trailers_, goStrs, goBuf);
+}
+
+void Filter::setTrailer(absl::string_view key, absl::string_view value) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  ASSERT(trailers_ != nullptr, "trailers is empty");
+  trailers_->setCopy(Http::LowerCaseString(key), value);
 }
 
 /*** FilterConfig ***/

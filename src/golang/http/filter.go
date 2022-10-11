@@ -52,22 +52,30 @@ func (r *httpRequest) Finalize(reason int) {
 	cAPI.HttpFinalize(unsafe.Pointer(r.req), reason)
 }
 
-type httpHeader struct {
+type httpHeaderMap struct {
 	request     *httpRequest
 	headers     map[string]string
 	headerNum   uint64
 	headerBytes uint64
+	isTrailer   bool
 }
 
-func (h *httpHeader) GetRaw(name string) string {
+func (h *httpHeaderMap) GetRaw(name string) string {
+	if h.isTrailer {
+		panic("supported API")
+	}
 	var value string
 	cAPI.HttpGetHeader(unsafe.Pointer(h.request.req), &name, &value)
 	return value
 }
 
-func (h *httpHeader) Get(name string) string {
+func (h *httpHeaderMap) Get(name string) string {
 	if h.headers == nil {
-		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+		if h.isTrailer {
+			h.headers = cAPI.HttpCopyTrailers(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+		} else {
+			h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+		}
 	}
 	if value, ok := h.headers[name]; ok {
 		return value
@@ -75,11 +83,15 @@ func (h *httpHeader) Get(name string) string {
 	return ""
 }
 
-func (h *httpHeader) Set(name, value string) {
+func (h *httpHeaderMap) Set(name, value string) {
 	if h.headers != nil {
 		h.headers[name] = value
 	}
-	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &name, &value)
+	if h.isTrailer {
+		cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &name, &value)
+	} else {
+		cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &name, &value)
+	}
 }
 
 type httpBuffer struct {

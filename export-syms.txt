@@ -4,6 +4,8 @@
      moeHttpSetHeader;
      moeHttpGetBuffer;
      moeHttpSetBuffer;
+     moeHttpCopyTrailers;
+     moeHttpSetTrailer;
      moeHttpFinalize;
      moeHttpContinue;
      moeHttpSendLocalReply;

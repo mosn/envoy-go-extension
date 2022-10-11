@@ -85,10 +85,11 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 	}
 	f := req.httpFilter
 
-	header := &httpHeader{
+	header := &httpHeaderMap{
 		request:     req,
 		headerNum:   headerNum,
 		headerBytes: headerBytes,
+		isTrailer:   phase == api.DecodeTailerPhase || phase == api.EncodeTailerPhase,
 	}
 
 	var status api.StatusType

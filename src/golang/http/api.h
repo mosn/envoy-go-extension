@@ -14,11 +14,13 @@ void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void *he
 
 void moeHttpGetHeader(void* r, void* key, void *value);
 void moeHttpCopyHeaders(void* r, void* strs, void *buf);
-
 void moeHttpSetHeader(void* r, void* key, void *value);
 
 void moeHttpGetBuffer(void* r, unsigned long long int buffer, void *value);
 void moeHttpSetBuffer(void* r, unsigned long long int buffer, void *data, int length);
+
+void moeHttpCopyTrailers(void* r, void* strs, void *buf);
+void moeHttpSetTrailer(void* r, void* key, void *value);
 
 void moeHttpFinalize(void* r, int reason);
 

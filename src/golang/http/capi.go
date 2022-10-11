@@ -81,6 +81,31 @@ func (c *httpCApiImpl) HttpSetBuffer(r unsafe.Pointer, bufferPtr uint64, value s
 	C.moeHttpSetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len))
 }
 
+func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint64) map[string]string {
+	// TODO: use a memory pool for better performance,
+	// but, should be very careful, since string is const in go,
+	// and we have to make sure the strings is not using before reusing,
+	// strings may be alive beyond the request life.
+	strs := make([]string, num*2)
+	buf := make([]byte, bytes)
+	sHeader := (*reflect.SliceHeader)(unsafe.Pointer(&strs))
+	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+
+	C.moeHttpCopyTrailers(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+
+	m := make(map[string]string, num)
+	for i := uint64(0); i < num*2; i += 2 {
+		key := strs[i]
+		value := strs[i+1]
+		m[key] = value
+	}
+	return m
+}
+
+func (c *httpCApiImpl) HttpSetTrailer(r unsafe.Pointer, key *string, value *string) {
+	C.moeHttpSetTrailer(r, unsafe.Pointer(key), unsafe.Pointer(value))
+}
+
 func (c *httpCApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
 	C.moeHttpFinalize(r, C.int(reason))
 }

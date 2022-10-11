@@ -93,6 +93,26 @@ extern "C" void moeHttpSetBuffer(void *r, unsigned long long int bufferPtr, void
   }
 }
 
+extern "C" void moeHttpCopyTrailers(void *r, void *strs, void *buf) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
+  if (auto filter = weakFilter.lock()) {
+    auto goStrs = reinterpret_cast<GoString*>(strs);
+    auto goBuf = reinterpret_cast<char*>(buf);
+    filter->copyTrailers(goStrs, goBuf);
+  }
+}
+
+extern "C" void moeHttpSetTrailer(void *r, void *key, void *value) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
+  if (auto filter = weakFilter.lock()) {
+    auto keyStr = copyGoString(key);
+    auto valueStr = copyGoString(value);
+    filter->setTrailer(keyStr, valueStr);
+  }
+}
+
 extern "C" void moeHttpFinalize(void *r, int reason) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   delete req;
