@@ -256,6 +256,8 @@ void Filter::log(const Http::RequestHeaderMap*, const Http::ResponseHeaderMap*,
 /*** status, state, phase ***/
 
 bool Filter::handleGolangStatusInHeader(GolangStatus status) {
+  ENVOY_LOG(debug, "golang filter handle header status, state: {}, phase: {}, status: {}", int(state_), int(phase_), int(status));
+
   switch (status) {
   case GolangStatus::Running:
     // do nothing, go side turn to async mode
@@ -288,10 +290,15 @@ bool Filter::handleGolangStatusInHeader(GolangStatus status) {
     ENVOY_LOG(error, "unexpected status: {}", int(status));
     break;
   }
+
+  ENVOY_LOG(debug, "golang filter after handle header status, state: {}, phase: {}, status: {}", int(state_), int(phase_), int(status));
+
   return false;
 }
 
 bool Filter::handleGolangStatusInData(GolangStatus status) {
+  ENVOY_LOG(debug, "golang filter handle data status, state: {}, phase: {}, status: {}", int(state_), int(phase_), int(status));
+
   bool done = false;
 
   switch (status) {
@@ -347,10 +354,15 @@ bool Filter::handleGolangStatusInData(GolangStatus status) {
     phaseGrow();
     state_ = FilterState::WaitTrailer;
   }
+
+  ENVOY_LOG(debug, "golang filter after handle data status, state: {}, phase: {}, status: {}", int(state_), int(phase_), int(status));
+
   return done;
 }
 
 bool Filter::handleGolangStatusInTrailer(GolangStatus status) {
+  ENVOY_LOG(debug, "golang filter handle trailer status, state: {}, phase: {}, status: {}", int(state_), int(phase_), int(status));
+
   switch (status) {
   case GolangStatus::Running:
     // do nothing, go side turn to async mode
@@ -369,6 +381,9 @@ bool Filter::handleGolangStatusInTrailer(GolangStatus status) {
     ENVOY_LOG(error, "unexpected status: {}", int(status));
     break;
   }
+
+  ENVOY_LOG(debug, "golang filter after handle trailer status, state: {}, phase: {}, status: {}", int(state_), int(phase_), int(status));
+
   return false;
 }
 
@@ -473,7 +488,7 @@ bool Filter::doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_strea
 }
 
 bool Filter::doDataGo(Buffer::Instance& data, bool end_stream) {
-  ENVOY_LOG(error, "golang filter passing data to golang, state: {}, phase: {}", int(state_), int(phase_));
+  ENVOY_LOG(debug, "golang filter passing data to golang, state: {}, phase: {}", int(state_), int(phase_));
 
   ASSERT(state_ == FilterState::WaitData
          || (state_ == FilterState::WaitFullData && (end_stream || trailers_ != nullptr)));
@@ -501,6 +516,7 @@ bool Filter::doDataGo(Buffer::Instance& data, bool end_stream) {
 }
 
 bool Filter::doData(Buffer::Instance& data, bool end_stream) {
+  ENVOY_LOG(debug, "golang filter doData, state: {}, phase: {}", int(state_), int(phase_));
   end_stream_ = end_stream;
 
   bool done = false;
@@ -510,17 +526,22 @@ bool Filter::doData(Buffer::Instance& data, bool end_stream) {
     break;
   case FilterState::WaitFullData:
     if (end_stream) {
-      if (data_buffer_ != nullptr) {
+      if (!isEmptyBuffer()) {
+        // NP: new data = data_buffer_ + data
+        data_buffer_->move(data);
         data.move(*data_buffer_);
       }
       done = doDataGo(data, end_stream);
+      break;
     }
-    break;
+    // NP: not break, continue
+    [[fallthrough]];
   case FilterState::DoData:
   case FilterState::DoHeader:
     if (data_buffer_ == nullptr) {
       data_buffer_ = createWatermarkBuffer();
     }
+    ENVOY_LOG(debug, "golang filter appending data to buffer");
     data_buffer_->move(data);
     break;
   default:
@@ -528,6 +549,9 @@ bool Filter::doData(Buffer::Instance& data, bool end_stream) {
     // TODO: terminate stream?
     break;
   }
+
+  ENVOY_LOG(debug, "golang filter doData, return: {}", done);
+
   return done;
 }
 
@@ -557,7 +581,7 @@ bool Filter::doTrailerGo(Http::HeaderMap& trailers) {
 }
 
 bool Filter::doTrailer(Http::HeaderMap& trailers) {
-  ENVOY_LOG(error, "golang filter doTrailer, state: {}, phase: {}", int(state_), int(phase_));
+  ENVOY_LOG(debug, "golang filter doTrailer, state: {}, phase: {}", int(state_), int(phase_));
 
   ASSERT(end_stream_ == false && do_end_stream_ == false);
 
@@ -573,13 +597,15 @@ bool Filter::doTrailer(Http::HeaderMap& trailers) {
     done = doTrailerGo(trailers);
     break;
   case FilterState::WaitFullData:
+    ENVOY_LOG(debug, "golang filter data buffer is empty: {}", isEmptyBuffer());
     // do data first
     if (!isEmptyBuffer()) {
       done = doDataGo(*data_buffer_, false);
     }
-    // continue trailers if data return continue
-    if (done) {
-      phaseGrow();
+    // NP: can not use done as condition here, since done will be false
+    // maybe we can remove the done variable totally? by using state_ only?
+    // continue trailers
+    if (state_ == FilterState::WaitTrailer) {
       done = doTrailerGo(trailers);
     }
     break;
@@ -592,6 +618,9 @@ bool Filter::doTrailer(Http::HeaderMap& trailers) {
     // TODO: terminate stream?
     break;
   }
+
+  ENVOY_LOG(debug, "golang filter doTrailer, return: {}", done);
+
   return done;
 }
 
@@ -650,6 +679,9 @@ void Filter::continueStatusInternal(GolangStatus status) {
       break;
 
     case FilterState::DoTrailer:
+      if (do_data_buffer_.length() > 0) {
+        continueData(is_decode);
+      }
       commonContinue(is_decode);
       break;
 
