@@ -1,4 +1,4 @@
-package http
+package api
 
 // ****************** filter status start ******************//
 type StatusType int

@@ -1,6 +1,4 @@
-package http
-
-import "google.golang.org/protobuf/types/known/anypb"
+package api
 
 // request
 type HttpDecoderFilter interface {
@@ -12,7 +10,7 @@ type HttpDecoderFilter interface {
 	*/
 }
 
-type HttpFilterConfigFactory func(config *anypb.Any) HttpFilterFactory
+type HttpFilterConfigFactory func(config interface{}) HttpFilterFactory
 type HttpFilterFactory func(callbacks FilterCallbackHandler) HttpFilter
 
 type HttpFilter interface {

@@ -1,4 +1,4 @@
-package main
+package http
 
 /*
 // ref https://github.com/golang/go/issues/25832
@@ -17,7 +17,7 @@ import "C"
 import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	"mosn.io/envoy-go-extension/http"
+	"mosn.io/envoy-go-extension/http/api"
 	"mosn.io/envoy-go-extension/utils"
 	"reflect"
 	"runtime"
@@ -91,7 +91,7 @@ func (c *httpCgoApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
 }
 
 func init() {
-	http.SetCgoAPI(&httpCgoApiImpl{})
+	api.SetCgoAPI(&httpCgoApiImpl{})
 }
 
 var configNum uint64
@@ -115,7 +115,7 @@ func moeDestoryHttpPluginConfig(id uint64) {
 var Requests = make(map[*C.httpRequest]*httpRequest, 64)
 
 func requestFinalize(r *httpRequest) {
-	r.Finalize(http.NormalFinalize)
+	r.Finalize(api.NormalFinalize)
 }
 
 func createRequest(r *C.httpRequest) *httpRequest {
@@ -150,7 +150,7 @@ func getRequest(r *C.httpRequest) *httpRequest {
 func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64) uint64 {
 	var req *httpRequest
 	phase := int(r.phase)
-	if phase == http.DecodeHeaderPhase {
+	if phase == api.DecodeHeaderPhase {
 		req = createRequest(r)
 	} else {
 		req = getRequest(r)
@@ -163,15 +163,15 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 		headerBytes: headerBytes,
 	}
 
-	var status http.StatusType
+	var status api.StatusType
 	switch phase {
-	case http.DecodeHeaderPhase:
+	case api.DecodeHeaderPhase:
 		status = f.DecodeHeaders(header, endStream == 1)
-	case http.DecodeTailerPhase:
+	case api.DecodeTailerPhase:
 		status = f.DecodeTrailers(header)
-	case http.EncodeHeaderPhase:
+	case api.EncodeHeaderPhase:
 		status = f.EncodeHeaders(header, endStream == 1)
-	case http.EncodeTailerPhase:
+	case api.EncodeTailerPhase:
 		status = f.EncodeTrailers(header)
 	}
 	// f.Callbacks().Continue(status)
@@ -183,7 +183,7 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	req := getRequest(r)
 
 	f := req.httpFilter
-	isDecode := int(r.phase) == http.DecodeDataPhase
+	isDecode := int(r.phase) == api.DecodeDataPhase
 
 	buf := &httpBuffer{
 		request:   req,
@@ -197,7 +197,7 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 		}
 		fmt.Printf("id: %s, buffer ptr: %p, buffer data: %s\n", id, buffer, buf.GetString())
 	*/
-	var status http.StatusType
+	var status api.StatusType
 	if isDecode {
 		status = f.DecodeData(buf, endStream == 1)
 	} else {
@@ -211,7 +211,7 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
 	req := getRequest(r)
 
-	v := http.DestroyReason(reason)
+	v := api.DestroyReason(reason)
 
 	f := req.httpFilter
 	f.OnDestroy(v)
@@ -219,8 +219,8 @@ func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
 	Requests[r] = nil
 
 	// no one is using req now, we can remove it manually, for better performance.
-	if v == http.Normal {
+	if v == api.Normal {
 		runtime.SetFinalizer(req, nil)
-		req.Finalize(http.GCFinalize)
+		req.Finalize(api.GCFinalize)
 	}
 }

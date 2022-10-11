@@ -1,20 +1,20 @@
-package main
+package async
 
 import (
 	"fmt"
 	udpa "github.com/cncf/xds/go/udpa/type/v1"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
-	"mosn.io/envoy-go-extension/http"
+	"mosn.io/envoy-go-extension/http/api"
 	"time"
 )
 
 type httpFilter struct {
-	callbacks http.FilterCallbackHandler
+	callbacks api.FilterCallbackHandler
 	config    *structpb.Struct
 }
 
-func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool) http.StatusType {
+func (f *httpFilter) DecodeHeaders(header api.RequestHeaderMap, endStream bool) api.StatusType {
 	go func() {
 		sleep := f.config.AsMap()["sleep"]
 		if v, ok := sleep.(float64); ok {
@@ -25,13 +25,13 @@ func (f *httpFilter) DecodeHeaders(header http.RequestHeaderMap, endStream bool)
 		}
 		fmt.Printf("request header Get foo: %s, endStream: %v\n", header.Get("foo"), endStream)
 		fmt.Printf("request header GetRaw foo: %s, endStream: %v\n", header.GetRaw("foo"), endStream)
-		f.callbacks.SendLocalReply(403, "forbidden from go", map[string]string{}, -1, "test-from-go")
-		// f.callbacks.Continue(http.Continue)
+		// f.callbacks.SendLocalReply(403, "forbidden from go", map[string]string{}, -1, "test-from-go")
+		f.callbacks.Continue(api.Continue)
 	}()
-	return http.Running
+	return api.Running
 }
 
-func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
+func (f *httpFilter) DecodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
 	go func() {
 		sleep := f.config.AsMap()["sleep"]
 		if v, ok := sleep.(float64); ok {
@@ -42,21 +42,21 @@ func (f *httpFilter) DecodeData(buffer http.BufferInstance, endStream bool) http
 		}
 		fmt.Printf("request data, length: %d, endStream: %v\n", buffer.Length(), endStream)
 		// fmt.Printf("request data: %s\n", buffer.GetString())
-		f.callbacks.Continue(http.Continue)
+		f.callbacks.Continue(api.Continue)
 	}()
-	return http.Running
+	return api.Running
 }
 
-func (f *httpFilter) DecodeTrailers(trailers http.RequestTrailerMap) http.StatusType {
+func (f *httpFilter) DecodeTrailers(trailers api.RequestTrailerMap) api.StatusType {
 	go func() {
 		time.Sleep(time.Millisecond * 10)
 		fmt.Printf("get request trailers, foo: %v\n", trailers.Get("foo"))
-		f.callbacks.Continue(http.Continue)
+		f.callbacks.Continue(api.Continue)
 	}()
-	return http.Running
+	return api.Running
 }
 
-func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool) http.StatusType {
+func (f *httpFilter) EncodeHeaders(header api.ResponseHeaderMap, endStream bool) api.StatusType {
 	go func() {
 		sleep := f.config.AsMap()["sleep"]
 		if v, ok := sleep.(float64); ok {
@@ -72,12 +72,13 @@ func (f *httpFilter) EncodeHeaders(header http.ResponseHeaderMap, endStream bool
 		if !endStream {
 			// header.Set("content-length", "3")
 		}
-		f.callbacks.Continue(http.Continue)
+		f.callbacks.SendLocalReply(403, "forbidden from go", map[string]string{}, -1, "test-from-go")
+		// f.callbacks.Continue(http.Continue)
 	}()
-	return http.Running
+	return api.Running
 }
 
-func (f *httpFilter) EncodeData(buffer http.BufferInstance, endStream bool) http.StatusType {
+func (f *httpFilter) EncodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
 	go func() {
 		sleep := f.config.AsMap()["sleep"]
 		if v, ok := sleep.(float64); ok {
@@ -88,56 +89,42 @@ func (f *httpFilter) EncodeData(buffer http.BufferInstance, endStream bool) http
 		}
 		fmt.Printf("response data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.GetString())
 		// buffer.Set("foo=bar")
-		f.callbacks.Continue(http.Continue)
+		f.callbacks.Continue(api.Continue)
 	}()
-	return http.Running
+	return api.Running
 }
 
-func (f *httpFilter) EncodeTrailers(trailers http.ResponseTrailerMap) http.StatusType {
+func (f *httpFilter) EncodeTrailers(trailers api.ResponseTrailerMap) api.StatusType {
 	go func() {
 		time.Sleep(time.Millisecond * 10)
 		fmt.Printf("get response trailers, AtEnd1: %v\n", trailers.Get("AtEnd1"))
-		f.callbacks.Continue(http.Continue)
+		f.callbacks.Continue(api.Continue)
 	}()
-	return http.Running
+	return api.Running
 }
 
-func (f *httpFilter) OnDestroy(reason http.DestroyReason) {
+func (f *httpFilter) OnDestroy(reason api.DestroyReason) {
 	fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
-func (f *httpFilter) Callbacks() http.FilterCallbacks {
+func (f *httpFilter) Callbacks() api.FilterCallbacks {
 	return f.callbacks
 }
 
-func registerHttpFilterConfigFactory(f http.HttpFilterConfigFactory) {
-	httpFilterConfigFactory = f
-}
-
-func init() {
-	registerHttpFilterConfigFactory(configFactory)
-}
-
-var httpFilterConfigFactory http.HttpFilterConfigFactory
-
-func configFactory(any *anypb.Any) http.HttpFilterFactory {
+func ConfigFactory(config interface{}) api.HttpFilterFactory {
 	// TODO: unmarshal based on typeurl
+	any, ok := config.(*anypb.Any)
+	if !ok {
+		return nil
+	}
 	configStruct := &udpa.TypedStruct{}
 	any.UnmarshalTo(configStruct)
-	config := configStruct.Value
+	v := configStruct.Value
 
-	return func(callbacks http.FilterCallbackHandler) http.HttpFilter {
+	return func(callbacks api.FilterCallbackHandler) api.HttpFilter {
 		return &httpFilter{
 			callbacks: callbacks,
-			config:    config,
+			config:    v,
 		}
 	}
-}
-
-func getOrCreateHttpFilterFactory(configId uint64) http.HttpFilterFactory {
-	config, ok := configCache[configId]
-	if !ok {
-		// TODO: panic
-	}
-	return httpFilterConfigFactory(config)
 }
