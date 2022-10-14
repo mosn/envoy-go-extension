@@ -7,5 +7,7 @@ COPY envoy-golang.yaml /etc/envoy/
 
 EXPOSE 10000
 
+ENV GODEBUG=cgocheck=0
+
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["envoy", "-c", "/etc/envoy/envoy-golang.yaml"]

@@ -13,6 +13,7 @@ func init() {
 	http.RegisterHttpFilterConfigFactory(asyncSleep.ConfigFactory)
 	http.RegisterHttpFilterConfigFactory(async.ConfigFactory)
 	http.RegisterHttpFilterConfigFactory(http.PassThroughFactory)
+	buffered.RegisterHttpFilterConfigFactory(bufferedSample.ConfigFactory)
 }
 
 func main() {

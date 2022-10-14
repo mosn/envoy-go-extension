@@ -64,7 +64,7 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: mosn.io
+                address: www.mosn.io
                 port_value: 443
     transport_socket:
       name: envoy.transport_sockets.tls
