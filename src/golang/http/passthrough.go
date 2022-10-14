@@ -40,7 +40,7 @@ func (f *passThroughFilter) Callbacks() api.FilterCallbacks {
 	return f.callbacks
 }
 
-func passThroughFactory(interface{}) api.HttpFilterFactory {
+func PassThroughFactory(interface{}) api.HttpFilterFactory {
 	return func(callbacks api.FilterCallbackHandler) api.HttpFilter {
 		return &passThroughFilter{
 			callbacks: callbacks,

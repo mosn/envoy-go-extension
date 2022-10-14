@@ -5,7 +5,7 @@ import (
 )
 
 // pass through by default
-var httpFilterConfigFactory api.HttpFilterConfigFactory = passThroughFactory
+var httpFilterConfigFactory api.HttpFilterConfigFactory = PassThroughFactory
 
 // raw mode, sync by default
 func RegisterHttpFilterConfigFactory(f api.HttpFilterConfigFactory) {
