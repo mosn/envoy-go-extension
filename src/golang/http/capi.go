@@ -14,6 +14,7 @@ package http
 */
 import "C"
 import (
+	"fmt"
 	"mosn.io/envoy-go-extension/http/api"
 	"reflect"
 	"unsafe"
@@ -58,13 +59,17 @@ func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint6
 		value := strs[i+1]
 		m[key] = value
 
-		// fmt.Printf("value of %s: %s\n", key, value)
+		fmt.Printf("value of %s: %s\n", key, value)
 	}
 	return m
 }
 
 func (c *httpCApiImpl) HttpSetHeader(r unsafe.Pointer, key *string, value *string) {
 	C.moeHttpSetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
+}
+
+func (c *httpCApiImpl) HttpRemoveHeader(r unsafe.Pointer, key *string) {
+	C.moeHttpRemoveHeader(r, unsafe.Pointer(key))
 }
 
 func (c *httpCApiImpl) HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *string, length uint64) {

@@ -174,6 +174,7 @@ public:
   absl::optional<absl::string_view> getHeader(absl::string_view key);
   void copyHeaders(GoString *goStrs, char *goBuf);
   void setHeader(absl::string_view key, absl::string_view value);
+  void removeHeader(absl::string_view key);
   void copyBuffer(Buffer::Instance* buffer, char *data);
   void setBuffer(Buffer::Instance* buffer, absl::string_view &value);
   void copyTrailers(GoString *goStrs, char *goBuf);

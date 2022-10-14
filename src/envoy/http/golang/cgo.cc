@@ -74,6 +74,16 @@ extern "C" void moeHttpSetHeader(void *r, void *key, void *value) {
   }
 }
 
+extern "C" void moeHttpRemoveHeader(void *r, void *key) {
+  auto req = reinterpret_cast<httpRequestInternal*>(r);
+  auto weakFilter = req->weakFilter();
+  if (auto filter = weakFilter.lock()) {
+    // TODO: it's safe to skip copy
+    auto keyStr = copyGoString(key);
+    filter->removeHeader(keyStr);
+  }
+}
+
 extern "C" void moeHttpGetBuffer(void *r, unsigned long long int bufferPtr, void *data) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();

@@ -2,6 +2,7 @@
      moeHttpGetHeader;
      moeHttpCopyHeaders;
      moeHttpSetHeader;
+     moeHttpRemoveHeader;
      moeHttpGetBuffer;
      moeHttpSetBuffer;
      moeHttpCopyTrailers;

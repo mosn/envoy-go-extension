@@ -62,7 +62,7 @@ type httpHeaderMap struct {
 
 func (h *httpHeaderMap) GetRaw(name string) string {
 	if h.isTrailer {
-		panic("supported API")
+		panic("unsupported yet")
 	}
 	var value string
 	cAPI.HttpGetHeader(unsafe.Pointer(h.request.req), &name, &value)
@@ -91,6 +91,17 @@ func (h *httpHeaderMap) Set(name, value string) {
 		cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &name, &value)
 	} else {
 		cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &name, &value)
+	}
+}
+
+func (h *httpHeaderMap) Remove(name string) {
+	if h.headers != nil {
+		delete(h.headers, name)
+	}
+	if h.isTrailer {
+		panic("unsupported yet")
+	} else {
+		cAPI.HttpRemoveHeader(unsafe.Pointer(h.request.req), &name)
 	}
 }
 

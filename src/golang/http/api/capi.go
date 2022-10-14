@@ -10,6 +10,7 @@ type HttpCAPI interface {
 	HttpGetHeader(r unsafe.Pointer, key *string, value *string)
 	HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string]string
 	HttpSetHeader(r unsafe.Pointer, key *string, value *string)
+	HttpRemoveHeader(r unsafe.Pointer, key *string)
 
 	HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *string, length uint64)
 	HttpSetBuffer(r unsafe.Pointer, bufferPtr uint64, value string)

@@ -64,11 +64,11 @@ type HeaderMap interface {
 	GetRaw(name string) string
 	// override header
 	Set(name, value string)
+	Remove(name string)
 	/*
 		byteSize() uint64
 		// append header
 		AddCopy(name, value string)
-		Remove(name string)
 	*/
 }
 

@@ -820,6 +820,16 @@ void Filter::setHeader(absl::string_view key, absl::string_view value) {
   headers_->setCopy(Http::LowerCaseString(key), value);
 }
 
+void Filter::removeHeader(absl::string_view key) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  ASSERT(headers_ != nullptr, "headers is empty, may already continue to next filter");
+  headers_->remove(Http::LowerCaseString(key));
+}
+
 void Filter::copyBuffer(Buffer::Instance* buffer, char *data) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
