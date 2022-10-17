@@ -151,6 +151,7 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
 
   headers_ = &headers;
 
+  // TODO: will hit this assert when previous filter sendLocalReply eariler.
   ASSERT(phase_ == Phase::EncodeHeader);
 
   // headers.path();
