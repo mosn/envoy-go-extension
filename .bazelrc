@@ -1,0 +1,8 @@
+import %workspace%/envoy.bazelrc
+import %workspace%/proxy.bazelrc
+try-import %workspace%/user.bazelrc
+
+# does not work, please use \
+# bazel build \
+#    --linkopt=-Wl,--dynamic-list=`pwd`/export-syms.txt \
+# build --linkopt=-Wl,--dynamic-list=%workspace%/export-syms.txt
