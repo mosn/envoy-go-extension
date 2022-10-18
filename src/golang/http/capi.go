@@ -14,9 +14,9 @@ package http
 */
 import "C"
 import (
-	"fmt"
 	"mosn.io/envoy-go-extension/http/api"
 	"reflect"
+	"runtime"
 	"unsafe"
 )
 
@@ -41,15 +41,15 @@ func (c *httpCApiImpl) HttpGetHeader(r unsafe.Pointer, key *string, value *strin
 
 func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string]string {
 	// TODO: use a memory pool for better performance,
-	// but, should be very careful, since string is const in go,
-	// and we have to make sure the strings is not using before reusing,
-	// strings may be alive beyond the request life.
+	// since these go strings in strs, will be copied into the following map.
 	strs := make([]string, num*2)
+	// but, this buffer can not be reused safely,
+	// since strings may refer to this buffer as string data, and string is const in go.
+	// we have to make sure the all strings is not using before reusing,
+	// but strings may be alive beyond the request life.
 	buf := make([]byte, bytes)
 	sHeader := (*reflect.SliceHeader)(unsafe.Pointer(&strs))
 	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
-	// sHeader.Len = int(num * 2)
-	// bHeader.Len = int(bytes)
 
 	C.moeHttpCopyHeaders(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
 
@@ -58,9 +58,9 @@ func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint6
 		key := strs[i]
 		value := strs[i+1]
 		m[key] = value
-
-		fmt.Printf("value of %s: %s\n", key, value)
+		// fmt.Printf("value of %s: %s\n", key, value)
 	}
+	runtime.KeepAlive(buf)
 	return m
 }
 
