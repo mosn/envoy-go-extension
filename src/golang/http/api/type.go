@@ -132,26 +132,3 @@ const (
 	EncodeDataPhase   int = 5
 	EncodeTailerPhase int = 6
 )
-
-//*** Just test code ***//
-
-// similar to Lua filter
-type HttpRequestFilter interface {
-	OnRequest(RequestHeaderMap, RequestBody) StatusType
-}
-
-type RequestBody interface {
-	Set(string)
-	Get() string
-	Length() uint64
-	NextBuffer() BufferInstance
-}
-
-// filter manager
-func OnRequest(header RequestHeaderMap, body RequestBody) {
-	var filter HttpRequestFilter
-	// wrapper body
-	for i := 1; i < 10; i++ {
-		filter.OnRequest(header, body)
-	}
-}
