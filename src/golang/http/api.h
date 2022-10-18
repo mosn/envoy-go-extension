@@ -9,6 +9,9 @@ typedef struct {
     int phase;
 } httpRequest;
 
+// TODO: changed void* to uint when the pointer not from heap,
+// to avoid go object escape to heap, for better performance.
+
 void moeHttpContinue(void* r, int status);
 void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void *headers, long long int grpc_status, void* details);
 
