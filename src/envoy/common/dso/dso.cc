@@ -66,7 +66,9 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
 
   func = dlsym(handler_, "moeOnHttpHeader");
   if (func) {
-    moeOnHttpHeader_ = reinterpret_cast<GoUint64 (*)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3)>(func);
+    moeOnHttpHeader_ =
+        reinterpret_cast<GoUint64 (*)(httpRequest * p0, GoUint64 p1, GoUint64 p2, GoUint64 p3)>(
+            func);
   } else {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpHeader, err: {}", dsoName,
                    dlerror());
@@ -74,7 +76,9 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
 
   func = dlsym(handler_, "moeOnHttpData");
   if (func) {
-    moeOnHttpData_ = reinterpret_cast<GoUint64 (*)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3)>(func);
+    moeOnHttpData_ =
+        reinterpret_cast<GoUint64 (*)(httpRequest * p0, GoUint64 p1, GoUint64 p2, GoUint64 p3)>(
+            func);
   } else {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeData, err: {}", dsoName,
                    dlerror());
@@ -82,7 +86,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
 
   func = dlsym(handler_, "moeOnHttpDestroy");
   if (func) {
-    moeOnHttpDestroy_ = reinterpret_cast<void (*)(httpRequest* p0, GoUint64 p1)>(func);
+    moeOnHttpDestroy_ = reinterpret_cast<void (*)(httpRequest * p0, GoUint64 p1)>(func);
   } else {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeDestroy, err: {}", dsoName,
                    dlerror());

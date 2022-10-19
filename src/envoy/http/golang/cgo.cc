@@ -10,7 +10,7 @@ namespace Golang {
 // which means may introduce race between go thread and envoy thread.
 //
 
-extern "C" void moeHttpContinue(void *r, int status) {
+extern "C" void moeHttpContinue(void* r, int status) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
@@ -18,7 +18,7 @@ extern "C" void moeHttpContinue(void *r, int status) {
   }
 }
 
-absl::string_view copyGoString(void *str) {
+absl::string_view copyGoString(void* str) {
   if (str == nullptr) {
     return "";
   }
@@ -26,21 +26,20 @@ absl::string_view copyGoString(void *str) {
   return absl::string_view(goStr->p, goStr->n);
 }
 
-extern "C" void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void *headers, long long int grpc_status, void* details) {
+extern "C" void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
+                                      long long int grpc_status, void* details) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
     // TODO: headers
     auto grpcStatus = static_cast<Grpc::Status::GrpcStatus>(grpc_status);
-    filter->sendLocalReply(static_cast<Http::Code>(response_code), copyGoString(body_text),
-                           nullptr,
-                           grpcStatus,
-                           copyGoString(details));
+    filter->sendLocalReply(static_cast<Http::Code>(response_code), copyGoString(body_text), nullptr,
+                           grpcStatus, copyGoString(details));
   }
 }
 
 // unsafe API, without copy memory from c to go.
-extern "C" void moeHttpGetHeader(void *r, void *key, void *value) {
+extern "C" void moeHttpGetHeader(void* r, void* key, void* value) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
@@ -54,7 +53,7 @@ extern "C" void moeHttpGetHeader(void *r, void *key, void *value) {
   }
 }
 
-extern "C" void moeHttpCopyHeaders(void *r, void *strs, void *buf) {
+extern "C" void moeHttpCopyHeaders(void* r, void* strs, void* buf) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
@@ -64,7 +63,7 @@ extern "C" void moeHttpCopyHeaders(void *r, void *strs, void *buf) {
   }
 }
 
-extern "C" void moeHttpSetHeader(void *r, void *key, void *value) {
+extern "C" void moeHttpSetHeader(void* r, void* key, void* value) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
@@ -74,7 +73,7 @@ extern "C" void moeHttpSetHeader(void *r, void *key, void *value) {
   }
 }
 
-extern "C" void moeHttpRemoveHeader(void *r, void *key) {
+extern "C" void moeHttpRemoveHeader(void* r, void* key) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
@@ -84,7 +83,7 @@ extern "C" void moeHttpRemoveHeader(void *r, void *key) {
   }
 }
 
-extern "C" void moeHttpGetBuffer(void *r, unsigned long long int bufferPtr, void *data) {
+extern "C" void moeHttpGetBuffer(void* r, unsigned long long int bufferPtr, void* data) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
@@ -93,7 +92,8 @@ extern "C" void moeHttpGetBuffer(void *r, unsigned long long int bufferPtr, void
   }
 }
 
-extern "C" void moeHttpSetBuffer(void *r, unsigned long long int bufferPtr, void *data, int length) {
+extern "C" void moeHttpSetBuffer(void* r, unsigned long long int bufferPtr, void* data,
+                                 int length) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
@@ -103,7 +103,7 @@ extern "C" void moeHttpSetBuffer(void *r, unsigned long long int bufferPtr, void
   }
 }
 
-extern "C" void moeHttpCopyTrailers(void *r, void *strs, void *buf) {
+extern "C" void moeHttpCopyTrailers(void* r, void* strs, void* buf) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
@@ -113,7 +113,7 @@ extern "C" void moeHttpCopyTrailers(void *r, void *strs, void *buf) {
   }
 }
 
-extern "C" void moeHttpSetTrailer(void *r, void *key, void *value) {
+extern "C" void moeHttpSetTrailer(void* r, void* key, void* value) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
@@ -123,7 +123,7 @@ extern "C" void moeHttpSetTrailer(void *r, void *key, void *value) {
   }
 }
 
-extern "C" void moeHttpFinalize(void *r, int reason) {
+extern "C" void moeHttpFinalize(void* r, int reason) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   delete req;
 }

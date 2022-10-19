@@ -25,8 +25,7 @@ namespace Golang {
  */
 class FilterConfig : Logger::Loggable<Logger::Id::http> {
 public:
-  FilterConfig(
-      const envoy::extensions::filters::http::golang::v3::Config& proto_config);
+  FilterConfig(const envoy::extensions::filters::http::golang::v3::Config& proto_config);
 
   const std::string& filter_chain() const { return filter_chain_; }
   const std::string& so_id() const { return so_id_; }
@@ -38,7 +37,7 @@ private:
   const std::string plugin_name_;
   const std::string so_id_;
   const Protobuf::Any plugin_config_;
-  uint64_t config_id_ {0};
+  uint64_t config_id_{0};
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
@@ -54,7 +53,6 @@ public:
 
   ~FilterConfigPerRoute() override {}
 };
-
 
 /**
  * An enum specific for Golang status.
@@ -114,8 +112,7 @@ class Filter : public Http::StreamFilter,
 public:
   explicit Filter(Grpc::Context& context, FilterConfigSharedPtr config, uint64_t sid,
                   Dso::DsoInstance* dynamicLib)
-      : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
-  }
+      : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {}
 
   // Http::StreamFilterBase
   void onDestroy() override;
@@ -168,16 +165,15 @@ public:
 
   void sendLocalReply(Http::Code response_code, absl::string_view body_text,
                       std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
-                      Grpc::Status::GrpcStatus grpc_status,
-                      absl::string_view details);
+                      Grpc::Status::GrpcStatus grpc_status, absl::string_view details);
 
   absl::optional<absl::string_view> getHeader(absl::string_view key);
-  void copyHeaders(GoString *goStrs, char *goBuf);
+  void copyHeaders(GoString* goStrs, char* goBuf);
   void setHeader(absl::string_view key, absl::string_view value);
   void removeHeader(absl::string_view key);
-  void copyBuffer(Buffer::Instance* buffer, char *data);
-  void setBuffer(Buffer::Instance* buffer, absl::string_view &value);
-  void copyTrailers(GoString *goStrs, char *goBuf);
+  void copyBuffer(Buffer::Instance* buffer, char* data);
+  void setBuffer(Buffer::Instance* buffer, absl::string_view& value);
+  void copyTrailers(GoString* goStrs, char* goBuf);
   void setTrailer(absl::string_view key, absl::string_view value);
 
 private:
@@ -185,7 +181,7 @@ private:
   bool isHeaderPhase();
   bool isEmptyBuffer();
 
-  void phaseGrow(int n=1);
+  void phaseGrow(int n = 1);
   bool handleGolangStatusInHeader(GolangStatus status);
   bool handleGolangStatusInData(GolangStatus status);
   bool handleGolangStatusInTrailer(GolangStatus status);
@@ -216,13 +212,13 @@ private:
   Phase phase_{Phase::Init};
   FilterState state_{FilterState::WaitHeader};
 
-  Http::RequestOrResponseHeaderMap* headers_{nullptr}; 
-  Http::HeaderMap* trailers_{nullptr}; 
+  Http::RequestOrResponseHeaderMap* headers_{nullptr};
+  Http::HeaderMap* trailers_{nullptr};
 
   Buffer::InstancePtr data_buffer_;
   Buffer::OwnedImpl do_data_buffer_;
 
-  bool end_stream_; // end_stream flag that c has received.
+  bool end_stream_;    // end_stream flag that c has received.
   bool do_end_stream_; // end_stream flag that go is proccessing.
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
@@ -248,12 +244,8 @@ struct httpRequestInternal {
   uint64_t configId_;
   int phase_;
   std::weak_ptr<Filter> filter_;
-  httpRequestInternal(std::weak_ptr<Filter> f) {
-    filter_ = f;
-  }
-  std::weak_ptr<Filter> weakFilter() {
-    return filter_;
-  };
+  httpRequestInternal(std::weak_ptr<Filter> f) { filter_ = f; }
+  std::weak_ptr<Filter> weakFilter() { return filter_; };
 };
 
 // used to count function execution time
