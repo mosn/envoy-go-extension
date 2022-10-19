@@ -13,8 +13,7 @@ Http::FilterFactoryCb GolangFilterConfig::createFilterFactoryFromProtoTyped(
     const envoy::extensions::filters::http::golang::v3::Config& proto_config, const std::string&,
     Server::Configuration::FactoryContext& factory_context) {
 
-  FilterConfigSharedPtr config =
-      std::make_shared<FilterConfig>(proto_config);
+  FilterConfigSharedPtr config = std::make_shared<FilterConfig>(proto_config);
 
   return [&factory_context, config](Http::FilterChainFactoryCallbacks& callbacks) {
     auto filter =

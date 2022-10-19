@@ -24,7 +24,7 @@ TEST(GolangFilterConfigTest, InvalidateEmptyConfig) {
   NiceMock<Server::Configuration::MockFactoryContext> context;
   EXPECT_THROW_WITH_REGEX(
       GolangFilterConfig().createFilterFactoryFromProto(
-        envoy::extensions::filters::http::golang::v3::Config(), "stats", context),
+          envoy::extensions::filters::http::golang::v3::Config(), "stats", context),
       Envoy::ProtoValidationException,
       "ConfigValidationError.SoId: value length must be at least 1 bytes");
 }
