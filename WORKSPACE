@@ -105,6 +105,35 @@ load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_depe
 
 go_rules_dependencies()
 
+# Gazelle.
+
+http_archive(
+    name = "bazel_gazelle",
+    sha256 = "501deb3d5695ab658e82f6f6f549ba681ea3ca2a5fb7911154b5aa45596183fa",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.26.0/bazel-gazelle-v0.26.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.26.0/bazel-gazelle-v0.26.0.tar.gz",
+    ],
+)
+
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+# TODO: use local_repository instead of remote ?
+go_repository(
+    name = "io_mosn_envoy_go_extension",
+    importpath = "mosn.io/envoy-go-extension",
+    remote = "https://github.com/mosn/envoy-go-extension",
+    commit = "b4ca575458ef67935c9e7dfac68036e340533234",
+    build_file_generation = "on",
+    vcs = "git",
+)
+
+go_repository(
+    name = "com_github_gorilla_mux",
+    importpath = "github.com/gorilla/mux",
+    tag = "v1.8.0",
+)
+
 # Docker dependencies
 
 docker_dependencies()

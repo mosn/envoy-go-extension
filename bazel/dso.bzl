@@ -16,3 +16,18 @@ def go_shared_so(name, **kwargs):
         visibility = ["//visibility:public"],
         **kwargs
     )
+
+def go_filter_so(**kwargs):
+    go_shared_so(
+        name = "filter.so",
+        srcs = [
+            "filter.go",
+        ],
+        deps = [
+          "@io_mosn_envoy_go_extension//pkg/http:http",
+          "@io_mosn_envoy_go_extension//pkg/http/api:api",
+          "@io_mosn_envoy_go_extension//pkg/http/buffered:buffered",
+          "@io_mosn_envoy_go_extension//pkg/utils:utils",
+        ],
+        **kwargs
+    )
