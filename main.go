@@ -6,6 +6,7 @@ import (
 	"mosn.io/envoy-go-extension/samples/async"
 	asyncSleep "mosn.io/envoy-go-extension/samples/async-sleep"
 	bufferedSample "mosn.io/envoy-go-extension/samples/buffered"
+	"mosn.io/envoy-go-extension/samples/sofafun"
 )
 
 func init() {
@@ -17,6 +18,7 @@ func init() {
 
 	// default filter
 	http.RegisterHttpFilterConfigFactory(http.PassThroughFactory)
+	buffered.RegisterHttpFilterConfigFactory(sofafun.ConfigFactory)
 }
 
 func main() {
