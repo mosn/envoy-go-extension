@@ -1,6 +1,6 @@
 package buffered
 
-import "mosn.io/envoy-go-extension/http/api"
+import "mosn.io/envoy-go-extension/pkg/http/api"
 
 // request
 type HttpDecoderFilter interface {

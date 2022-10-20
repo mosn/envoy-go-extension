@@ -1,8 +1,8 @@
 package buffered
 
 import (
-	"mosn.io/envoy-go-extension/http/api"
-	"mosn.io/envoy-go-extension/http/buffered"
+	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/http/buffered"
 )
 
 type filter struct {

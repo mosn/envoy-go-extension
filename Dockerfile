@@ -1,7 +1,7 @@
 FROM envoyproxy/envoy:v1.23-latest
 
 RUN mkdir /usr/local/envoy-go-extension
-COPY src/golang/libgolang.so /usr/local/envoy-go-extension/
+COPY libgolang.so /usr/local/envoy-go-extension/
 COPY envoy /usr/local/bin/
 COPY envoy-golang.yaml /etc/envoy/
 

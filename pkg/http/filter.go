@@ -31,7 +31,7 @@ package http
 */
 import "C"
 import (
-	"mosn.io/envoy-go-extension/http/api"
+	"mosn.io/envoy-go-extension/pkg/http/api"
 	"unsafe"
 )
 

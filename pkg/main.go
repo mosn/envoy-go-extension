@@ -1,11 +1,11 @@
 package main
 
 import (
-	"mosn.io/envoy-go-extension/http"
-	"mosn.io/envoy-go-extension/http/buffered"
-	"mosn.io/envoy-go-extension/samples/async"
-	asyncSleep "mosn.io/envoy-go-extension/samples/async-sleep"
-	bufferedSample "mosn.io/envoy-go-extension/samples/buffered"
+	"mosn.io/envoy-go-extension/pkg/http"
+	"mosn.io/envoy-go-extension/pkg/http/buffered"
+	"mosn.io/envoy-go-extension/pkg/samples/async"
+	asyncSleep "mosn.io/envoy-go-extension/pkg/samples/async-sleep"
+	bufferedSample "mosn.io/envoy-go-extension/pkg/samples/buffered"
 )
 
 func init() {
