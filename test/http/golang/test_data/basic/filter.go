@@ -3,6 +3,7 @@ package main
 import (
 	"mosn.io/envoy-go-extension/pkg/http"
 	"mosn.io/envoy-go-extension/pkg/http/api"
+	"strconv"
 )
 
 func init() {
@@ -10,7 +11,8 @@ func init() {
 }
 
 type filter struct {
-	callbacks api.FilterCallbackHandler
+	callbacks       api.FilterCallbackHandler
+	req_body_length uint64
 }
 
 func (f *filter) DecodeHeaders(header api.RequestHeaderMap, endStream bool) api.StatusType {
@@ -19,6 +21,8 @@ func (f *filter) DecodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 }
 
 func (f *filter) DecodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
+	f.req_body_length += buffer.Length()
+	buffer.Set(buffer.GetString())
 	return api.Continue
 }
 
@@ -28,10 +32,12 @@ func (f *filter) DecodeTrailers(trailers api.RequestTrailerMap) api.StatusType {
 
 func (f *filter) EncodeHeaders(header api.ResponseHeaderMap, endStream bool) api.StatusType {
 	header.Set("test_set_header_0", header.Get("foo"))
+	header.Set("test-req-body-length", strconv.Itoa(int(f.req_body_length)))
 	return api.Continue
 }
 
 func (f *filter) EncodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
+	buffer.Set(buffer.GetString())
 	return api.Continue
 }
 

@@ -1,4 +1,4 @@
-module example.com/basic_set_header
+module example.com/basic
 
 go 1.19
 
