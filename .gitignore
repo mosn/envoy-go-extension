@@ -9,3 +9,5 @@ user.bazelrc
 *.sh
 libgolang.so
 vendor
+pkg/http/libgolang.h
+pkg/http/_obj/

@@ -15,8 +15,12 @@ build-so:
 	docker run --rm -v $(shell pwd):/go/src/${PROJECT_NAME} -w /go/src/${PROJECT_NAME} ${BUILD_IMAGE} make build-so-local
 
 sync-headers:
-	cp libgolang.h ../envoy/common/dso/
-	cp http/api.h ../envoy/common/dso/
+	# export header by cgo tool
+	cd pkg/http \
+		&& go tool cgo --exportheader libgolang.h moe.go \
+		&& cd ../../
+	cp pkg/http/libgolang.h src/envoy/common/dso/
+	cp pkg/http/api.h src/envoy/common/dso/
 
 .PHONY: build-so-local, build-so, sync-headers
 
