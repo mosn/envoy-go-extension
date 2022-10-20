@@ -14,6 +14,9 @@ build-so-local:
 build-so:
 	docker run --rm -v $(shell pwd):/go/src/${PROJECT_NAME} -w /go/src/${PROJECT_NAME} ${BUILD_IMAGE} make build-so-local
 
+check-test-data-compile:
+	./scripts/check-test-data-compile.sh
+
 sync-headers:
 	# export header by cgo tool
 	cd pkg/http \
