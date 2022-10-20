@@ -7,3 +7,5 @@ bazel-*
 user.bazelrc
 *.yaml
 *.sh
+libgolang.so
+vendor

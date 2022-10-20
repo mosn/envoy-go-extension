@@ -17,8 +17,8 @@ import "C"
 import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	"mosn.io/envoy-go-extension/sdk/http/api"
-	"mosn.io/envoy-go-extension/sdk/utils"
+	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/utils"
 	"runtime"
 )
 

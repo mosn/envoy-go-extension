@@ -5,7 +5,7 @@ import (
 	udpa "github.com/cncf/xds/go/udpa/type/v1"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
-	"mosn.io/envoy-go-extension/sdk/http/api"
+	"mosn.io/envoy-go-extension/pkg/http/api"
 	"time"
 )
 

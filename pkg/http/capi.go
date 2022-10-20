@@ -14,7 +14,7 @@ package http
 */
 import "C"
 import (
-	"mosn.io/envoy-go-extension/sdk/http/api"
+	"mosn.io/envoy-go-extension/pkg/http/api"
 	"reflect"
 	"runtime"
 	"unsafe"

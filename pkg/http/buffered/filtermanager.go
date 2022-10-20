@@ -1,8 +1,8 @@
 package buffered
 
 import (
-	"mosn.io/envoy-go-extension/sdk/http"
-	"mosn.io/envoy-go-extension/sdk/http/api"
+	"mosn.io/envoy-go-extension/pkg/http"
+	"mosn.io/envoy-go-extension/pkg/http/api"
 )
 
 // TODO: support filter chain, we only register one now
