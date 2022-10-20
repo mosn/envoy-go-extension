@@ -109,8 +109,8 @@ public:
 
   std::string genSoPath(std::string name) {
     // TODO: should work without the "_go_extension" suffix
-    return TestEnvironment::substitute("{{ test_rundir }}_go_extension/test/http/golang/test_data/" +
-                                       name + "/filter.so");
+    return TestEnvironment::substitute(
+        "{{ test_rundir }}_go_extension/test/http/golang/test_data/" + name + "/filter.so");
   }
 
   void setupDso() { Dso::DsoInstanceManager::pub(PASSTHROUGH, genSoPath(PASSTHROUGH)); }

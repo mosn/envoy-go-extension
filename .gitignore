@@ -11,3 +11,4 @@ libgolang.so
 vendor
 pkg/http/libgolang.h
 pkg/http/_obj/
+go.sum

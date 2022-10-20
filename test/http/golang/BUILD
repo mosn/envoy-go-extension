@@ -44,3 +44,21 @@ envoy_cc_test(
         "//api/http/golang/v3:pkg_cc_proto",
     ],
 )
+
+envoy_cc_test(
+    name = "golang_integration_test",
+    srcs = ["golang_integration_test.cc"],
+    repository = "@envoy",
+    data = envoy_select_golang_tests([
+        "//test/http/golang/test_data/basic_set_header:filter.so",
+    ]),
+    deps = [
+        "@envoy//test/config:v2_link_hacks",
+        "@envoy//test/integration:http_integration_lib",
+        "@envoy//test/test_common:utility_lib",
+        "@envoy_api//envoy/config/bootstrap/v3:pkg_cc_proto",
+        "@envoy_api//envoy/extensions/filters/network/http_connection_manager/v3:pkg_cc_proto",
+        "//src/envoy/http/golang:config",
+        "//src/envoy/bootstrap/dso:config",
+    ],
+)
