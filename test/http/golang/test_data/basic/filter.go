@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -21,9 +22,10 @@ type filter struct {
 	path            string
 
 	// test mode, from query parameters
-	async      bool
-	sleep      bool // all sleep
-	data_sleep bool // only sleep in data phase
+	async       bool
+	sleep       bool   // all sleep
+	data_sleep  bool   // only sleep in data phase
+	localreplay string // send local reply
 }
 
 func parseQuery(path string) url.Values {
@@ -47,12 +49,26 @@ func (f *filter) initRequest(header api.HeaderMap) {
 	if f.query_params.Get("data_sleep") != "" {
 		f.data_sleep = true
 	}
+	if f.query_params.Get("decode_localrepaly") != "" {
+		f.data_sleep = true
+	}
+	f.localreplay = f.query_params.Get("localreply")
+}
+
+func (f *filter) sendLocalReply(phase string) api.StatusType {
+	headers := make(map[string]string)
+	body := fmt.Sprintf("forbidden from go in %s\r\n", phase)
+	f.callbacks.SendLocalReply(403, body, headers, -1, "test-from-go")
+	return api.StopNoBuffer
 }
 
 // test: get, set, remove
 func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.StatusType {
 	if f.sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
+	}
+	if strings.Contains(f.localreplay, "decode-header") {
+		return f.sendLocalReply("decode-header")
 	}
 	header.Set("test-x-set-header-0", header.Get("x-test-header-0"))
 	header.Remove("x-test-header-1")
@@ -64,6 +80,9 @@ func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	if f.sleep || f.data_sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
 	}
+	if strings.Contains(f.localreplay, "decode-data") {
+		return f.sendLocalReply("decode-data")
+	}
 	f.req_body_length += buffer.Length()
 	data := buffer.GetString()
 	buffer.Set(strings.ToUpper(data))
@@ -74,12 +93,18 @@ func (f *filter) decodeTrailers(trailers api.RequestTrailerMap) api.StatusType {
 	if f.sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
 	}
+	if strings.Contains(f.localreplay, "decode-trailer") {
+		return f.sendLocalReply("decode-trailer")
+	}
 	return api.Continue
 }
 
 func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api.StatusType {
 	if f.sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
+	}
+	if strings.Contains(f.localreplay, "encode-header") {
+		return f.sendLocalReply("encode-header")
 	}
 	header.Set("test-x-set-header-0", header.Get("x-test-header-0"))
 	header.Remove("x-test-header-1")
@@ -93,6 +118,9 @@ func (f *filter) encodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	if f.sleep || f.data_sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
 	}
+	if strings.Contains(f.localreplay, "encode-data") {
+		return f.sendLocalReply("encode-data")
+	}
 	data := buffer.GetString()
 	buffer.Set(strings.ToUpper(data))
 	return api.Continue
@@ -101,6 +129,9 @@ func (f *filter) encodeData(buffer api.BufferInstance, endStream bool) api.Statu
 func (f *filter) encodeTrailers(trailers api.ResponseTrailerMap) api.StatusType {
 	if f.sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
+	}
+	if strings.Contains(f.localreplay, "encode-trailer") {
+		return f.sendLocalReply("encode-trailer")
 	}
 	return api.Continue
 }
