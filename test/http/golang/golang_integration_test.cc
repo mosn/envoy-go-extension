@@ -362,7 +362,11 @@ TEST_P(GolangIntegrationTest, ASYNC) { testBasic("/test?async=1"); }
 
 TEST_P(GolangIntegrationTest, SLEEP) { testBasic("/test?sleep=1"); }
 
-TEST_P(GolangIntegrationTest, ASYNCANDSLEEP) { testBasic("/test?async=1&sleep=1"); }
+TEST_P(GolangIntegrationTest, ASYNC_SLEEP) { testBasic("/test?async=1&sleep=1"); }
+
+TEST_P(GolangIntegrationTest, DATASLEEP) { testBasic("/test?data_sleep=1"); }
+
+TEST_P(GolangIntegrationTest, ASYNC_DATASLEEP) { testBasic("/test?async=1&data_sleep=1"); }
 
 } // namespace
 } // namespace Envoy

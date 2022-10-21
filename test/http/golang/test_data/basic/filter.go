@@ -20,8 +20,9 @@ type filter struct {
 	path            string
 
 	// test mode, from query parameters
-	async bool
-	sleep bool
+	async      bool
+	sleep      bool // all sleep
+	data_sleep bool // only sleep in data phase
 }
 
 func parseQuery(path string) url.Values {
@@ -42,6 +43,9 @@ func (f *filter) initRequest(header api.HeaderMap) {
 	if f.query_params.Get("sleep") != "" {
 		f.sleep = true
 	}
+	if f.query_params.Get("data_sleep") != "" {
+		f.data_sleep = true
+	}
 }
 
 // test: get, set, remove
@@ -56,7 +60,7 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 
 // test: get, set
 func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
-	if f.sleep {
+	if f.sleep || f.data_sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
 	}
 	f.req_body_length += buffer.Length()
@@ -85,7 +89,7 @@ func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 }
 
 func (f *filter) encodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
-	if f.sleep {
+	if f.sleep || f.data_sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
 	}
 	data := buffer.GetString()
