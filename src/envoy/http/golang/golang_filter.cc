@@ -656,8 +656,7 @@ void Filter::commonContinue(bool is_decode) {
 }
 
 void Filter::continueData(bool is_decode) {
-  // end_stream should be false, even trailers_ is not nullptr.
-  auto end_stream = end_stream_ && isEmptyBuffer();
+  // end_stream_ should be false, when trailers_ is not nullptr.
   if (!end_stream_ && do_data_buffer_.length() == 0) {
     return;
   }
@@ -665,10 +664,10 @@ void Filter::continueData(bool is_decode) {
   data_to_write.move(do_data_buffer_);
   if (is_decode) {
     ENVOY_LOG(debug, "golang filter callback continue, injectDecodedDataToFilterChain");
-    decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, end_stream);
+    decoder_callbacks_->injectDecodedDataToFilterChain(data_to_write, do_end_stream_);
   } else {
     ENVOY_LOG(debug, "golang filter callback continue, injectEncodedDataToFilterChain");
-    encoder_callbacks_->injectEncodedDataToFilterChain(data_to_write, end_stream);
+    encoder_callbacks_->injectEncodedDataToFilterChain(data_to_write, do_end_stream_);
   }
 }
 
