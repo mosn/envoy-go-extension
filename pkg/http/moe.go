@@ -82,6 +82,10 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 		req = createRequest(r)
 	} else {
 		req = getRequest(r)
+		// early sendLocalReply may skip the whole decode phase
+		if req == nil {
+			req = createRequest(r)
+		}
 	}
 	f := req.httpFilter
 

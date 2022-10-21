@@ -116,6 +116,7 @@ public:
 
   // Http::StreamFilterBase
   void onDestroy() override;
+  Http::LocalErrorStatus onLocalReply(const LocalReplyData&) override;
 
   // Http::StreamDecoderFilter
   Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap& headers,
@@ -153,11 +154,8 @@ public:
   // create metadata for golang.extension namespace
   void addGolangMetadata(const std::string& k, const uint64_t v);
 
-  void directResponse(Http::ResponseHeaderMapPtr&& headers, Buffer::Instance* body,
-                      Http::ResponseTrailerMapPtr&& trailers);
-
-  Event::Dispatcher& getDispatcher();
-  bool hasDestroyed();
+  // TODO: maybe encode_callbacks_ sometime?
+  Event::Dispatcher& getDispatcher() { return decoder_callbacks_->dispatcher(); };
 
   static std::atomic<uint64_t> global_stream_id_;
 
@@ -177,16 +175,23 @@ public:
   void setTrailer(absl::string_view key, absl::string_view value);
 
 private:
-  bool isDecodePhase();
-  bool isHeaderPhase();
-  bool isEmptyBuffer();
+  bool isDecodePhase() {
+    return phase_ == Phase::DecodeHeader || phase_ == Phase::DecodeData ||
+           phase_ == Phase::DecodeTrailer;
+  };
+  bool isDoInGo() {
+    return state_ == FilterState::DoHeader || state_ == FilterState::DoData ||
+           state_ == FilterState::DoTrailer;
+  }
+  bool isHeaderPhase() { return phase_ == Phase::DecodeHeader || phase_ == Phase::EncodeHeader; };
+  bool isEmptyBuffer() { return data_buffer_ == nullptr || data_buffer_->length() == 0; };
 
   void phaseGrow(int n = 1);
   bool handleGolangStatusInHeader(GolangStatus status);
   bool handleGolangStatusInData(GolangStatus status);
   bool handleGolangStatusInTrailer(GolangStatus status);
 
-  bool isThreadSafe();
+  bool isThreadSafe() { return decoder_callbacks_->dispatcher().isThreadSafe(); };
 
   bool doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
   bool doData(Buffer::Instance&, bool);
@@ -205,6 +210,10 @@ private:
   void continueData(bool is_decode);
 
   void onHeadersModified();
+
+  void sendLocalReplyInternal(Http::Code response_code, absl::string_view body_text,
+                              std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
+                              Grpc::Status::GrpcStatus grpc_status, absl::string_view details);
 
   const FilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;
@@ -238,6 +247,10 @@ private:
   // it should also be okay without this lock in most cases, just for extreme case.
   std::mutex mutex_{};
   bool has_destroyed_{false};
+
+  // other filter trigger sendLocalReply during go processing in async.
+  // will wait go return before continue.
+  bool local_reply_waiting_go_{false};
 };
 
 struct httpRequestInternal {

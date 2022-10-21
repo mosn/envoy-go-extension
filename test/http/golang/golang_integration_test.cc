@@ -322,6 +322,44 @@ typed_config:
     cleanup();
   }
 
+  void testSendLocalReply(std::string path, std::string phase) {
+    initializeSimpleFilter(BASIC);
+
+    codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+    Http::TestRequestHeaderMapImpl request_headers{
+        {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "host"}};
+
+    auto encoder_decoder = codec_client_->startRequest(request_headers);
+    Http::StreamEncoder& encoder = encoder_decoder.first;
+    auto response = std::move(encoder_decoder.second);
+    Buffer::OwnedImpl request_data1("hello");
+    encoder.encodeData(request_data1, false);
+    Buffer::OwnedImpl request_data2("world");
+    encoder.encodeData(request_data2, true);
+
+    // need upstream request then when not seen decode-
+    if (path.find("decode-") == std::string::npos) {
+      waitForNextUpstreamRequest();
+      Http::TestResponseHeaderMapImpl response_headers{{":status", "200"}};
+      upstream_request_->encodeHeaders(response_headers, false);
+      Buffer::OwnedImpl response_data1("good");
+      upstream_request_->encodeData(response_data1, false);
+      Buffer::OwnedImpl response_data2("bye");
+      upstream_request_->encodeData(response_data2, true);
+    }
+
+    ASSERT_TRUE(response->waitForEndStream());
+
+    // check resp status
+    EXPECT_EQ("403", response->headers().getStatusValue());
+
+    // forbidden from go in %s\r\n
+    auto body = StringUtil::toUpper(absl::StrFormat("forbidden from go in %s\r\n", phase));
+    EXPECT_EQ(body, StringUtil::toUpper(response->body()));
+
+    cleanup();
+  }
+
   void cleanup() {
     codec_client_->close();
     if (fake_golang_connection_ != nullptr) {
@@ -356,17 +394,50 @@ INSTANTIATE_TEST_SUITE_P(IpVersions, GolangIntegrationTest,
                          testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
                          TestUtility::ipTestParamsToString);
 
-TEST_P(GolangIntegrationTest, BASIC) { testBasic("/test"); }
+TEST_P(GolangIntegrationTest, Basic) { testBasic("/test"); }
 
-TEST_P(GolangIntegrationTest, ASYNC) { testBasic("/test?async=1"); }
+TEST_P(GolangIntegrationTest, Async) { testBasic("/test?async=1"); }
 
-TEST_P(GolangIntegrationTest, SLEEP) { testBasic("/test?sleep=1"); }
+TEST_P(GolangIntegrationTest, Sleep) { testBasic("/test?sleep=1"); }
 
-TEST_P(GolangIntegrationTest, ASYNC_SLEEP) { testBasic("/test?async=1&sleep=1"); }
+TEST_P(GolangIntegrationTest, Async_Sleep) { testBasic("/test?async=1&sleep=1"); }
 
-TEST_P(GolangIntegrationTest, DATASLEEP) { testBasic("/test?data_sleep=1"); }
+TEST_P(GolangIntegrationTest, DataSleep) { testBasic("/test?data_sleep=1"); }
 
-TEST_P(GolangIntegrationTest, ASYNC_DATASLEEP) { testBasic("/test?async=1&data_sleep=1"); }
+TEST_P(GolangIntegrationTest, Async_DataSleep) { testBasic("/test?async=1&data_sleep=1"); }
+
+TEST_P(GolangIntegrationTest, LocalReply_DecodeHeader) {
+  testSendLocalReply("/test?localreply=decode-header", "decode-header");
+}
+
+TEST_P(GolangIntegrationTest, LocalReply_DecodeHeader_Async) {
+  testSendLocalReply("/test?async=1&localreply=decode-header", "decode-header");
+}
+
+TEST_P(GolangIntegrationTest, LocalReply_DecodeData) {
+  testSendLocalReply("/test?localreply=decode-data", "decode-data");
+}
+
+TEST_P(GolangIntegrationTest, LocalReply_DecodeData_Async) {
+  testSendLocalReply("/test?async=1&sleep=1&localreply=decode-data", "decode-data");
+}
+
+TEST_P(GolangIntegrationTest, LocalReply_EncodeHeader_Async) {
+  testSendLocalReply("/test?async=1&sleep=1&localreply=encode-header", "encode-header");
+}
+
+TEST_P(GolangIntegrationTest, LocalReply_EncodeData_Async) {
+  testSendLocalReply("/test?async=1&sleep=1&localreply=encode-data", "encode-data");
+}
+
+// dual sendLocalReply
+TEST_P(GolangIntegrationTest, LocalReply_DecodeData_EncodeHeader_Async) {
+  testSendLocalReply("/test?async=1&sleep=1&localreply=decode-data,encode-header", "encode-header");
+}
+
+TEST_P(GolangIntegrationTest, LocalReply_DecodeData_EncodeData_Async) {
+  testSendLocalReply("/test?async=1&sleep=1&localreply=decode-data,encode-data", "encode-data");
+}
 
 } // namespace
 } // namespace Envoy
