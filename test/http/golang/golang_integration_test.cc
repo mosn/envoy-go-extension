@@ -39,7 +39,7 @@ public:
               ->mutable_virtual_hosts(0)
               ->mutable_routes(0)
               ->mutable_match()
-              ->set_prefix("/test/long/url");
+              ->set_prefix("/test");
 
           hcm.mutable_route_config()->mutable_virtual_hosts(0)->set_domains(0, domain);
           auto* new_route = hcm.mutable_route_config()->mutable_virtual_hosts(0)->add_routes();
@@ -193,7 +193,7 @@ typed_config:
     initializeFilter(code);
     codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
     Http::TestRequestHeaderMapImpl request_headers{{":method", "POST"},
-                                                   {":path", "/test/long/url"},
+                                                   {":path", "/test"},
                                                    {":scheme", "http"},
                                                    {":authority", "host"},
                                                    {"x-forwarded-for", "10.0.0.1"}};
@@ -241,6 +241,87 @@ typed_config:
     expectResponseBodyRewrite(code, true, enable_wrap_body);
   }
 
+  void testBasic(std::string path) {
+    initializeSimpleFilter(BASIC);
+
+    codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+    Http::TestRequestHeaderMapImpl request_headers{
+        {":method", "POST"},        {":path", path},
+        {":scheme", "http"},        {":authority", "host"},
+        {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
+
+    auto encoder_decoder = codec_client_->startRequest(request_headers);
+    Http::StreamEncoder& encoder = encoder_decoder.first;
+    auto response = std::move(encoder_decoder.second);
+    Buffer::OwnedImpl request_data1("hello");
+    encoder.encodeData(request_data1, false);
+    Buffer::OwnedImpl request_data2("world");
+    encoder.encodeData(request_data2, false);
+    Buffer::OwnedImpl request_data3("");
+    encoder.encodeData(request_data3, true);
+
+    waitForNextUpstreamRequest();
+    // original header: x-test-header-0
+    EXPECT_EQ("foo", upstream_request_->headers()
+                         .get(Http::LowerCaseString("x-test-header-0"))[0]
+                         ->value()
+                         .getStringView());
+
+    // check header value which set in golang: test-x-set-header-0
+    EXPECT_EQ("foo", upstream_request_->headers()
+                         .get(Http::LowerCaseString("test-x-set-header-0"))[0]
+                         ->value()
+                         .getStringView());
+
+    // check header exists which removed in golang side: x-test-header-1
+    EXPECT_EQ(true,
+              upstream_request_->headers().get(Http::LowerCaseString("x-test-header-1")).empty());
+
+    // upper("helloworld")
+    EXPECT_EQ("HELLOWORLD", upstream_request_->body().toString());
+
+    Http::TestResponseHeaderMapImpl response_headers{
+        {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
+    upstream_request_->encodeHeaders(response_headers, false);
+    Buffer::OwnedImpl response_data1("good");
+    upstream_request_->encodeData(response_data1, false);
+    Buffer::OwnedImpl response_data2("bye");
+    upstream_request_->encodeData(response_data2, true);
+
+    ASSERT_TRUE(response->waitForEndStream());
+
+    // original resp header: x-test-header-0
+    EXPECT_EQ("foo", response->headers()
+                         .get(Http::LowerCaseString("x-test-header-0"))[0]
+                         ->value()
+                         .getStringView());
+
+    // check resp header value which set in golang: test-x-set-header-0
+    EXPECT_EQ("foo", response->headers()
+                         .get(Http::LowerCaseString("test-x-set-header-0"))[0]
+                         ->value()
+                         .getStringView());
+
+    // check resp header exists which removed in golang side: x-test-header-1
+    EXPECT_EQ(true, response->headers().get(Http::LowerCaseString("x-test-header-1")).empty());
+
+    // length("helloworld") = 10
+    EXPECT_EQ("10", response->headers()
+                        .get(Http::LowerCaseString("test-req-body-length"))[0]
+                        ->value()
+                        .getStringView());
+
+    // verify path
+    EXPECT_EQ(
+        path,
+        response->headers().get(Http::LowerCaseString("test-path"))[0]->value().getStringView());
+
+    // upper("goodbye")
+    EXPECT_EQ("GOODBYE", response->body());
+
+    cleanup();
+  }
+
   void cleanup() {
     codec_client_->close();
     if (fake_golang_connection_ != nullptr) {
@@ -275,124 +356,13 @@ INSTANTIATE_TEST_SUITE_P(IpVersions, GolangIntegrationTest,
                          testing::ValuesIn(TestEnvironment::getIpVersionsForTest()),
                          TestUtility::ipTestParamsToString);
 
-// Basic
-TEST_P(GolangIntegrationTest, Basic) {
-  initializeSimpleFilter(BASIC);
+TEST_P(GolangIntegrationTest, BASIC) { testBasic("/test"); }
 
-  codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
-  Http::TestRequestHeaderMapImpl request_headers{{":method", "POST"},
-                                                 {":path", "/test/long/url"},
-                                                 {":scheme", "http"},
-                                                 {":authority", "host"},
-                                                 {"x-test-header", "foo"}};
+TEST_P(GolangIntegrationTest, ASYNC) { testBasic("/test?async=1"); }
 
-  auto encoder_decoder = codec_client_->startRequest(request_headers);
-  Http::StreamEncoder& encoder = encoder_decoder.first;
-  auto response = std::move(encoder_decoder.second);
-  Buffer::OwnedImpl request_data1("hello");
-  encoder.encodeData(request_data1, false);
-  Buffer::OwnedImpl request_data2("world");
-  encoder.encodeData(request_data2, true);
+TEST_P(GolangIntegrationTest, SLEEP) { testBasic("/test?sleep=1"); }
 
-  waitForNextUpstreamRequest();
-  EXPECT_EQ("foo", upstream_request_->headers()
-                       .get(Http::LowerCaseString("x-test-header"))[0]
-                       ->value()
-                       .getStringView());
-
-  // check the value which set in golang side
-  EXPECT_EQ("foo", upstream_request_->headers()
-                       .get(Http::LowerCaseString("test_set_header_0"))[0]
-                       ->value()
-                       .getStringView());
-
-  Http::TestResponseHeaderMapImpl response_headers{{":status", "200"}, {"foo", "bar"}};
-  upstream_request_->encodeHeaders(response_headers, false);
-  Buffer::OwnedImpl response_data1("good");
-  upstream_request_->encodeData(response_data1, false);
-  Buffer::OwnedImpl response_data2("bye");
-  upstream_request_->encodeData(response_data2, true);
-
-  ASSERT_TRUE(response->waitForEndStream());
-
-  EXPECT_EQ("bar",
-            response->headers().get(Http::LowerCaseString("foo"))[0]->value().getStringView());
-
-  // check the value which set in golang side
-  EXPECT_EQ("bar", response->headers()
-                       .get(Http::LowerCaseString("test_set_header_0"))[0]
-                       ->value()
-                       .getStringView());
-
-  // length("helloworld") = 10
-  EXPECT_EQ("10", response->headers()
-                      .get(Http::LowerCaseString("test-req-body-length"))[0]
-                      ->value()
-                      .getStringView());
-
-  cleanup();
-}
-
-// Async
-TEST_P(GolangIntegrationTest, Async) {
-  initializeSimpleFilter(ASYNC);
-
-  codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
-  Http::TestRequestHeaderMapImpl request_headers{{":method", "POST"},
-                                                 {":path", "/test/long/url"},
-                                                 {":scheme", "http"},
-                                                 {":authority", "host"},
-                                                 {"x-test-header", "foo"}};
-
-  auto encoder_decoder = codec_client_->startRequest(request_headers);
-  Http::StreamEncoder& encoder = encoder_decoder.first;
-  auto response = std::move(encoder_decoder.second);
-  Buffer::OwnedImpl request_data1("hello");
-  encoder.encodeData(request_data1, false);
-  Buffer::OwnedImpl request_data2("world");
-  encoder.encodeData(request_data2, true);
-
-  waitForNextUpstreamRequest();
-  EXPECT_EQ("foo", upstream_request_->headers()
-                       .get(Http::LowerCaseString("x-test-header"))[0]
-                       ->value()
-                       .getStringView());
-
-  // check the value which set in golang side
-  EXPECT_EQ("foo", upstream_request_->headers()
-                       .get(Http::LowerCaseString("test_set_header_0"))[0]
-                       ->value()
-                       .getStringView());
-
-  Http::TestResponseHeaderMapImpl response_headers{{":status", "200"}, {"foo", "bar"}};
-  upstream_request_->encodeHeaders(response_headers, false);
-  Buffer::OwnedImpl response_data1("good");
-  upstream_request_->encodeData(response_data1, false);
-  Buffer::OwnedImpl response_data2("bye");
-  upstream_request_->encodeData(response_data2, true);
-
-  ASSERT_TRUE(response->waitForEndStream());
-
-  EXPECT_EQ("bar",
-            response->headers().get(Http::LowerCaseString("foo"))[0]->value().getStringView());
-
-  // check the value which set in golang side
-  EXPECT_EQ("bar", response->headers()
-                       .get(Http::LowerCaseString("test_set_header_0"))[0]
-                       ->value()
-                       .getStringView());
-
-  // length("helloworld") = 10
-  EXPECT_EQ("10", response->headers()
-                      .get(Http::LowerCaseString("test-req-body-length"))[0]
-                      ->value()
-                      .getStringView());
-
-  // length("goodbye") = 7
-  EXPECT_EQ("origin-body-len: 7", response->body());
-
-  cleanup();
-}
+TEST_P(GolangIntegrationTest, ASYNCANDSLEEP) { testBasic("/test?async=1&sleep=1"); }
 
 } // namespace
 } // namespace Envoy

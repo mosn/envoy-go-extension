@@ -51,7 +51,6 @@ envoy_cc_test(
     repository = "@envoy",
     data = envoy_select_golang_tests([
         "//test/http/golang/test_data/basic:filter.so",
-        "//test/http/golang/test_data/async:filter.so",
     ]),
     deps = [
         "@envoy//test/config:v2_link_hacks",
