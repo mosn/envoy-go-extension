@@ -31,8 +31,9 @@ package http
 */
 import "C"
 import (
-	"mosn.io/envoy-go-extension/pkg/http/api"
 	"unsafe"
+
+	"mosn.io/envoy-go-extension/pkg/http/api"
 )
 
 type httpRequest struct {
