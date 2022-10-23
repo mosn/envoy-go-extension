@@ -14,9 +14,26 @@ coming soon.
 2. Concurrency Safety
 3. Sandbox Safety
 
-## TODO
+## Build
 
-1. handle onLocalReply
-2. new method Append to BufferInstance interface
-3. split the do_data_buffer_ to a buffer list
-4. more in the TODO comments.
+### Enovy
+
+1. Install Bazel
+
+See details in https://github.com/envoyproxy/envoy/blob/main/bazel/README.md.
+
+2. Build Envoy
+
+```
+make build-envoy
+```
+
+### golang shared object
+
+```
+# using local go command, recommended when you are using linux.
+make build-so-local
+
+# using docker
+make build-so
+```
