@@ -15,11 +15,12 @@ package http
 import "C"
 
 import (
+	"runtime"
+
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/pkg/http/api"
 	"mosn.io/envoy-go-extension/pkg/utils"
-	"runtime"
 )
 
 var configNum uint64

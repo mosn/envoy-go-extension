@@ -14,10 +14,11 @@ package http
 */
 import "C"
 import (
-	"mosn.io/envoy-go-extension/pkg/http/api"
 	"reflect"
 	"runtime"
 	"unsafe"
+
+	"mosn.io/envoy-go-extension/pkg/http/api"
 )
 
 type httpCApiImpl struct{}
