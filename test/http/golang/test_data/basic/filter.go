@@ -1,12 +1,13 @@
 package main
 
 import (
-	"mosn.io/envoy-go-extension/pkg/http"
-	"mosn.io/envoy-go-extension/pkg/http/api"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"mosn.io/envoy-go-extension/pkg/http"
+	"mosn.io/envoy-go-extension/pkg/http/api"
 )
 
 func init() {
