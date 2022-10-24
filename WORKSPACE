@@ -123,7 +123,7 @@ go_repository(
     name = "io_mosn_envoy_go_extension",
     importpath = "mosn.io/envoy-go-extension",
     remote = "https://github.com/mosn/envoy-go-extension",
-    commit = "b4ca575458ef67935c9e7dfac68036e340533234",
+    commit = "d78392e20670eaa692c574c742ae2133710e1c69",
     build_file_generation = "on",
     vcs = "git",
 )

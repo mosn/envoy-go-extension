@@ -194,6 +194,7 @@ private:
   bool isThreadSafe() { return decoder_callbacks_->dispatcher().isThreadSafe(); };
 
   bool doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
+  GolangStatus doHeadersGo(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
   bool doData(Buffer::Instance&, bool);
   bool doDataGo(Buffer::Instance& data, bool end_stream);
   bool doTrailer(Http::HeaderMap& trailers);
@@ -205,6 +206,7 @@ private:
 
   Buffer::InstancePtr createWatermarkBuffer();
 
+  void continueEncodeLocalReply();
   void continueStatusInternal(GolangStatus status);
   void commonContinue(bool is_decode);
   void continueData(bool is_decode);
@@ -223,6 +225,10 @@ private:
 
   Http::RequestOrResponseHeaderMap* headers_{nullptr};
   Http::HeaderMap* trailers_{nullptr};
+
+  // save temp values from local reply
+  Http::RequestOrResponseHeaderMap* local_headers_{nullptr};
+  Http::HeaderMap* local_trailers_{nullptr};
 
   Buffer::InstancePtr data_buffer_;
   Buffer::OwnedImpl do_data_buffer_;
@@ -250,6 +256,7 @@ private:
 
   // other filter trigger sendLocalReply during go processing in async.
   // will wait go return before continue.
+  // this variable is read/write in safe thread, do no need lock.
   bool local_reply_waiting_go_{false};
 };
 

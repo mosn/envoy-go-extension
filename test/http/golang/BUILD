@@ -56,6 +56,7 @@ envoy_cc_test(
         "@envoy//test/config:v2_link_hacks",
         "@envoy//test/integration:http_integration_lib",
         "@envoy//test/test_common:utility_lib",
+        "@envoy//source/exe:main_common_lib",
         "@envoy_api//envoy/config/bootstrap/v3:pkg_cc_proto",
         "@envoy_api//envoy/extensions/filters/network/http_connection_manager/v3:pkg_cc_proto",
         "//src/envoy/http/golang:config",

@@ -442,5 +442,53 @@ TEST_P(GolangIntegrationTest, LocalReply_DecodeData_EncodeData_Async) {
 }
 */
 
+TEST_P(GolangIntegrationTest, LuaRespondAfterGoHeaderContinue) {
+  // put lua filter after golang filter
+  // golang filter => lua filter.
+
+  const std::string LUA_RESPOND =
+      R"EOF(
+name: envoy.filters.http.lua
+typed_config:
+  "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+  inline_code: |
+    function envoy_on_request(handle)
+      local orig_header = handle:headers():get('x-test-header-0')
+      local go_header = handle:headers():get('test-x-set-header-0')
+      handle:respond({[":status"] = "403"}, "forbidden from lua, orig header: "
+        .. (orig_header or "nil")
+        .. ", go header: "
+        .. (go_header or "nil"))
+    end
+)EOF";
+  config_helper_.prependFilter(LUA_RESPOND);
+
+  initializeSimpleFilter(BASIC);
+
+  codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+  Http::TestRequestHeaderMapImpl request_headers{{":method", "POST"},
+                                                 {":path", "/test"},
+                                                 {":scheme", "http"},
+                                                 {":authority", "host"},
+                                                 {"x-test-header-0", "foo"}};
+
+  auto encoder_decoder = codec_client_->startRequest(request_headers);
+  Http::StreamEncoder& encoder = encoder_decoder.first;
+  auto response = std::move(encoder_decoder.second);
+  Buffer::OwnedImpl request_data1("hello");
+  encoder.encodeData(request_data1, true);
+
+  ASSERT_TRUE(response->waitForEndStream());
+
+  // check resp status
+  EXPECT_EQ("403", response->headers().getStatusValue());
+
+  // forbidden from lua, orig header: foo, go header: foo
+  auto body = StringUtil::toUpper("forbidden from lua, orig header: foo, go header: foo");
+  EXPECT_EQ(body, response->body());
+
+  cleanup();
+}
+
 } // namespace
 } // namespace Envoy

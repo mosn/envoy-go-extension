@@ -35,22 +35,7 @@ Http::LocalErrorStatus Filter::onLocalReply(const LocalReplyData& data) {
   ENVOY_LOG(debug, "golang filter onLocalReply, state: {}, phase: {}, code: {}", int(state_),
             int(phase_), int(data.code_));
 
-  // TODO: remove the Phase::Init ?
-  if (isDecodePhase() || phase_ == Phase::Init) {
-    ENVOY_LOG(
-        debug,
-        "golang filter phase grow to EncodeHeader and state grow to WaitHeader in onLocalReply");
-    phase_ = Phase::EncodeHeader;
-    state_ = FilterState::WaitHeader;
-    if (!isEmptyBuffer()) {
-      ENVOY_LOG(debug, "golang filter draining data_buffer_ in onLocalReply");
-      data_buffer_->drain(data_buffer_->length());
-    }
-
-    if (isDoInGo()) {
-      local_reply_waiting_go_ = true;
-    }
-  }
+  // TODO: let the running go filter return a bit earilier, by setting a flag?
   return Http::LocalErrorStatus::Continue;
 }
 
@@ -131,17 +116,48 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
 
   headers_ = &headers;
 
-  // no onLocalReply received, when a early sendLocalReply,
-  // eg. "Sending local reply with details http1.invalid_scheme"
-  if (phase_ == Phase::Init) {
-    // TODO: need a way to get request header
-    phase_ = Phase::EncodeHeader;
-  }
-  ASSERT(phase_ == Phase::EncodeHeader);
+  // NP: may enter encodeHeaders in any phase & any state_,
+  // since other filters or filtermanager could call encodeHeaders or sendLocalReply in any time.
+  // eg. filtermanager may invoke sendLocalReply, when scheme is invalid,
+  // with "Sending local reply with details // http1.invalid_scheme" details.
+  if (phase_ != Phase::EncodeHeader) {
+    ENVOY_LOG(warn,
+              "golang filter enter encodeHeaders early, maybe other filter invoked sendLocalReply "
+              "or encodeHeaders, current state: {}, phase: {}",
+              int(state_), int(phase_));
 
-  if (local_reply_waiting_go_) {
-    ENVOY_LOG(debug, "waiting go returns before handle the local reply from other filter");
-    return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
+    // it's safe to reset phase_ and state_, since they are read/write in safe thread.
+    ENVOY_LOG(debug, "golang filter phase grow to EncodeHeader and state grow to WaitHeader since "
+                     "enter encodeHeaders early");
+    phase_ = Phase::EncodeHeader;
+    state_ = FilterState::WaitHeader;
+
+    if (!isEmptyBuffer()) {
+      ENVOY_LOG(debug, "golang filter draining data_buffer_ since got early encodeHeaders");
+      data_buffer_->drain(data_buffer_->length());
+    }
+
+    if (isDoInGo()) {
+      // NP: wait go returns to avoid concurrency conflict in go side.
+      // also, can not drain do_data_buffer_, since it may be using.
+      local_reply_waiting_go_ = true;
+      ENVOY_LOG(debug, "waiting go returns before handle the local reply from other filter");
+
+      // NP: save to another local_headers_ variable to avoid conflict,
+      // since the headers_ may be used in Go side.
+      local_headers_ = &headers;
+
+      // can not use "StopAllIterationAndWatermark" here, since Go decodeHeaders may return
+      // stopAndBuffer, that means it need data buffer and not continue header.
+      return Http::FilterHeadersStatus::StopIteration;
+
+    } else {
+      if (do_data_buffer_.length() > 0) {
+        ENVOY_LOG(warn, "golang filter drain do_data_buffer_ before continue encodeHeader, "
+                        "since no go code is running");
+        do_data_buffer_.drain(do_data_buffer_.length());
+      }
+    }
   }
 
   bool done = doHeaders(headers, end_stream);
@@ -158,6 +174,16 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
     ENVOY_LOG(error, "dynamicLib_ is nullPtr, maybe the instance already unpub.");
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
     return Http::FilterDataStatus::Continue;
+  }
+
+  if (local_reply_waiting_go_) {
+    ENVOY_LOG(debug, "golang filter appending data to buffer");
+    if (data_buffer_ == nullptr) {
+      data_buffer_ = createWatermarkBuffer();
+    }
+    data_buffer_->move(data);
+    end_stream_ = end_stream;
+    return Http::FilterDataStatus::StopIterationNoBuffer;
   }
 
   bool done = doData(data, end_stream);
@@ -177,6 +203,13 @@ Http::FilterTrailersStatus Filter::encodeTrailers(Http::ResponseTrailerMap& trai
     ENVOY_LOG(error, "dynamicLib_ is nullPtr, maybe the instance already unpub.");
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
     return Http::FilterTrailersStatus::Continue;
+  }
+
+  if (local_reply_waiting_go_) {
+    // NP: save to another local_trailers_ variable to avoid conflict,
+    // since the trailers_ may be used in Go side.
+    local_trailers_ = &trailers;
+    return Http::FilterTrailersStatus::StopIteration;
   }
 
   bool done = doTrailer(trailers);
@@ -458,42 +491,45 @@ Buffer::InstancePtr Filter::createWatermarkBuffer() {
 
 /*** common APIs for filter, both decode and encode ***/
 
-bool Filter::doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream) {
+GolangStatus Filter::doHeadersGo(Http::RequestOrResponseHeaderMap& headers, bool end_stream) {
   ENVOY_LOG(error, "golang filter passing headers to golang, state: {}, phase: {}", int(state_),
             int(phase_));
 
-  ASSERT(isEmptyBuffer());
-
-  if (req_ == nullptr) {
-    // maybe EncodeHeader phase when previous filter trigger sendLocalReply
-    // that will skip DecodeHeader in go.
-    ASSERT(phase_ == Phase::DecodeHeader || phase_ == Phase::EncodeHeader);
-    httpRequestInternal* req = new httpRequestInternal(weak_from_this());
-    req_ = reinterpret_cast<httpRequest*>(req);
-    req_->configId = config_->getConfigId();
-  }
-
+  // may be EncodeHeader phase when previous filter trigger sendLocalReply
+  // that will skip DecodeHeader in go.
+  ASSERT(phase_ == Phase::DecodeHeader || phase_ == Phase::EncodeHeader);
   state_ = FilterState::DoHeader;
-  end_stream_ = end_stream;
 
-  bool done = true;
   try {
-    ASSERT(req_ != nullptr);
+    if (req_ == nullptr) {
+      httpRequestInternal* req = new httpRequestInternal(weak_from_this());
+      req_ = reinterpret_cast<httpRequest*>(req);
+      req_->configId = config_->getConfigId();
+    }
 
     req_->phase = int(phase_);
     headers_ = &headers;
     do_end_stream_ = end_stream;
     auto status =
         dynamicLib_->moeOnHttpHeader(req_, end_stream ? 1 : 0, headers.size(), headers.byteSize());
-    done = handleGolangStatusInHeader(static_cast<GolangStatus>(status));
+    return static_cast<GolangStatus>(status);
 
   } catch (const EnvoyException& e) {
-    ENVOY_LOG(error, "golang filter doHeaders catch: {}.", e.what());
+    ENVOY_LOG(error, "golang filter doHeadersGo catch: {}.", e.what());
 
   } catch (...) {
-    ENVOY_LOG(error, "golang filter doHeaders catch unknown exception.");
+    ENVOY_LOG(error, "golang filter doHeadersGo catch unknown exception.");
   }
-  return done;
+
+  return GolangStatus::Continue;
+}
+
+bool Filter::doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream) {
+  ASSERT(isEmptyBuffer());
+  end_stream_ = end_stream;
+
+  auto status = doHeadersGo(headers, end_stream);
+  return handleGolangStatusInHeader(static_cast<GolangStatus>(status));
 }
 
 bool Filter::doDataGo(Buffer::Instance& data, bool end_stream) {
@@ -666,19 +702,47 @@ void Filter::continueData(bool is_decode) {
   }
 }
 
+void Filter::continueEncodeLocalReply() {
+  ENVOY_LOG(
+      debug,
+      "golang filter continue encodeHeader(local reply from other filters) after return from go");
+
+  // already drain in encodeHeaders.
+  ASSERT(isEmptyBuffer());
+
+  if (do_data_buffer_.length() > 0) {
+    ENVOY_LOG(warn, "golang filter drain do_data_buffer_ before continueEncodeLocalReply");
+    do_data_buffer_.drain(do_data_buffer_.length());
+  }
+
+  local_reply_waiting_go_ = false;
+
+  auto header_end_stream = end_stream_;
+  if (local_trailers_ != nullptr) {
+    trailers_ = local_trailers_;
+    header_end_stream = false;
+  }
+  if (!isEmptyBuffer()) {
+    header_end_stream = false;
+  }
+  // NP: not overwrite end_stream_ in doHeadersGo
+  auto status = doHeadersGo(*local_headers_, header_end_stream);
+
+  continueStatusInternal(status);
+}
+
 void Filter::continueStatusInternal(GolangStatus status) {
   ASSERT(isThreadSafe());
   auto is_decode = isDecodePhase();
   auto saved_state = state_;
 
   if (local_reply_waiting_go_) {
-    local_reply_waiting_go_ = false;
     ENVOY_LOG(warn,
               "other filter already trigger sendLocalReply, ignoring the continue status: {}, "
               "state: {}, phase: {}",
               int(status), int(state_), int(phase_));
 
-    // TODO: continue encode local reply
+    continueEncodeLocalReply();
     return;
   }
 
@@ -737,18 +801,24 @@ void Filter::sendLocalReplyInternal(
     Grpc::Status::GrpcStatus grpc_status, absl::string_view details) {
   ENVOY_LOG(debug, "sendLocalReply Internal, response code: {}", int(response_code));
 
-  if (state_ == FilterState::DoData) {
+  if (local_reply_waiting_go_) {
+    ENVOY_LOG(warn,
+              "other filter already invoked sendLocalReply or encodeHeaders, ignoring the local "
+              "reply from go, code: {}, body: {}, details: {}",
+              int(response_code), body_text, details);
+
+    continueEncodeLocalReply();
+    return;
+  }
+
+  if (do_data_buffer_.length() > 0) {
     ENVOY_LOG(warn, "golang filter drain do_data_buffer_ before sendLocalReply");
     do_data_buffer_.drain(do_data_buffer_.length());
   }
 
-  if (local_reply_waiting_go_) {
-    local_reply_waiting_go_ = false;
-    ENVOY_LOG(warn,
-              "other filter already trigger sendLocalReply, ignoring the local reply from go, "
-              "code: {}, body: {}, details: {}",
-              int(response_code), body_text, details);
-    return;
+  if (!isEmptyBuffer()) {
+    ENVOY_LOG(warn, "golang filter drain data_buffer_ before sendLocalReply");
+    data_buffer_->drain(data_buffer_->length());
   }
 
   if (isDecodePhase()) {
@@ -781,6 +851,9 @@ void Filter::sendLocalReply(Http::Code response_code, absl::string_view body_tex
 void Filter::continueStatus(GolangStatus status) {
   // TODO: skip post event to dispatcher, and return continue in the caller,
   // when it's invoked in the current envoy thread, for better performance & latency.
+  ENVOY_LOG(info, "golang filter continue from Go, status: {}, state_: {}, phase_: {}", int(status),
+            int(state_), int(phase_));
+
   auto weak_ptr = weak_from_this();
   getDispatcher().post([this, weak_ptr, status] {
     ASSERT(isThreadSafe());
