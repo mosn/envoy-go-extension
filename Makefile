@@ -9,10 +9,12 @@ COPTS = --copt "-Wno-stringop-overflow" \
 		--copt "-Wno-unused-parameter" \
 		--copt "-Wno-range-loop-construct"
 TARGET = "//:envoy"
+TEST_TARGET = "//test/..."
 # more custom options
 BUILD_OPTS =
 
 # go so
+.PHONY: build-so-local, build-so, sync-headers, check-test-data-compile
 
 build-so-local:
 	go build \
@@ -35,9 +37,8 @@ sync-headers:
 	cp pkg/http/libgolang.h src/envoy/common/dso/
 	cp pkg/http/api.h src/envoy/common/dso/
 
-.PHONY: build-so-local, build-so, sync-headers, check-test-data-compile
-
 # envoy extension
+.PHONY: build-envoy test-envoy
 
 build-envoy:
 	bazel build \
@@ -48,15 +49,20 @@ build-envoy:
 			--verbose_failures \
 			${BUILD_OPTS}
 
-test:
-	echo ${COMPILE_MODE}
-	echo ${BUILD_OPTS}
-	echo ${COPTS}
+test-envoy:
+	bazel test \
+		${COPTS} \
+		--linkopt=-Wl,--dynamic-list=$(shell pwd)/export-syms.txt \
+		${TEST_TARGET} \
+			--test_env=ENVOY_IP_TEST_VERSIONS=v4only \
+			--test_env=GODEBUG=cgocheck=0 \
+			--test_verbose_timeout_warnings \
+			--verbose_failures \
+			${BUILD_OPTS}
 
+
+.PHONY: image
 image:
 	# bazel-bin is a soft link
 	cp -f bazel-bin/envoy envoy
 	docker build --no-cache -t envoy-go-extension .
-
-
-.PHONY: build-envoy image test
