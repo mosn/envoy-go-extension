@@ -59,7 +59,7 @@ func (f *filter) sendLocalReply(phase string) api.StatusType {
 	headers := make(map[string]string)
 	body := fmt.Sprintf("forbidden from go in %s\r\n", phase)
 	f.callbacks.SendLocalReply(403, body, headers, -1, "test-from-go")
-	return api.StopNoBuffer
+	return api.LocalReply
 }
 
 // test: get, set, remove
@@ -141,7 +141,9 @@ func (f *filter) DecodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	if f.async {
 		go func() {
 			status := f.decodeHeaders(header, endStream)
-			f.callbacks.Continue(status)
+			if status != api.LocalReply {
+				f.callbacks.Continue(status)
+			}
 		}()
 		return api.Running
 	} else {
@@ -154,7 +156,9 @@ func (f *filter) DecodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	if f.async {
 		go func() {
 			status := f.decodeData(buffer, endStream)
-			f.callbacks.Continue(status)
+			if status != api.LocalReply {
+				f.callbacks.Continue(status)
+			}
 		}()
 		return api.Running
 	} else {
@@ -167,7 +171,9 @@ func (f *filter) DecodeTrailers(trailers api.RequestTrailerMap) api.StatusType {
 	if f.async {
 		go func() {
 			status := f.decodeTrailers(trailers)
-			f.callbacks.Continue(status)
+			if status != api.LocalReply {
+				f.callbacks.Continue(status)
+			}
 		}()
 		return api.Running
 	} else {
@@ -180,7 +186,9 @@ func (f *filter) EncodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 	if f.async {
 		go func() {
 			status := f.encodeHeaders(header, endStream)
-			f.callbacks.Continue(status)
+			if status != api.LocalReply {
+				f.callbacks.Continue(status)
+			}
 		}()
 		return api.Running
 	} else {
@@ -193,7 +201,9 @@ func (f *filter) EncodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	if f.async {
 		go func() {
 			status := f.encodeData(buffer, endStream)
-			f.callbacks.Continue(status)
+			if status != api.LocalReply {
+				f.callbacks.Continue(status)
+			}
 		}()
 		return api.Running
 	} else {
@@ -206,7 +216,9 @@ func (f *filter) EncodeTrailers(trailers api.ResponseTrailerMap) api.StatusType 
 	if f.async {
 		go func() {
 			status := f.encodeTrailers(trailers)
-			f.callbacks.Continue(status)
+			if status != api.LocalReply {
+				f.callbacks.Continue(status)
+			}
 		}()
 		return api.Running
 	} else {

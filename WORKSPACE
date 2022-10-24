@@ -128,12 +128,6 @@ go_repository(
     vcs = "git",
 )
 
-go_repository(
-    name = "com_github_gorilla_mux",
-    importpath = "github.com/gorilla/mux",
-    tag = "v1.8.0",
-)
-
 # Docker dependencies
 
 docker_dependencies()

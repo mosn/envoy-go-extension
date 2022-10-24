@@ -241,6 +241,10 @@ bool Filter::handleGolangStatusInHeader(GolangStatus status) {
             int(state_), int(phase_), int(status));
 
   switch (status) {
+  case GolangStatus::LocalReply:
+    // already invoked sendLocalReply, do nothing
+    break;
+
   case GolangStatus::Running:
     // do nothing, go side turn to async mode
     break;
@@ -286,6 +290,11 @@ bool Filter::handleGolangStatusInData(GolangStatus status) {
   bool done = false;
 
   switch (status) {
+  case GolangStatus::LocalReply:
+    // already invoked sendLocalReply, do nothing
+    // return directly to skip phase grow by checking trailers
+    return false;
+
   case GolangStatus::Running:
     // do nothing, go side turn to async mode
     // return directly to skip phase grow by checking trailers
@@ -350,6 +359,10 @@ bool Filter::handleGolangStatusInTrailer(GolangStatus status) {
             int(state_), int(phase_), int(status));
 
   switch (status) {
+  case GolangStatus::LocalReply:
+    // already invoked sendLocalReply, do nothing
+    break;
+
   case GolangStatus::Running:
     // do nothing, go side turn to async mode
     break;

@@ -31,6 +31,7 @@ package http
 */
 import "C"
 import (
+	"fmt"
 	"unsafe"
 
 	"mosn.io/envoy-go-extension/pkg/http/api"
@@ -42,6 +43,10 @@ type httpRequest struct {
 }
 
 func (r *httpRequest) Continue(status api.StatusType) {
+	if status == api.LocalReply {
+		fmt.Printf("warning: LocalReply status is useless after sendLocalReply, ignoring")
+		return
+	}
 	cAPI.HttpContinue(unsafe.Pointer(r.req), uint64(status))
 }
 

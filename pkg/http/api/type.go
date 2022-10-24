@@ -5,7 +5,7 @@ type StatusType int
 
 const (
 	Running                StatusType = 0
-	DirectResponse         StatusType = 1
+	LocalReply             StatusType = 1
 	Continue               StatusType = 2
 	StopAndBuffer          StatusType = 3
 	StopAndBufferWatermark StatusType = 4

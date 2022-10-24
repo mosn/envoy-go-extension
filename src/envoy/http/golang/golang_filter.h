@@ -59,8 +59,8 @@ public:
  */
 enum class GolangStatus {
   Running,
-  // Directi response
-  DirectResponse,
+  // after called sendLocalReply
+  LocalReply,
   // Continue filter chain iteration.
   Continue,
   StopAndBuffer,
