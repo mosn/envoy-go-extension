@@ -108,7 +108,9 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
     return Http::FilterHeadersStatus::Continue;
   }
 
-  headers_ = &headers;
+  // NP: is safe to overwrite it since go code won't read it directly
+  ENVOY_LOG(debug, "golang filter set data_buffer_ to nullptr since enter encodeHeaders");
+  data_buffer_ = nullptr;
 
   // NP: may enter encodeHeaders in any phase & any state_,
   // since other filters or filtermanager could call encodeHeaders or sendLocalReply in any time.
@@ -116,8 +118,8 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
   // with "Sending local reply with details // http1.invalid_scheme" details.
   if (phase_ != Phase::EncodeHeader) {
     ENVOY_LOG(warn,
-              "golang filter enter encodeHeaders early, maybe other filter invoked sendLocalReply "
-              "or encodeHeaders, current state: {}, phase: {}",
+              "golang filter enter encodeHeaders early, maybe sendLocalReply or encodeHeaders "
+              "happened, current state: {}, phase: {}",
               int(state_), int(phase_));
 
     // it's safe to reset phase_ and state_, since they are read/write in safe thread.
@@ -125,11 +127,6 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
                      "enter encodeHeaders early");
     phase_ = Phase::EncodeHeader;
     state_ = FilterState::WaitHeader;
-
-    if (!isEmptyBuffer()) {
-      ENVOY_LOG(debug, "golang filter draining data_buffer_ since got early encodeHeaders");
-      data_buffer_->drain(data_buffer_->length());
-    }
 
     if (isDoInGo()) {
       // NP: wait go returns to avoid concurrency conflict in go side.
@@ -454,39 +451,59 @@ bool Filter::handleGolangStatus(GolangStatus status) {
 
 /*** watermark buffer in golang filter side ***/
 
-void Filter::wantMoreData() {
-  ENVOY_LOG(debug, "golang filter watermark buffer want more data");
-  if (isDecodePhase()) {
-    decoder_callbacks_->onDecoderFilterBelowWriteBufferLowWatermark();
-  } else {
-    encoder_callbacks_->onEncoderFilterBelowWriteBufferLowWatermark();
-  }
-}
-
-void Filter::dataBufferFull() {
-  ENVOY_LOG(debug, "golang filter watermark buffer is full");
-  if (state_ == FilterState::WaitFullData) {
-    // TODO: 413.
-  }
-  if (isDecodePhase()) {
-    decoder_callbacks_->onDecoderFilterAboveWriteBufferHighWatermark();
-  } else {
-    encoder_callbacks_->onEncoderFilterAboveWriteBufferHighWatermark();
-  }
-}
-
 Buffer::InstancePtr Filter::createWatermarkBuffer() {
-  auto buffer = getDispatcher().getWatermarkFactory().createBuffer(
-      [this]() -> void { this->wantMoreData(); }, [this]() -> void { this->dataBufferFull(); },
-      []() -> void { /* TODO: Handle overflow watermark */ });
-  buffer->setWatermarks(decoder_callbacks_->decoderBufferLimit()); // TODO: encoderBufferLimit()
-  return buffer;
+  if (isDecodePhase()) {
+    auto buffer = getDispatcher().getWatermarkFactory().createBuffer(
+        [this]() -> void {
+          ENVOY_LOG(debug, "golang filter decode data buffer want more data");
+          decoder_callbacks_->onDecoderFilterBelowWriteBufferLowWatermark();
+        },
+        [this]() -> void {
+          if (state_ == FilterState::WaitFullData) {
+            // On the request path exceeding buffer limits will result in a 413.
+            ENVOY_LOG(debug, "golang filter decode data buffer is full, reply with 413");
+            decoder_callbacks_->sendLocalReply(
+                Http::Code::PayloadTooLarge,
+                Http::CodeUtility::toString(Http::Code::PayloadTooLarge), nullptr, absl::nullopt,
+                StreamInfo::ResponseCodeDetails::get().RequestPayloadTooLarge);
+            return;
+          }
+          ENVOY_LOG(debug, "golang filter decode data buffer is full, disable reading");
+          decoder_callbacks_->onDecoderFilterAboveWriteBufferHighWatermark();
+        },
+        []() -> void { /* TODO: Handle overflow watermark */ });
+    buffer->setWatermarks(decoder_callbacks_->decoderBufferLimit());
+    return buffer;
+
+  } else {
+    auto buffer = getDispatcher().getWatermarkFactory().createBuffer(
+        [this]() -> void {
+          ENVOY_LOG(debug, "golang filter encode data buffer want more data");
+          encoder_callbacks_->onEncoderFilterBelowWriteBufferLowWatermark();
+        },
+        [this]() -> void {
+          if (state_ == FilterState::WaitFullData) {
+            // On the response path exceeding buffer limits will result in a 500.
+            ENVOY_LOG(debug, "golang filter encode data buffer is full, reply with 500");
+            encoder_callbacks_->sendLocalReply(
+                Http::Code::InternalServerError,
+                Http::CodeUtility::toString(Http::Code::InternalServerError), nullptr,
+                absl::nullopt, StreamInfo::ResponseCodeDetails::get().ResponsePayloadTooLarge);
+            return;
+          }
+          ENVOY_LOG(debug, "golang filter encode data buffer is full, disable reading");
+          encoder_callbacks_->onEncoderFilterAboveWriteBufferHighWatermark();
+        },
+        []() -> void { /* TODO: Handle overflow watermark */ });
+    buffer->setWatermarks(encoder_callbacks_->encoderBufferLimit());
+    return buffer;
+  }
 }
 
 /*** common APIs for filter, both decode and encode ***/
 
 GolangStatus Filter::doHeadersGo(Http::RequestOrResponseHeaderMap& headers, bool end_stream) {
-  ENVOY_LOG(error, "golang filter passing headers to golang, state: {}, phase: {}", int(state_),
+  ENVOY_LOG(debug, "golang filter passing headers to golang, state: {}, phase: {}", int(state_),
             int(phase_));
 
   // may be EncodeHeader phase when previous filter trigger sendLocalReply

@@ -26,6 +26,7 @@ type filter struct {
 	sleep       bool   // all sleep
 	data_sleep  bool   // only sleep in data phase
 	localreplay string // send local reply
+	databuffer  string // return api.Stop
 }
 
 func parseQuery(path string) url.Values {
@@ -52,6 +53,7 @@ func (f *filter) initRequest(header api.HeaderMap) {
 	if f.query_params.Get("decode_localrepaly") != "" {
 		f.data_sleep = true
 	}
+	f.databuffer = f.query_params.Get("databuffer")
 	f.localreplay = f.query_params.Get("localreply")
 }
 
@@ -72,6 +74,9 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	}
 	header.Set("test-x-set-header-0", header.Get("x-test-header-0"))
 	header.Remove("x-test-header-1")
+	if !endStream && strings.Contains(f.databuffer, "decode-header") {
+		return api.StopAndBuffer
+	}
 	return api.Continue
 }
 
@@ -86,6 +91,9 @@ func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	f.req_body_length += buffer.Length()
 	data := buffer.GetString()
 	buffer.Set(strings.ToUpper(data))
+	if !endStream && strings.Contains(f.databuffer, "decode-data") {
+		return api.StopAndBuffer
+	}
 	return api.Continue
 }
 

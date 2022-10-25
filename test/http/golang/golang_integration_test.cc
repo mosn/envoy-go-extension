@@ -251,14 +251,11 @@ typed_config:
         {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
-    Http::StreamEncoder& encoder = encoder_decoder.first;
+    Http::RequestEncoder& request_encoder = encoder_decoder.first;
     auto response = std::move(encoder_decoder.second);
-    Buffer::OwnedImpl request_data1("hello");
-    encoder.encodeData(request_data1, false);
-    Buffer::OwnedImpl request_data2("world");
-    encoder.encodeData(request_data2, false);
-    Buffer::OwnedImpl request_data3("");
-    encoder.encodeData(request_data3, true);
+    codec_client_->sendData(request_encoder, "hello", false);
+    codec_client_->sendData(request_encoder, "world", false);
+    codec_client_->sendData(request_encoder, "", true);
 
     waitForNextUpstreamRequest();
     // original header: x-test-header-0
@@ -330,12 +327,10 @@ typed_config:
         {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "host"}};
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
-    Http::StreamEncoder& encoder = encoder_decoder.first;
+    Http::RequestEncoder& request_encoder = encoder_decoder.first;
     auto response = std::move(encoder_decoder.second);
-    Buffer::OwnedImpl request_data1("hello");
-    encoder.encodeData(request_data1, false);
-    Buffer::OwnedImpl request_data2("world");
-    encoder.encodeData(request_data2, true);
+    codec_client_->sendData(request_encoder, "hello", false);
+    codec_client_->sendData(request_encoder, "world", true);
 
     // need upstream request then when not seen decode-
     if (path.find("decode-") == std::string::npos) {
@@ -356,6 +351,33 @@ typed_config:
     // forbidden from go in %s\r\n
     auto body = StringUtil::toUpper(absl::StrFormat("forbidden from go in %s\r\n", phase));
     EXPECT_EQ(body, StringUtil::toUpper(response->body()));
+
+    cleanup();
+  }
+
+  void testBufferExceedLimit(std::string path) {
+    config_helper_.setBufferLimits(1024, 100);
+    initializeSimpleFilter(BASIC);
+
+    codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+    Http::TestRequestHeaderMapImpl request_headers{
+        {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "host"}};
+
+    auto encoder_decoder = codec_client_->startRequest(request_headers);
+    Http::RequestEncoder& request_encoder = encoder_decoder.first;
+    auto response = std::move(encoder_decoder.second);
+    for (auto i = 0; i < 100; i++) {
+      codec_client_->sendData(request_encoder, std::string(100, '-'), false);
+    }
+    codec_client_->sendData(request_encoder, "", true);
+
+    ASSERT_TRUE(response->waitForEndStream());
+
+    // check resp status
+    EXPECT_EQ("413", response->headers().getStatusValue());
+
+    auto body = StringUtil::toUpper("payload too large");
+    EXPECT_EQ(body, response->body());
 
     cleanup();
   }
@@ -398,13 +420,31 @@ TEST_P(GolangIntegrationTest, Basic) { testBasic("/test"); }
 
 TEST_P(GolangIntegrationTest, Async) { testBasic("/test?async=1"); }
 
-TEST_P(GolangIntegrationTest, Sleep) { testBasic("/test?sleep=1"); }
+TEST_P(GolangIntegrationTest, DataBuffer_DecodeHeader) {
+  testBasic("/test?databuffer=decode-header");
+}
 
-TEST_P(GolangIntegrationTest, Async_Sleep) { testBasic("/test?async=1&sleep=1"); }
+TEST_P(GolangIntegrationTest, Sleep) { testBasic("/test?sleep=1"); }
 
 TEST_P(GolangIntegrationTest, DataSleep) { testBasic("/test?data_sleep=1"); }
 
+TEST_P(GolangIntegrationTest, Async_Sleep) { testBasic("/test?async=1&sleep=1"); }
+
 TEST_P(GolangIntegrationTest, Async_DataSleep) { testBasic("/test?async=1&data_sleep=1"); }
+
+TEST_P(GolangIntegrationTest, Async_DataBuffer_DecodeHeader) {
+  testBasic("/test?async=1&databuffer=decode-header");
+}
+
+/*
+ * TODO: reponse data len not match yet, should be pass after splitting do_data_buffer_ to list
+
+TEST_P(GolangIntegrationTest, DataBuffer_DecodeData) { testBasic("/test?databuffer=decode-data"); }
+
+TEST_P(GolangIntegrationTest, Async_DataBuffer_DecodeData) {
+  testBasic("/test?async=1&databuffer=decode-data");
+}
+*/
 
 TEST_P(GolangIntegrationTest, LocalReply_DecodeHeader) {
   testSendLocalReply("/test?localreply=decode-header", "decode-header");
@@ -473,10 +513,9 @@ typed_config:
                                                  {"x-test-header-0", "foo"}};
 
   auto encoder_decoder = codec_client_->startRequest(request_headers);
-  Http::StreamEncoder& encoder = encoder_decoder.first;
+  Http::RequestEncoder& request_encoder = encoder_decoder.first;
   auto response = std::move(encoder_decoder.second);
-  Buffer::OwnedImpl request_data1("hello");
-  encoder.encodeData(request_data1, true);
+  codec_client_->sendData(request_encoder, "hello", true);
 
   ASSERT_TRUE(response->waitForEndStream());
 
@@ -488,6 +527,16 @@ typed_config:
   EXPECT_EQ(body, response->body());
 
   cleanup();
+}
+
+TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeHeader) {
+  testBufferExceedLimit("/test?databuffer=decode-header");
+}
+
+// TODO: seems this test case is not stable,
+// since the decode data may be merged into a single buffer too earlier?
+TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeData) {
+  testBufferExceedLimit("/test?databuffer=decode-data");
 }
 
 } // namespace

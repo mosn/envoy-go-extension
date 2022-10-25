@@ -10,6 +10,7 @@ COPTS = --copt "-Wno-stringop-overflow" \
 		--copt "-Wno-range-loop-construct"
 TARGET = "//:envoy"
 TEST_TARGET = "//test/..."
+TEST_LOG_LEVEL = debug
 # more custom options
 BUILD_OPTS =
 
@@ -54,6 +55,7 @@ test-envoy:
 		${COPTS} \
 		--linkopt=-Wl,--dynamic-list=$(shell pwd)/export-syms.txt \
 		${TEST_TARGET} \
+			--test_arg="-l ${TEST_LOG_LEVEL}" \
 			--test_env=ENVOY_IP_TEST_VERSIONS=v4only \
 			--test_env=GODEBUG=cgocheck=0 \
 			--test_verbose_timeout_warnings \

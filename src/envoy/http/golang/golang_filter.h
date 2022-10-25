@@ -201,9 +201,6 @@ private:
   bool doTrailerGo(Http::HeaderMap& trailers);
   bool handleGolangStatus(GolangStatus status);
 
-  void wantMoreData();
-  void dataBufferFull();
-
   Buffer::InstancePtr createWatermarkBuffer();
 
   void continueEncodeLocalReply();
