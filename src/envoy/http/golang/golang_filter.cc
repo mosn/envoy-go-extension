@@ -58,12 +58,6 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   ASSERT(phase_ == Phase::Init);
   phase_ = Phase::DecodeHeader;
 
-  // TODO: move phase, configId and ptrHolder to the request object.
-  // auto req = initRequest();
-
-  // headers.path();
-  // headers.getByKey("foo");
-
   bool done = doHeaders(headers, end_stream);
 
   return done ? Http::FilterHeadersStatus::Continue : Http::FilterHeadersStatus::StopIteration;
