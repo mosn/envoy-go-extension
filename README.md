@@ -1,5 +1,12 @@
 # envoy-go-extension
 
+Implement Envoy filter by using Go language.
+
+1. support full-featured Go language, including goroutine.
+2. support streaming, with rarely worry about concurrency conflict.
+
+## Status
+
 This project is under heavy active development at this stage.
 
 ## API
@@ -8,11 +15,17 @@ coming soon.
 
 ## Desgin
 
+### Memory Safety
+
 coming soon.
 
-1. Memory Safety
-2. Concurrency Safety
-3. Sandbox Safety
+### Concurrency Safety
+
+coming soon.
+
+### Sandbox Safety
+
+coming soon.
 
 ## Build
 
@@ -20,12 +33,17 @@ coming soon.
 
 1. Install Bazel
 
-See details in https://github.com/envoyproxy/envoy/blob/main/bazel/README.md.
+See details in [envoyproxy](https://github.com/envoyproxy/envoy/blob/main/bazel/README.md)
 
 2. Build Envoy
 
 ```
+# use default build options
 make build-envoy
+
+# add more build options
+build_opts=""
+make build-envoy BUILD_OPTS=$build_opts
 ```
 
 ### golang shared object
@@ -36,4 +54,15 @@ make build-so-local
 
 # using docker
 make build-so
+```
+
+## Test
+
+```
+# use default build options for testing
+make test-envoy
+
+# add more build options for testing
+build_opts=""
+make build-envoy BUILD_OPTS=$build_opts
 ```
