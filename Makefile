@@ -68,3 +68,11 @@ image:
 	# bazel-bin is a soft link
 	cp -f bazel-bin/envoy envoy
 	docker build --no-cache -t envoy-go-extension .
+
+.PHONY: run
+run:
+	GODEBUG=cgocheck=0 \
+	./bazel-bin/envoy \
+		-c envoy-golang.yaml \
+		-l debug \
+		--base-id 1

@@ -37,6 +37,8 @@ See details in [envoyproxy](https://github.com/envoyproxy/envoy/blob/main/bazel/
 
 2. Build Envoy
 
+Generate executable envoy file under bazel-bin.
+
 ```
 # use default build options
 make build-envoy
@@ -48,12 +50,23 @@ make build-envoy BUILD_OPTS=$build_opts
 
 ### golang shared object
 
+Generate libgolang.so under the current directory.
+
 ```
 # using local go command, recommended when you are using linux.
 make build-so-local
 
 # using docker
 make build-so
+```
+
+## Run
+
+Please update the `so_path` field (in envoy-golang.yaml) to you local path.
+
+```
+# it will use the envoy-golang.yaml config file.
+make run
 ```
 
 ## Test
