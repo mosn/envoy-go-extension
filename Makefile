@@ -7,7 +7,10 @@ COPTS = --copt "-Wno-stringop-overflow" \
 		--copt "-Wno-vla-parameter" \
 		--copt "-Wno-parentheses" \
 		--copt "-Wno-unused-parameter" \
-		--copt "-Wno-range-loop-construct"
+		--copt "-Wno-range-loop-construct" \
+		--copt "-Wno-uninitialized" \
+		--copt "-Wno-strict-aliasing" \
+		--copt "-fno-strict-aliasing"
 TARGET = "//:envoy"
 TEST_TARGET = "//test/..."
 TEST_LOG_LEVEL = debug
@@ -64,10 +67,13 @@ test-envoy:
 
 
 .PHONY: image
-image:
+image: build-envoy build-so-local
 	# bazel-bin is a soft link
 	cp -f bazel-bin/envoy envoy
-	docker build --no-cache -t envoy-go-extension .
+	sudo docker build --no-cache -t envoy-go-extension .
+	sudo docker tag envoy-go-extension:latest mosnio/envoy-go-extension:latest
+	sudo docker push mosnio/envoy-go-extension:latest
+
 
 .PHONY: run
 run:
