@@ -10,13 +10,7 @@ namespace Golang {
 // which means may introduce race between go thread and envoy thread.
 //
 
-extern "C" void moeHttpContinue(void* r, int status) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  if (auto filter = weakFilter.lock()) {
-    filter->continueStatus(static_cast<GolangStatus>(status));
-  }
-}
+extern "C" {
 
 absl::string_view copyGoString(void* str) {
   if (str == nullptr) {
@@ -26,23 +20,33 @@ absl::string_view copyGoString(void* str) {
   return absl::string_view(goStr->p, goStr->n);
 }
 
-extern "C" void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
-                                      long long int grpc_status, void* details) {
+void moeHandlerWrapper(void* r, std::function<void(std::shared_ptr<Filter>&)> f) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   auto weakFilter = req->weakFilter();
   if (auto filter = weakFilter.lock()) {
+    f(filter);
+  }
+}
+
+void moeHttpContinue(void* r, int status) {
+  moeHandlerWrapper(r, [status](std::shared_ptr<Filter>& filter) {
+    filter->continueStatus(static_cast<GolangStatus>(status));
+  });
+}
+
+void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
+                                      long long int grpc_status, void* details) {
+  moeHandlerWrapper(r, [response_code, body_text, headers, grpc_status, details](std::shared_ptr<Filter>& filter) {
     // TODO: headers
     auto grpcStatus = static_cast<Grpc::Status::GrpcStatus>(grpc_status);
     filter->sendLocalReply(static_cast<Http::Code>(response_code), copyGoString(body_text), nullptr,
                            grpcStatus, copyGoString(details));
-  }
+  });
 }
 
 // unsafe API, without copy memory from c to go.
-extern "C" void moeHttpGetHeader(void* r, void* key, void* value) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  if (auto filter = weakFilter.lock()) {
+void moeHttpGetHeader(void* r, void* key, void* value) {
+  moeHandlerWrapper(r, [key, value](std::shared_ptr<Filter>& filter) {
     auto keyStr = copyGoString(key);
     auto v = filter->getHeader(keyStr);
     if (v.has_value()) {
@@ -50,82 +54,70 @@ extern "C" void moeHttpGetHeader(void* r, void* key, void* value) {
       goValue->p = v.value().data();
       goValue->n = v.value().length();
     }
-  }
+  });
 }
 
-extern "C" void moeHttpCopyHeaders(void* r, void* strs, void* buf) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  if (auto filter = weakFilter.lock()) {
+void moeHttpCopyHeaders(void* r, void* strs, void* buf) {
+  moeHandlerWrapper(r, [strs, buf](std::shared_ptr<Filter>& filter) {
     auto goStrs = reinterpret_cast<GoString*>(strs);
     auto goBuf = reinterpret_cast<char*>(buf);
     filter->copyHeaders(goStrs, goBuf);
-  }
+  });
 }
 
-extern "C" void moeHttpSetHeader(void* r, void* key, void* value) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  if (auto filter = weakFilter.lock()) {
+void moeHttpSetHeader(void* r, void* key, void* value) {
+  moeHandlerWrapper(r, [key, value](std::shared_ptr<Filter>& filter) {
     auto keyStr = copyGoString(key);
     auto valueStr = copyGoString(value);
     filter->setHeader(keyStr, valueStr);
-  }
+  });
 }
 
-extern "C" void moeHttpRemoveHeader(void* r, void* key) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  if (auto filter = weakFilter.lock()) {
+void moeHttpRemoveHeader(void* r, void* key) {
+  moeHandlerWrapper(r, [key](std::shared_ptr<Filter>& filter) {
     // TODO: it's safe to skip copy
     auto keyStr = copyGoString(key);
     filter->removeHeader(keyStr);
-  }
+  });
 }
 
-extern "C" void moeHttpGetBuffer(void* r, unsigned long long int bufferPtr, void* data) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
-  if (auto filter = weakFilter.lock()) {
+void moeHttpGetBuffer(void* r, unsigned long long int bufferPtr, void* data) {
+  moeHandlerWrapper(r, [bufferPtr, data](std::shared_ptr<Filter>& filter) {
+    auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
     filter->copyBuffer(buffer, reinterpret_cast<char*>(data));
-  }
+  });
 }
 
-extern "C" void moeHttpSetBuffer(void* r, unsigned long long int bufferPtr, void* data,
+void moeHttpSetBuffer(void* r, unsigned long long int bufferPtr, void* data,
                                  int length) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
-  if (auto filter = weakFilter.lock()) {
+  moeHandlerWrapper(r, [bufferPtr, data, length](std::shared_ptr<Filter>& filter) {
+    auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
     auto value = absl::string_view(reinterpret_cast<const char*>(data), length);
     filter->setBuffer(buffer, value);
-  }
+  });
 }
 
-extern "C" void moeHttpCopyTrailers(void* r, void* strs, void* buf) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  if (auto filter = weakFilter.lock()) {
+void moeHttpCopyTrailers(void* r, void* strs, void* buf) {
+  moeHandlerWrapper(r, [strs, buf](std::shared_ptr<Filter>& filter) {
     auto goStrs = reinterpret_cast<GoString*>(strs);
     auto goBuf = reinterpret_cast<char*>(buf);
     filter->copyTrailers(goStrs, goBuf);
-  }
+  });
 }
 
-extern "C" void moeHttpSetTrailer(void* r, void* key, void* value) {
-  auto req = reinterpret_cast<httpRequestInternal*>(r);
-  auto weakFilter = req->weakFilter();
-  if (auto filter = weakFilter.lock()) {
+void moeHttpSetTrailer(void* r, void* key, void* value) {
+  moeHandlerWrapper(r, [key, value](std::shared_ptr<Filter>& filter) {
     auto keyStr = copyGoString(key);
     auto valueStr = copyGoString(value);
     filter->setTrailer(keyStr, valueStr);
-  }
+  });
 }
 
-extern "C" void moeHttpFinalize(void* r, int reason) {
+void moeHttpFinalize(void* r, int reason) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   delete req;
+}
+
 }
 
 } // namespace Golang
