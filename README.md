@@ -13,7 +13,7 @@ This project is under heavy active development at this stage.
 
 coming soon.
 
-## Desgin
+## Design
 
 ### Memory Safety
 
@@ -29,7 +29,7 @@ coming soon.
 
 ## Build
 
-### Enovy
+### Envoy
 
 1. Install Bazel
 
