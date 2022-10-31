@@ -89,7 +89,7 @@ func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.Statu
 		return f.sendLocalReply("decode-data")
 	}
 	f.req_body_length += buffer.Length()
-	data := buffer.GetString()
+	data := buffer.Get()
 	buffer.Set(strings.ToUpper(data))
 	if !endStream && strings.Contains(f.databuffer, "decode-data") {
 		return api.StopAndBuffer
@@ -129,7 +129,7 @@ func (f *filter) encodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	if strings.Contains(f.localreplay, "encode-data") {
 		return f.sendLocalReply("encode-data")
 	}
-	data := buffer.GetString()
+	data := buffer.Get()
 	buffer.Set(strings.ToUpper(data))
 	return api.Continue
 }

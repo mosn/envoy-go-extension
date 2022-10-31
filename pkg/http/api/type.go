@@ -105,9 +105,9 @@ type BufferInstance interface {
 		GetRawSlices() []byte
 	*/
 	Set(string)
-	GetString() string
+	Get() string
 	Length() uint64
-	// Send() // send to next filter
+	// Append(String)
 }
 
 //*************** BufferInstance end **************//

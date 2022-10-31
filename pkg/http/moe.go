@@ -129,7 +129,7 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 		if hf, ok := f.(*httpFilter); ok {
 			id = hf.config.AsMap()["id"].(string)
 		}
-		fmt.Printf("id: %s, buffer ptr: %p, buffer data: %s\n", id, buffer, buf.GetString())
+		fmt.Printf("id: %s, buffer ptr: %p, buffer data: %s\n", id, buffer, buf.Get())
 	*/
 	var status api.StatusType
 	if isDecode {

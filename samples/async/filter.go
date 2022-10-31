@@ -42,7 +42,7 @@ func (f *httpFilter) DecodeData(buffer api.BufferInstance, endStream bool) api.S
 			fmt.Printf("config sleep is not number, %T\n", sleep)
 		}
 		fmt.Printf("request data, length: %d, endStream: %v\n", buffer.Length(), endStream)
-		// fmt.Printf("request data: %s\n", buffer.GetString())
+		// fmt.Printf("request data: %s\n", buffer.Get())
 		f.callbacks.Continue(api.Continue)
 	}()
 	return api.Running
@@ -88,7 +88,7 @@ func (f *httpFilter) EncodeData(buffer api.BufferInstance, endStream bool) api.S
 		} else {
 			fmt.Printf("config sleep is not number, %T\n", sleep)
 		}
-		fmt.Printf("response data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.GetString())
+		fmt.Printf("response data, length: %d, endStream: %v, data: %s\n", buffer.Length(), endStream, buffer.Get())
 		// buffer.Set("foo=bar")
 		f.callbacks.Continue(api.Continue)
 	}()

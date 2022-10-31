@@ -118,7 +118,7 @@ type httpBuffer struct {
 	value     string
 }
 
-func (b *httpBuffer) GetString() string {
+func (b *httpBuffer) Get() string {
 	if b.length == 0 {
 		return ""
 	}
