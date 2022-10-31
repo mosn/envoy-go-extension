@@ -356,7 +356,7 @@ typed_config:
   }
 
   void testBufferExceedLimit(std::string path) {
-    config_helper_.setBufferLimits(1024, 100);
+    config_helper_.setBufferLimits(1024, 150);
     initializeSimpleFilter(BASIC);
 
     codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
@@ -366,10 +366,13 @@ typed_config:
     auto encoder_decoder = codec_client_->startRequest(request_headers);
     Http::RequestEncoder& request_encoder = encoder_decoder.first;
     auto response = std::move(encoder_decoder.second);
+    // 100 + 200 > 150, excced buffer limit.
+    codec_client_->sendData(request_encoder, std::string(100, '-'), false);
+    // the two data buffer may be merged into a single buffer, make sure they are two buffer.
     for (auto i = 0; i < 100; i++) {
-      codec_client_->sendData(request_encoder, std::string(100, '-'), false);
+      codec_client_->connection()->dispatcher().run(Event::Dispatcher::RunType::NonBlock);
     }
-    codec_client_->sendData(request_encoder, "", true);
+    codec_client_->sendData(request_encoder, std::string(200, '-'), true);
 
     ASSERT_TRUE(response->waitForEndStream());
 
@@ -533,8 +536,6 @@ TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeHeader) {
   testBufferExceedLimit("/test?databuffer=decode-header");
 }
 
-// TODO: seems this test case is not stable,
-// since the decode data may be merged into a single buffer too earlier?
 TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeData) {
   testBufferExceedLimit("/test?databuffer=decode-data");
 }

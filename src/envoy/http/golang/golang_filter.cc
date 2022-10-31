@@ -724,9 +724,6 @@ void Filter::continueEncodeLocalReply() {
       debug,
       "golang filter continue encodeHeader(local reply from other filters) after return from go");
 
-  // already drain in encodeHeaders.
-  ASSERT(isEmptyBuffer());
-
   if (do_data_buffer_.length() > 0) {
     ENVOY_LOG(warn, "golang filter drain do_data_buffer_ before continueEncodeLocalReply");
     do_data_buffer_.drain(do_data_buffer_.length());

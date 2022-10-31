@@ -12,6 +12,8 @@ COPTS = --copt "-Wno-stringop-overflow" \
 		--copt "-Wno-strict-aliasing" \
 		--copt "-fno-strict-aliasing"
 TARGET = "//:envoy"
+
+TEST_COMPILE_MODE = fastbuild
 TEST_TARGET = "//test/..."
 TEST_LOG_LEVEL = debug
 # more custom options
@@ -55,6 +57,7 @@ build-envoy:
 
 test-envoy:
 	bazel test \
+		-c ${TEST_COMPILE_MODE} \
 		${COPTS} \
 		--linkopt=-Wl,--dynamic-list=$(shell pwd)/export-syms.txt \
 		${TEST_TARGET} \
