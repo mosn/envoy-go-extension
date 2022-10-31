@@ -836,6 +836,12 @@ void Filter::sendLocalReplyInternal(
   }
 
   if (isDecodePhase()) {
+    // it's safe to reset phase_ and state_, since they are read/write in safe thread.
+    ENVOY_LOG(debug, "golang filter phase grow to EncodeHeader and state grow to WaitHeader before "
+                     "sendLocalReply");
+    phase_ = Phase::EncodeHeader;
+    state_ = FilterState::WaitHeader;
+
     decoder_callbacks_->sendLocalReply(response_code, body_text, modify_headers, grpc_status,
                                        details);
   } else {
