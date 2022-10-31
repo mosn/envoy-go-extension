@@ -593,7 +593,10 @@ bool Filter::doData(Buffer::Instance& data, bool end_stream) {
         data_buffer_->move(data);
         data.move(*data_buffer_);
       }
-      done = doDataGo(data, end_stream);
+      // check state again since data_buffer may be full and sendLocalReply with 413.
+      if (state_ == FilterState::WaitFullData) {
+        done = doDataGo(data, end_stream);
+      }
       break;
     }
     // NP: not break, continue
