@@ -50,7 +50,6 @@ build-envoy:
 	bazel build \
 		-c ${COMPILE_MODE} \
 		${COPTS} \
-		--linkopt=-Wl,--dynamic-list=$(shell pwd)/export-syms.txt \
 		${TARGET} \
 			--verbose_failures \
 			${BUILD_OPTS}
@@ -59,7 +58,6 @@ test-envoy:
 	bazel test \
 		-c ${TEST_COMPILE_MODE} \
 		${COPTS} \
-		--linkopt=-Wl,--dynamic-list=$(shell pwd)/export-syms.txt \
 		${TEST_TARGET} \
 			--test_arg="-l ${TEST_LOG_LEVEL}" \
 			--test_env=ENVOY_IP_TEST_VERSIONS=v4only \

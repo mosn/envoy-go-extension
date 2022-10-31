@@ -7,11 +7,11 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 # 2. Update .bazelversion, envoy.bazelrc and .bazelrc if needed.
 #
 # Note: this is needed by release builder to resolve envoy dep sha to tag.
-# Commit date: 2022-07-27
+# Commit date: 2022-10-28
 
-ENVOY_SHA = "2aca584b3bca81622d3b009612f0c7be93eeea34"
+ENVOY_SHA = "ba81ae537e722ad99906599f5d3ad367ca854433"
 
-ENVOY_SHA256 = "9a3eda2de9b3f5967100f96da2bbad3e7cbb26278aefa7af2446066b226f361d"
+ENVOY_SHA256 = "99d5bc48386f46287f30dd9c0d58630a20ba0a1e19eed94486d80f28cce66e91"
 
 ENVOY_ORG = "envoyproxy"
 
@@ -24,6 +24,8 @@ http_archive(
     sha256 = ENVOY_SHA256,
     strip_prefix = ENVOY_REPO + "-" + ENVOY_SHA,
     url = "https://github.com/" + ENVOY_ORG + "/" + ENVOY_REPO + "/archive/" + ENVOY_SHA + ".tar.gz",
+    patch_args = ["-p1"],
+    patches = ["//:export-syms.patch"],
 )
 
 # Determine SHA256 `wget https://github.com/istio/proxy/archive/refs/tags/$ISTIO_VERSION.tar.gz && sha256sum $ISTIO_VERSION.tar.gz`
@@ -70,6 +72,14 @@ envoy_dependencies()
 load("@envoy//bazel:repositories_extra.bzl", "envoy_dependencies_extra")
 
 envoy_dependencies_extra()
+
+load("@envoy//bazel:python_dependencies.bzl", "envoy_python_dependencies")
+
+envoy_python_dependencies()
+
+load("@base_pip3//:requirements.bzl", "install_deps")
+
+install_deps()
 
 load("@envoy//bazel:dependency_imports.bzl", "envoy_dependency_imports")
 
