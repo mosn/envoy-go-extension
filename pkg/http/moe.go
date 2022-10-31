@@ -108,7 +108,6 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 	case api.EncodeTailerPhase:
 		status = f.EncodeTrailers(header)
 	}
-	// f.Callbacks().Continue(status)
 	return uint64(status)
 }
 
@@ -137,7 +136,6 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	} else {
 		status = f.EncodeData(buf, endStream == 1)
 	}
-	// f.Callbacks().Continue(status)
 	return uint64(status)
 }
 

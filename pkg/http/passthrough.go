@@ -36,10 +36,6 @@ func (f *passThroughFilter) OnDestroy(reason api.DestroyReason) {
 	// fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
-func (f *passThroughFilter) Callbacks() api.FilterCallbacks {
-	return f.callbacks
-}
-
 func PassThroughFactory(interface{}) api.HttpFilterFactory {
 	return func(callbacks api.FilterCallbackHandler) api.HttpFilter {
 		return &passThroughFilter{

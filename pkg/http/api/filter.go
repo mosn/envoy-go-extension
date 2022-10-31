@@ -26,7 +26,6 @@ type HttpFilter interface {
 	*/
 	// destroy filter
 	OnDestroy(DestroyReason)
-	Callbacks() FilterCallbacks
 }
 
 // response

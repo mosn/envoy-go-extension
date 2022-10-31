@@ -108,10 +108,6 @@ func (f *httpFilter) OnDestroy(reason api.DestroyReason) {
 	fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
-func (f *httpFilter) Callbacks() api.FilterCallbacks {
-	return f.callbacks
-}
-
 func ConfigFactory(config interface{}) api.HttpFilterFactory {
 	// TODO: unmarshal based on typeurl
 	any, ok := config.(*anypb.Any)

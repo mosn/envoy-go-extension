@@ -91,10 +91,6 @@ func (f *bufferedFilter) OnDestroy(reason api.DestroyReason) {
 	// fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
-func (f *bufferedFilter) Callbacks() api.FilterCallbacks {
-	return f.callbacks
-}
-
 func configFactory(config interface{}) api.HttpFilterFactory {
 	return func(callbacks api.FilterCallbackHandler) api.HttpFilter {
 		// TODO: filter chain

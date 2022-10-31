@@ -64,10 +64,6 @@ func (f *asyncSleep) OnDestroy(reason api.DestroyReason) {
 	// fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
-func (f *asyncSleep) Callbacks() api.FilterCallbacks {
-	return f.callbacks
-}
-
 func ConfigFactory(interface{}) api.HttpFilterFactory {
 	return func(callbacks api.FilterCallbackHandler) api.HttpFilter {
 		return &asyncSleep{

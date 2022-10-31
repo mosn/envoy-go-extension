@@ -239,10 +239,6 @@ func (f *filter) OnDestroy(reason api.DestroyReason) {
 	// fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
-func (f *filter) Callbacks() api.FilterCallbacks {
-	return f.callbacks
-}
-
 func configFactory(interface{}) api.HttpFilterFactory {
 	return func(callbacks api.FilterCallbackHandler) api.HttpFilter {
 		return &filter{
