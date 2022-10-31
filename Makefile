@@ -90,3 +90,4 @@ run:
 gen-toc:
 	# gh-md-toc from https://github.com/ekalinin/github-markdown-toc
 	gh-md-toc --insert --no-backup --hide-footer README.md
+	sed -i '/#table-of-contents/d' README.md

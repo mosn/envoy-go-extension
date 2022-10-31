@@ -1,12 +1,14 @@
-# envoy-go-extension
+## envoy-go-extension
 
 Implement Envoy filter by using Go language.
 
 1. support full-featured Go language, including goroutine.
 2. support streaming, with rarely worry about concurrency conflict.
 
+## Table of Contents
+
 <!--ts-->
-* [envoy-go-extension](#envoy-go-extension)
+   * [envoy-go-extension](#envoy-go-extension)
    * [Status](#status)
    * [API](#api)
    * [Design](#design)
