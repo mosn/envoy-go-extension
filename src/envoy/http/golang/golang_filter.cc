@@ -122,13 +122,16 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
               "happened, current state: {}, phase: {}",
               int(state_), int(phase_));
 
+    // get the state before changing it.
+    bool inGo = isDoInGo();
+
     // it's safe to reset phase_ and state_, since they are read/write in safe thread.
     ENVOY_LOG(debug, "golang filter phase grow to EncodeHeader and state grow to WaitHeader since "
                      "enter encodeHeaders early");
     phase_ = Phase::EncodeHeader;
     state_ = FilterState::WaitHeader;
 
-    if (isDoInGo()) {
+    if (inGo) {
       // NP: wait go returns to avoid concurrency conflict in go side.
       // also, can not drain do_data_buffer_, since it may be using.
       local_reply_waiting_go_ = true;
