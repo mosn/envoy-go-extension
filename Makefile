@@ -82,3 +82,8 @@ run:
 		-c envoy-golang.yaml \
 		-l debug \
 		--base-id 1
+
+.PHONY: gen-toc
+gen-toc:
+	# gh-md-toc from https://github.com/ekalinin/github-markdown-toc
+	gh-md-toc --insert --no-backup --hide-footer README.md
