@@ -2,8 +2,8 @@
 BUILD_IMAGE  = golang:1.14.13
 PROJECT_NAME = mosn.io/envoy-go-extension
 
-COMPILE_MODE = dbg
-COPTS = --copt "-Wno-stringop-overflow" \
+COPTS = --config=gcc \
+		--copt "-Wno-stringop-overflow" \
 		--copt "-Wno-vla-parameter" \
 		--copt "-Wno-parentheses" \
 		--copt "-Wno-unused-parameter" \
@@ -11,6 +11,8 @@ COPTS = --copt "-Wno-stringop-overflow" \
 		--copt "-Wno-uninitialized" \
 		--copt "-Wno-strict-aliasing" \
 		--copt "-fno-strict-aliasing"
+
+COMPILE_MODE = dbg
 TARGET = "//:envoy"
 
 TEST_COMPILE_MODE = fastbuild
@@ -89,3 +91,8 @@ gen-toc:
 	# gh-md-toc from https://github.com/ekalinin/github-markdown-toc
 	gh-md-toc --insert --no-backup --hide-footer README.md
 	sed -i '/#table-of-contents/d' README.md
+
+# update go_repository in WORKSPACE
+.PHONY: update-repos
+update-repos:
+	gazelle update-repos -from_file=go.mod

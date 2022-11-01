@@ -126,7 +126,7 @@ http_archive(
     ],
 )
 
-load("@bazel_gazelle//:deps.bzl", "go_repository")
+load("@bazel_gazelle//:deps.bzl", "go_repository", "gazelle_dependencies")
 
 # TODO: use local_repository instead of remote ?
 go_repository(
@@ -137,6 +137,15 @@ go_repository(
     build_file_generation = "on",
     vcs = "git",
 )
+
+go_repository(
+    name = "org_golang_google_protobuf",
+    importpath = "google.golang.org/protobuf",
+    sum = "h1:d0NfwRgPtno5B1Wa6L2DAG+KivqkdutMf1UhdNx175w=",
+    version = "v1.28.1",
+)
+
+gazelle_dependencies()
 
 # Docker dependencies
 
