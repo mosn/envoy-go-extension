@@ -87,9 +87,18 @@ func (c *httpCApiImpl) HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *
 	C.moeHttpGetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
 }
 
-func (c *httpCApiImpl) HttpSetBuffer(r unsafe.Pointer, bufferPtr uint64, value string) {
+func (c *httpCApiImpl) HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, value string, action api.BufferAction) {
 	sHeader := (*reflect.StringHeader)(unsafe.Pointer(&value))
-	C.moeHttpSetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len))
+    var act C.bufferAction
+    switch(action) {
+    case api.SetBuffer:
+        act = C.Set
+    case api.AppendBuffer:
+        act = C.Append
+    case api.PrependBuffer:
+        act = C.Prepend
+    }
+	C.moeHttpSetBufferHelper(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len), act)
 }
 
 func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint64) map[string]string {

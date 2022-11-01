@@ -184,7 +184,7 @@ public:
   void setHeader(absl::string_view key, absl::string_view value);
   void removeHeader(absl::string_view key);
   void copyBuffer(Buffer::Instance* buffer, char* data);
-  void setBuffer(Buffer::Instance* buffer, absl::string_view& value);
+  void setBufferHelper(Buffer::Instance* buffer, absl::string_view& value, bufferAction action);
   void copyTrailers(GoString* goStrs, char* goBuf);
   void setTrailer(absl::string_view key, absl::string_view value);
   void getStringValue(int id, GoString* valueStr);

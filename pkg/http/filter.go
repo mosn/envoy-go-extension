@@ -140,10 +140,24 @@ func (b *httpBuffer) Get() string {
 	return b.value
 }
 
-func (b *httpBuffer) Set(value string) {
-	cAPI.HttpSetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, value)
-}
-
 func (b *httpBuffer) Length() uint64 {
 	return b.length
+}
+
+func (b *httpBuffer) Set(value string) {
+	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.SetBuffer)
+}
+
+func (b *httpBuffer) Append(value string) {
+	if b.length == 0 {
+		return
+	}
+	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.AppendBuffer)
+}
+
+func (b *httpBuffer) Prepend(value string) {
+	if b.length == 0 {
+		return
+	}
+	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.PrependBuffer)
 }

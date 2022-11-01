@@ -89,11 +89,12 @@ void moeHttpGetBuffer(void* r, unsigned long long int bufferPtr, void* data) {
   });
 }
 
-void moeHttpSetBuffer(void* r, unsigned long long int bufferPtr, void* data, int length) {
-  moeHandlerWrapper(r, [bufferPtr, data, length](std::shared_ptr<Filter>& filter) {
+void moeHttpSetBufferHelper(void* r, unsigned long long int bufferPtr, void* data, int length,
+                            bufferAction action) {
+  moeHandlerWrapper(r, [bufferPtr, data, length, action](std::shared_ptr<Filter>& filter) {
     auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
     auto value = absl::string_view(reinterpret_cast<const char*>(data), length);
-    filter->setBuffer(buffer, value);
+    filter->setBufferHelper(buffer, value, action);
   });
 }
 

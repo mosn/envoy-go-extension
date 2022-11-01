@@ -81,7 +81,7 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	return api.Continue
 }
 
-// test: get, set
+// test: get, set, append, prepend
 func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
 	if f.sleep || f.data_sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
@@ -92,6 +92,8 @@ func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	f.req_body_length += buffer.Length()
 	data := buffer.Get()
 	buffer.Set(strings.ToUpper(data))
+	buffer.Append("_append")
+	buffer.Prepend("prepend_")
 	if !endStream && strings.Contains(f.databuffer, "decode-data") {
 		return api.StopAndBuffer
 	}
