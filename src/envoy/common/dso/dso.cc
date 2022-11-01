@@ -15,6 +15,9 @@ bool DsoInstanceManager::pub(std::string dsoId, std::string dsoName) {
   std::unique_lock<std::shared_mutex> w_lock(DsoInstanceManager::mutex_);
 
   DsoInstance* dso = new DsoInstance(dsoName);
+  if (!dso->loaded()) {
+    return false;
+  }
   dso_map_[dsoId] = dso;
   return true;
 }
@@ -56,10 +59,13 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
     return;
   }
 
+  loaded_ = true;
+
   auto func = dlsym(handler_, "moeNewHttpPluginConfig");
   if (func) {
     moeNewHttpPluginConfig_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1)>(func);
   } else {
+    loaded_ = false;
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeNewHttpPluginConfig, err: {}", dsoName,
                    dlerror());
   }
@@ -70,6 +76,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
         reinterpret_cast<GoUint64 (*)(httpRequest * p0, GoUint64 p1, GoUint64 p2, GoUint64 p3)>(
             func);
   } else {
+    loaded_ = false;
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpHeader, err: {}", dsoName,
                    dlerror());
   }
@@ -80,6 +87,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
         reinterpret_cast<GoUint64 (*)(httpRequest * p0, GoUint64 p1, GoUint64 p2, GoUint64 p3)>(
             func);
   } else {
+    loaded_ = false;
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeData, err: {}", dsoName,
                    dlerror());
   }
@@ -88,6 +96,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
   if (func) {
     moeOnHttpDestroy_ = reinterpret_cast<void (*)(httpRequest * p0, GoUint64 p1)>(func);
   } else {
+    loaded_ = false;
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeDestroy, err: {}", dsoName,
                    dlerror());
   }
@@ -99,35 +108,31 @@ DsoInstance::~DsoInstance() {
   moeOnHttpData_ = nullptr;
   moeOnHttpDestroy_ = nullptr;
 
-  dlclose(handler_);
-  handler_ = nullptr;
+  if (handler_ != nullptr) {
+    dlclose(handler_);
+    handler_ = nullptr;
+  }
 }
 
 GoUint64 DsoInstance::moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1) {
-  if (moeNewHttpPluginConfig_) {
-    return moeNewHttpPluginConfig_(p0, p1);
-  }
-  return 0;
+  // TODO: use ASSERT instead
+  assert(moeNewHttpPluginConfig_ != nullptr);
+  return moeNewHttpPluginConfig_(p0, p1);
 }
 
 GoUint64 DsoInstance::moeOnHttpHeader(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) {
-  if (moeOnHttpHeader_) {
-    return moeOnHttpHeader_(p0, p1, p2, p3);
-  }
-  return 0;
+  assert(moeOnHttpHeader_ != nullptr);
+  return moeOnHttpHeader_(p0, p1, p2, p3);
 }
 
 GoUint64 DsoInstance::moeOnHttpData(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) {
-  if (moeOnHttpData_) {
-    return moeOnHttpData_(p0, p1, p2, p3);
-  }
-  return 0;
+  assert(moeOnHttpData_ != nullptr);
+  return moeOnHttpData_(p0, p1, p2, p3);
 }
 
 void DsoInstance::moeOnHttpDestroy(httpRequest* p0, int p1) {
-  if (moeOnHttpDestroy_) {
-    moeOnHttpDestroy_(p0, GoUint64(p1));
-  }
+  assert(moeOnHttpDestroy_ != nullptr);
+  moeOnHttpDestroy_(p0, GoUint64(p1));
 }
 
 } // namespace Dso

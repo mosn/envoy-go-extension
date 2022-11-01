@@ -23,16 +23,19 @@ public:
 
   void moeOnHttpDestroy(httpRequest* p0, int p1);
 
+  bool loaded() { return loaded_; }
+
 private:
   const std::string dsoName_;
-  void* handler_;
+  void* handler_{nullptr};
+  bool loaded_{false};
 
   GoUint64 (*moeNewHttpPluginConfig_)(GoUint64 p0, GoUint64 p1) = {nullptr};
 
   GoUint64 (*moeOnHttpHeader_)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
   GoUint64 (*moeOnHttpData_)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
 
-  void (*moeOnHttpDestroy_)(httpRequest* p0, GoUint64 p1);
+  void (*moeOnHttpDestroy_)(httpRequest* p0, GoUint64 p1) = {nullptr};
 };
 
 class DsoInstanceManager {
