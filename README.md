@@ -88,6 +88,12 @@ Please update the `so_path` field (in envoy-golang.yaml) to you local path.
 make run
 ```
 
+## Samples
+
+If you just want to use this extension. Please refer to [envoy-go-filter-samples](https://github.com/mosn/envoy-go-filter-samples).
+
+It shows how to implement a filter by using pure Go.
+
 ## Test
 
 ```
