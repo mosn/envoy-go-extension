@@ -27,7 +27,7 @@ void Filter::onHeadersModified() {
   // Any changes to request headers can affect how the request is going to be
   // routed. If we are changing the headers we also need to clear the route
   // cache.
-  decoder_callbacks_->clearRouteCache();
+  decoder_callbacks_->downstreamCallbacks()->clearRouteCache();
 }
 
 Http::LocalErrorStatus Filter::onLocalReply(const LocalReplyData& data) {
