@@ -154,8 +154,13 @@ public:
   // create metadata for golang.extension namespace
   void addGolangMetadata(const std::string& k, const uint64_t v);
 
-  // TODO: maybe encode_callbacks_ sometime?
-  Event::Dispatcher& getDispatcher() { return decoder_callbacks_->dispatcher(); };
+  Event::Dispatcher& getDispatcher() {
+    if (isDecodePhase()) {
+      return decoder_callbacks_->dispatcher();
+    } else {
+      return encoder_callbacks_->dispatcher();
+    }
+  };
 
   static std::atomic<uint64_t> global_stream_id_;
 
