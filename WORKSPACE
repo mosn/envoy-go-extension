@@ -9,9 +9,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 # Note: this is needed by release builder to resolve envoy dep sha to tag.
 # Commit date: 2022-10-28
 
-ENVOY_SHA = "ba81ae537e722ad99906599f5d3ad367ca854433"
+ENVOY_SHA = "851606902390f9e650002538114f89ab95596ab4"
 
-ENVOY_SHA256 = "99d5bc48386f46287f30dd9c0d58630a20ba0a1e19eed94486d80f28cce66e91"
+ENVOY_SHA256 = "69b82bebffd08a4ce1e59a7b70eaec6230f6b3f30c6574a3846c469304fee68d"
 
 ENVOY_ORG = "envoyproxy"
 
