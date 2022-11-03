@@ -18,5 +18,7 @@ type HttpCAPI interface {
 	HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint64) map[string]string
 	HttpSetTrailer(r unsafe.Pointer, key *string, value *string)
 
+	HttpGetRouteName(r unsafe.Pointer) string
+
 	HttpFinalize(r unsafe.Pointer, reason int)
 }

@@ -35,8 +35,9 @@ void moeHttpContinue(void* r, int status) {
 }
 
 void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
-                                      long long int grpc_status, void* details) {
-  moeHandlerWrapper(r, [response_code, body_text, headers, grpc_status, details](std::shared_ptr<Filter>& filter) {
+                           long long int grpc_status, void* details) {
+  moeHandlerWrapper(r, [response_code, body_text, headers, grpc_status,
+                        details](std::shared_ptr<Filter>& filter) {
     (void)headers;
     auto grpcStatus = static_cast<Grpc::Status::GrpcStatus>(grpc_status);
     filter->sendLocalReply(static_cast<Http::Code>(response_code), copyGoString(body_text), nullptr,
@@ -88,8 +89,7 @@ void moeHttpGetBuffer(void* r, unsigned long long int bufferPtr, void* data) {
   });
 }
 
-void moeHttpSetBuffer(void* r, unsigned long long int bufferPtr, void* data,
-                                 int length) {
+void moeHttpSetBuffer(void* r, unsigned long long int bufferPtr, void* data, int length) {
   moeHandlerWrapper(r, [bufferPtr, data, length](std::shared_ptr<Filter>& filter) {
     auto buffer = reinterpret_cast<Buffer::Instance*>(bufferPtr);
     auto value = absl::string_view(reinterpret_cast<const char*>(data), length);
@@ -113,12 +113,18 @@ void moeHttpSetTrailer(void* r, void* key, void* value) {
   });
 }
 
+void moeHttpGetStringValue(void* r, int id, void* value) {
+  moeHandlerWrapper(r, [id, value](std::shared_ptr<Filter>& filter) {
+    auto valueStr = reinterpret_cast<GoString*>(value);
+    filter->getStringValue(id, valueStr);
+  });
+}
+
 void moeHttpFinalize(void* r, int reason) {
   (void)reason;
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   delete req;
 }
-
 }
 
 } // namespace Golang
