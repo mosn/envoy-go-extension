@@ -83,7 +83,10 @@ install_deps()
 
 load("@envoy//bazel:dependency_imports.bzl", "envoy_dependency_imports")
 
-envoy_dependency_imports()
+# go version for rules_go
+GO_VERSION = "1.19.1"
+
+envoy_dependency_imports(GO_VERSION)
 
 # Bazel @rules_pkg
 
@@ -117,6 +120,12 @@ go_rules_dependencies()
 
 # Gazelle.
 
+local_repository(
+    name = "io_mosn_envoy_go_extension",
+    path = ".",
+)
+
+# gazelle:repository go_repository name=io_mosn_envoy_go_extension importpath=mosn.io/envoy-go-extension
 http_archive(
     name = "bazel_gazelle",
     sha256 = "501deb3d5695ab658e82f6f6f549ba681ea3ca2a5fb7911154b5aa45596183fa",
@@ -127,16 +136,6 @@ http_archive(
 )
 
 load("@bazel_gazelle//:deps.bzl", "go_repository", "gazelle_dependencies")
-
-# TODO: use local_repository instead of remote ?
-go_repository(
-    name = "io_mosn_envoy_go_extension",
-    importpath = "mosn.io/envoy-go-extension",
-    remote = "https://github.com/mosn/envoy-go-extension",
-    commit = "c67a576ed2548dcb8082003561092b8470536b7f",
-    build_file_generation = "on",
-    vcs = "git",
-)
 
 go_repository(
     name = "org_golang_google_protobuf",

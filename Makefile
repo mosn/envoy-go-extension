@@ -96,3 +96,16 @@ gen-toc:
 .PHONY: update-repos
 update-repos:
 	gazelle update-repos -from_file=go.mod
+
+# still need to update pkg/http/BUILD manually.
+.PHONY: gen-build
+gen-build:
+	gazelle \
+		-build_file_name BUILD \
+		-exclude api \
+		-exclude src \
+		-exclude test \
+		-exclude samples \
+		-external external \
+		-repo_root=. \
+		-go_prefix=mosn.io/envoy-go-extension
