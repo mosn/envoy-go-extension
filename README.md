@@ -37,9 +37,8 @@ coming soon.
 ## Requirements
 
 1. Go >= 1.18
-2. Gcc >= 11 (clang not supported yet)
-
-Note: only support gcc yet. [clang support in TODO](https://github.com/mosn/envoy-go-extension/issues/19).
+2. Gcc >= 11 or Clang >= 11.1.0
+3. Bazel >= 5.1.1
 
 ## Samples
 

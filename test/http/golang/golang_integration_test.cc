@@ -78,7 +78,7 @@ public:
   void initializeSimpleFilter(const std::string& so_id) {
     addDso(so_id);
 
-    auto yaml_fmt = R"EOF(
+    const auto yaml_fmt = R"EOF(
 name: golang
 typed_config:
   "@type": type.googleapis.com/envoy.extensions.filters.http.golang.v3.Config
@@ -132,7 +132,7 @@ typed_config:
   }
 
   void addDso(const std::string& so_id) {
-    auto yaml_fmt = R"EOF(
+    const auto yaml_fmt = R"EOF(
 name: envoy.bootstrap.dso
 typed_config:
   "@type": type.googleapis.com/envoy.extensions.dso.v3.dso
