@@ -11,11 +11,12 @@ Implement Envoy filter by using Go.
    * [envoy-go-extension](#envoy-go-extension)
    * [Status](#status)
    * [API](#api)
+   * [Requirements](#requirements)
+   * [Samples](#samples)
    * [Build](#build)
       * [Envoy](#envoy)
       * [golang shared object](#golang-shared-object)
    * [Run](#run)
-   * [Samples](#samples)
    * [Test](#test)
    * [Design](#design)
       * [Memory Safety](#memory-safety)
@@ -32,6 +33,20 @@ This project is under heavy active development at this stage.
 ## API
 
 coming soon.
+
+## Requirements
+
+1. Go >= 1.18
+2. Gcc >= 11 (clang not supported yet)
+
+Note: only support gcc yet. [clang support in TODO](https://github.com/mosn/envoy-go-extension/issues/19).
+
+## Samples
+
+If you just want to use this extension. Please refer to [envoy-go-filter-samples](https://github.com/mosn/envoy-go-filter-samples).
+
+It shows how to implement a filter by using pure Go.
+
 ## Build
 
 ### Envoy
@@ -43,8 +58,6 @@ See details in [envoyproxy](https://github.com/envoyproxy/envoy/blob/main/bazel/
 2. Build Envoy
 
 Generate executable envoy file under bazel-bin.
-
-Note: only support gcc yet. [clang support in TODO](https://github.com/mosn/envoy-go-extension/issues/19).
 
 ```
 # use default build options
@@ -75,12 +88,6 @@ Please update the `so_path` field (in envoy-golang.yaml) to you local path.
 # it will use the envoy-golang.yaml config file.
 make run
 ```
-
-## Samples
-
-If you just want to use this extension. Please refer to [envoy-go-filter-samples](https://github.com/mosn/envoy-go-filter-samples).
-
-It shows how to implement a filter by using pure Go.
 
 ## Test
 
