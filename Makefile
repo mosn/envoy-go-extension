@@ -2,24 +2,14 @@
 BUILD_IMAGE  = golang:1.14.13
 PROJECT_NAME = mosn.io/envoy-go-extension
 
-COPTS = --config=gcc \
-		--copt "-Wno-stringop-overflow" \
-		--copt "-Wno-vla-parameter" \
-		--copt "-Wno-parentheses" \
-		--copt "-Wno-unused-parameter" \
-		--copt "-Wno-range-loop-construct" \
-		--copt "-Wno-uninitialized" \
-		--copt "-Wno-strict-aliasing" \
-		--copt "-fno-strict-aliasing"
-
 COMPILE_MODE = dbg
-TARGET = "//:envoy"
+TARGET ?= "//:envoy"
 
 TEST_COMPILE_MODE = fastbuild
-TEST_TARGET = "//test/..."
+TEST_TARGET ?= "//test/..."
 TEST_LOG_LEVEL = debug
 # more custom options
-BUILD_OPTS =
+BUILD_OPTS ?=
 
 # go so
 .PHONY: build-so-local, build-so, sync-headers, check-test-data-compile
@@ -51,7 +41,6 @@ sync-headers:
 build-envoy:
 	bazel build \
 		-c ${COMPILE_MODE} \
-		${COPTS} \
 		${TARGET} \
 			--verbose_failures \
 			${BUILD_OPTS}
@@ -59,7 +48,6 @@ build-envoy:
 test-envoy:
 	bazel test \
 		-c ${TEST_COMPILE_MODE} \
-		${COPTS} \
 		${TEST_TARGET} \
 			--test_arg="-l ${TEST_LOG_LEVEL}" \
 			--test_env=ENVOY_IP_TEST_VERSIONS=v4only \

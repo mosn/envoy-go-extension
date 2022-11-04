@@ -10,8 +10,6 @@ namespace Golang {
 // which means may introduce race between go thread and envoy thread.
 //
 
-extern "C" {
-
 absl::string_view copyGoString(void* str) {
   if (str == nullptr) {
     return "";
@@ -19,6 +17,8 @@ absl::string_view copyGoString(void* str) {
   auto goStr = reinterpret_cast<GoString*>(str);
   return absl::string_view(goStr->p, goStr->n);
 }
+
+extern "C" {
 
 void moeHandlerWrapper(void* r, std::function<void(std::shared_ptr<Filter>&)> f) {
   auto req = reinterpret_cast<httpRequestInternal*>(r);
@@ -37,7 +37,7 @@ void moeHttpContinue(void* r, int status) {
 void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
                                       long long int grpc_status, void* details) {
   moeHandlerWrapper(r, [response_code, body_text, headers, grpc_status, details](std::shared_ptr<Filter>& filter) {
-    // TODO: headers
+    (void)headers;
     auto grpcStatus = static_cast<Grpc::Status::GrpcStatus>(grpc_status);
     filter->sendLocalReply(static_cast<Http::Code>(response_code), copyGoString(body_text), nullptr,
                            grpcStatus, copyGoString(details));
@@ -114,6 +114,7 @@ void moeHttpSetTrailer(void* r, void* key, void* value) {
 }
 
 void moeHttpFinalize(void* r, int reason) {
+  (void)reason;
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   delete req;
 }

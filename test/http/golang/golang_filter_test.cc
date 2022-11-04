@@ -85,7 +85,7 @@ public:
   ~GolangHttpFilterTest() override { filter_->onDestroy(); }
 
   void setup(const std::string& soId) {
-    auto yaml_fmt = R"EOF(
+    const auto yaml_fmt = R"EOF(
     so_id: %s
     plugin_name: xx
     merge_policy: MERGE_VIRTUALHOST_ROUTER_FILTER

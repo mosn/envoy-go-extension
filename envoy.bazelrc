@@ -68,6 +68,13 @@ build:clang-pch --define=ENVOY_CLANG_PCH=1
 # Use gold linker for gcc compiler.
 build:gcc --linkopt=-fuse-ld=gold
 
+build:gcc --copt="-Wno-stringop-overflow"
+build:gcc --copt="-Wno-vla-parameter"
+build:gcc --copt="-Wno-parentheses"
+build:gcc --copt="-Wno-uninitialized"
+build:gcc --copt="-Wno-strict-aliasing"
+build:gcc --copt="-fno-strict-aliasing"
+
 # Basic ASAN/UBSAN that works for gcc
 build:asan --action_env=ENVOY_ASAN=1
 build:asan --config=sanitizer
