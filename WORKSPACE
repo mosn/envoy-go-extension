@@ -98,4 +98,11 @@ go_repository(
     version = "v1.28.1",
 )
 
+go_repository(
+    name = "com_github_cncf_xds_go",
+    importpath = "github.com/cncf/xds/go",
+    sum = "h1:B/lvg4tQ5hfFZd4V2hcSfFVfUvAK6GSFKxIIzwnkv8g=",
+    version = "v0.0.0-20220520190051-1e77728a1eaa",
+)
+
 gazelle_dependencies()

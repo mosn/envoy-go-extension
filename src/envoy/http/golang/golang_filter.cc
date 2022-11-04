@@ -503,6 +503,32 @@ Buffer::InstancePtr Filter::createWatermarkBuffer() {
   }
 }
 
+uint64_t Filter::getMergedConfigId() {
+  Http::StreamFilterCallbacks* callbacks;
+  if (isDecodePhase()) {
+    callbacks = decoder_callbacks_;
+  } else {
+    callbacks = encoder_callbacks_;
+  }
+
+  // get all of the per route config
+  std::list<const FilterConfigPerRoute*> route_config_list;
+  callbacks->traversePerFilterConfig(
+      [&route_config_list](const Router::RouteSpecificFilterConfig& cfg) {
+        route_config_list.push_back(dynamic_cast<const FilterConfigPerRoute*>(&cfg));
+      });
+
+  ENVOY_LOG(error, "golang filter route config list length: {}.", route_config_list.size());
+
+  auto id = config_->getConfigId();
+  for (auto it = route_config_list.cbegin(); it != route_config_list.cend(); ++it) {
+    auto route_config = *it;
+    id = route_config->getPluginConfigId(id, config_->plugin_name(), config_->so_id());
+  }
+
+  return id;
+}
+
 /*** common APIs for filter, both decode and encode ***/
 
 GolangStatus Filter::doHeadersGo(Http::RequestOrResponseHeaderMap& headers, bool end_stream) {
@@ -517,7 +543,7 @@ GolangStatus Filter::doHeadersGo(Http::RequestOrResponseHeaderMap& headers, bool
   try {
     if (req_ == nullptr) {
       req_ = new httpRequestInternal(weak_from_this());
-      req_->configId = config_->getConfigId();
+      req_->configId = getMergedConfigId();
     }
 
     req_->phase = int(phase_);
@@ -1059,6 +1085,70 @@ uint64_t FilterConfig::getConfigId() {
   }
   return config_id_;
 }
+
+FilterConfigPerRoute::FilterConfigPerRoute(
+    const envoy::extensions::filters::http::golang::v3::ConfigsPerRoute& config,
+    Server::Configuration::ServerFactoryContext&) {
+  // NP: dso may not loaded yet, can not invoke moeNewHttpPluginConfig yet.
+  ENVOY_LOG(info, "initilizing per route golang filter config");
+
+  for (auto it = config.plugins_config().cbegin(); it != config.plugins_config().cend(); ++it) {
+    auto plugin_name = it->first;
+    auto route_plugin = it->second;
+    auto conf = new RoutePluginConfig(route_plugin);
+    ENVOY_LOG(debug, "per route golang filter config, type_url: {}",
+              route_plugin.config().type_url());
+    plugins_config_.insert({plugin_name, conf});
+  }
+}
+
+uint64_t FilterConfigPerRoute::getPluginConfigId(uint64_t parent_id, std::string plugin_name,
+                                                 std::string so_id) const {
+  auto it = plugins_config_.find(plugin_name);
+  if (it != plugins_config_.end()) {
+    return it->second->getMergedConfigId(parent_id, so_id);
+  }
+  ENVOY_LOG(debug, "golang filter not found plugin config: {}", plugin_name);
+  // not found
+  return parent_id;
+}
+
+uint64_t RoutePluginConfig::getMergedConfigId(uint64_t parent_id, std::string so_id) {
+  if (merged_config_id_ > 0) {
+    return merged_config_id_;
+  }
+  auto dlib = Dso::DsoInstanceManager::getDsoInstanceByID(so_id);
+  if (dlib == NULL) {
+    ENVOY_LOG(error, "golang extension filter dynamicLib is nullPtr.");
+    return 0;
+  }
+
+  if (config_id_ == 0) {
+    std::string str;
+    if (!plugin_config_.SerializeToString(&str)) {
+      ENVOY_LOG(error, "failed to serialize any pb to string");
+      return 0;
+    }
+    auto ptr = reinterpret_cast<unsigned long long>(str.data());
+    auto len = str.length();
+    config_id_ = dlib->moeNewHttpPluginConfig(ptr, len);
+    if (config_id_ == 0) {
+      // TODO: throw error
+      ENVOY_LOG(error, "invalid golang plugin config");
+      return parent_id;
+    }
+    ENVOY_LOG(debug, "golang filter new plugin config, id: {}", config_id_);
+  }
+
+  merged_config_id_ = dlib->moeHttpMergePluginConfig(parent_id, config_id_);
+  if (merged_config_id_ == 0) {
+    // TODO: throw error
+    ENVOY_LOG(error, "invalid golang plugin config");
+  }
+  ENVOY_LOG(debug, "golang filter merge plugin config, from {} + {} to {}", parent_id, config_id_,
+            merged_config_id_);
+  return merged_config_id_;
+};
 
 } // namespace Golang
 } // namespace HttpFilters

@@ -8,6 +8,7 @@
 #include "envoy/http/filter.h"
 #include "envoy/upstream/cluster_manager.h"
 
+#include "source/common/http/utility.h"
 #include "source/common/grpc/context_impl.h"
 
 #include "src/envoy/common/dso/dso.h"
@@ -26,6 +27,9 @@ namespace Golang {
 class FilterConfig : Logger::Loggable<Logger::Id::http> {
 public:
   FilterConfig(const envoy::extensions::filters::http::golang::v3::Config& proto_config);
+  ~FilterConfig() {
+    // TODO: delete config in Go
+  }
 
   const std::string& filter_chain() const { return filter_chain_; }
   const std::string& so_id() const { return so_id_; }
@@ -42,16 +46,42 @@ private:
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
 
+class RoutePluginConfig : Logger::Loggable<Logger::Id::http> {
+public:
+  RoutePluginConfig(const envoy::extensions::filters::http::golang::v3::RouterPlugin& config)
+      : plugin_config_(config.config()) {
+    ENVOY_LOG(debug, "initilizing golang filter route plugin config, type_url: {}",
+              config.config().type_url());
+  };
+  ~RoutePluginConfig() {
+    // TODO: delete plugin config in Go
+  }
+  uint64_t getMergedConfigId(uint64_t parent_id, std::string so_id);
+
+private:
+  const Protobuf::Any plugin_config_;
+  uint64_t config_id_{0};
+  uint64_t merged_config_id_{0};
+};
+
 /**
  * Route configuration for the filter.
  */
-class FilterConfigPerRoute : public Router::RouteSpecificFilterConfig {
+class FilterConfigPerRoute : public Router::RouteSpecificFilterConfig,
+                             Logger::Loggable<Logger::Id::http> {
 public:
-  // TODO
   FilterConfigPerRoute(const envoy::extensions::filters::http::golang::v3::ConfigsPerRoute&,
-                       Server::Configuration::ServerFactoryContext&) {}
+                       Server::Configuration::ServerFactoryContext&);
+  uint64_t getPluginConfigId(uint64_t parent_id, std::string plugin_name, std::string so_id) const;
 
-  ~FilterConfigPerRoute() override {}
+  ~FilterConfigPerRoute() {
+    for (auto it = plugins_config_.cbegin(); it != plugins_config_.cend(); ++it) {
+      delete it->second;
+    }
+  }
+
+private:
+  std::map<std::string, RoutePluginConfig*> plugins_config_;
 };
 
 /**
@@ -217,6 +247,8 @@ private:
   bool handleGolangStatus(GolangStatus status);
 
   Buffer::InstancePtr createWatermarkBuffer();
+
+  uint64_t getMergedConfigId();
 
   void continueEncodeLocalReply();
   void continueStatusInternal(GolangStatus status);

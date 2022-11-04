@@ -114,7 +114,11 @@ func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 	proto.Unmarshal(buf, &any)
 
 	configNum := atomic.AddUint64(&configNumGenerator, 1)
-	configCache.Store(configNum, &any)
+	if httpFilterConfigParser != nil {
+		configCache.Store(configNum, httpFilterConfigParser.Parse(&any))
+	} else {
+		configCache.Store(configNum, &any)
+	}
 
 	return configNum
 }
@@ -122,6 +126,29 @@ func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 //export moeDestoryHttpPluginConfig
 func moeDestoryHttpPluginConfig(id uint64) {
 	configCache.Delete(id)
+}
+
+//export moeHttpMergePluginConfig
+func moeHttpMergePluginConfig(parentId uint64, childId uint64) uint64 {
+	if httpFilterConfigParser != nil {
+		parent, ok := configCache.Load(parentId)
+		if !ok {
+			// TODO: throw error
+		}
+		child, ok := configCache.Load(childId)
+		if !ok {
+			// TODO: throw error
+		}
+
+		new := httpFilterConfigParser.Merge(parent, child)
+		configNum := atomic.AddUint64(&configNumGenerator, 1)
+		configCache.Store(configNum, new)
+		return configNum
+
+	} else {
+		// child override parent by default
+		return childId
+	}
 }
 
 //export moeOnHttpHeader

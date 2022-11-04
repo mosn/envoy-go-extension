@@ -8,6 +8,8 @@ mods=`ls`
 
 for mod in $mods; do
   cd $mod
+  go mod tidy
+  go mod vendor
   echo "compiling go to shared so in $mod"
   go build \
 	  -v \
