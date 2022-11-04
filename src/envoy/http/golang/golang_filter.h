@@ -106,6 +106,8 @@ enum class StringValue {
   RouteName = 1,
 };
 
+struct httpRequestInternal;
+
 /**
  * See docs/configuration/http_filters/golang_extension_filter.rst
  */
@@ -256,7 +258,7 @@ private:
   uint64_t cost_time_mem_{0};
   uint64_t stream_id_{0};
 
-  httpRequest* req_{0};
+  httpRequestInternal* req_{0};
 
   // lock for has_destroyed_,
   // to avoid race between envoy c thread and go thread (when calling back from go).
@@ -270,14 +272,13 @@ private:
   bool local_reply_waiting_go_{false};
 };
 
-struct httpRequestInternal {
-  uint64_t configId_;
-  int phase_;
+// Go code only touch the fields in httpRequest
+struct httpRequestInternal : httpRequest {
   std::weak_ptr<Filter> filter_;
-  httpRequestInternal(std::weak_ptr<Filter> f) { filter_ = f; }
-  std::weak_ptr<Filter> weakFilter() { return filter_; };
   // anchor a string temporarily, make sure it won't be freed before copied to Go.
   std::string strValue;
+  httpRequestInternal(std::weak_ptr<Filter> f) { filter_ = f; }
+  std::weak_ptr<Filter> weakFilter() { return filter_; };
 };
 
 // used to count function execution time

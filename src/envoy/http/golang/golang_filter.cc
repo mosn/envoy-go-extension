@@ -516,8 +516,7 @@ GolangStatus Filter::doHeadersGo(Http::RequestOrResponseHeaderMap& headers, bool
 
   try {
     if (req_ == nullptr) {
-      httpRequestInternal* req = new httpRequestInternal(weak_from_this());
-      req_ = reinterpret_cast<httpRequest*>(req);
+      req_ = new httpRequestInternal(weak_from_this());
       req_->configId = config_->getConfigId();
     }
 
@@ -1004,23 +1003,22 @@ void Filter::getStringValue(int id, GoString* valueStr) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
     return;
   }
-  // string will copy to req->strValue, but not deep copy
-  auto req = reinterpret_cast<httpRequestInternal*>(req_);
   switch (static_cast<StringValue>(id)) {
   case StringValue::RouteName:
     // TODO: add a callback wrapper to avoid this kind of ugly code
     if (isDecodePhase()) {
-      req->strValue = decoder_callbacks_->streamInfo().getRouteName();
+      // string will copy to req->strValue, but not deep copy
+      req_->strValue = decoder_callbacks_->streamInfo().getRouteName();
     } else {
-      req->strValue = encoder_callbacks_->streamInfo().getRouteName();
+      req_->strValue = encoder_callbacks_->streamInfo().getRouteName();
     }
     break;
   default:
     ASSERT(false, "invalid string value id");
   }
 
-  valueStr->p = req->strValue.data();
-  valueStr->n = req->strValue.length();
+  valueStr->p = req_->strValue.data();
+  valueStr->n = req_->strValue.length();
 }
 
 /*** FilterConfig ***/
