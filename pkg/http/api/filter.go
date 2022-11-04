@@ -17,6 +17,8 @@
 
 package api
 
+import "google.golang.org/protobuf/types/known/anypb"
+
 // request
 type HttpDecoderFilter interface {
 	DecodeHeaders(RequestHeaderMap, bool) StatusType
@@ -25,6 +27,11 @@ type HttpDecoderFilter interface {
 	/*
 		DecodeMetadata(MetadataMap) StatusType
 	*/
+}
+
+type HttpFilterConfigParser interface {
+	Parse(any *anypb.Any) interface{}
+	Merge(parentConfig interface{}, childConfig interface{}) interface{}
 }
 
 type HttpFilterConfigFactory func(config interface{}) HttpFilterFactory

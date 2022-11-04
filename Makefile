@@ -50,6 +50,8 @@ build-envoy:
 			${BUILD_OPTS}
 
 test-envoy:
+	# remove test_data vendor
+	find test/http/golang/test_data/ -name "vendor" | xargs rm -rf
 	bazel test \
 		-c ${TEST_COMPILE_MODE} \
 		${TEST_TARGET} \

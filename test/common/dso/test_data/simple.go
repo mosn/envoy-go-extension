@@ -16,6 +16,11 @@ func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 func moeDestoryHttpPluginConfig(id uint64) {
 }
 
+//export moeHttpMergePluginConfig
+func moeHttpMergePluginConfig(parentId uint64, childId uint64) uint64 {
+	return 0
+}
+
 //export moeOnHttpHeader
 func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64) uint64 {
 	return 0

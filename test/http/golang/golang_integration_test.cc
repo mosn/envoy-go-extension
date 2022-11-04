@@ -12,6 +12,8 @@ using Envoy::Http::HeaderValueOf;
 namespace Envoy {
 namespace {
 
+static const std::string FilterName = "envoy.filters.http.golang";
+
 class GolangIntegrationTest : public testing::TestWithParam<Network::Address::IpVersion>,
                               public HttpIntegrationTest {
 public:
@@ -43,8 +45,8 @@ public:
 
           hcm.mutable_route_config()->mutable_virtual_hosts(0)->mutable_routes(0)->set_name(
               "test-route-name");
-
           hcm.mutable_route_config()->mutable_virtual_hosts(0)->set_domains(0, domain);
+
           auto* new_route = hcm.mutable_route_config()->mutable_virtual_hosts(0)->add_routes();
           new_route->mutable_match()->set_prefix("/alt/route");
           new_route->mutable_route()->set_cluster("alt_cluster");
@@ -53,6 +55,7 @@ public:
           response_header->set_key("fake_header");
           response_header->set_value("fake_value");
 
+          /*
           const std::string key = "envoy.filters.http.golang";
           const std::string yaml =
               R"EOF(
@@ -60,7 +63,8 @@ public:
               foo: bar
               baz: bat
             keyset:
-              foo: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp0cSZtAdFgMI1zQJwG8ujTXFMcRY0+SA6fMZGEfQYuxcz/e8UelJ1fLDVAwYmk7KHoYzpizy0JIxAcJ+OAE+cd6a6RpwSEm/9/vizlv0vWZv2XMRAqUxk/5amlpQZE/4sRg/qJdkZZjKrSKjf5VEUQg2NytExYyYWG+3FEYpzYyUeVktmW0y/205XAuEQuxaoe+AUVKeoON1iDzvxywE42C0749XYGUFicqBSRj2eO7jm4hNWvgTapYwpswM3hV9yOAPOVQGKNXzNbLDbFTHyLw3OKayGs/4FUBa+ijlGD9VDawZq88RRaf5ztmH22gOSiKcrHXe40fsnrzh/D27uwIDAQAB
+              foo:
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp0cSZtAdFgMI1zQJwG8ujTXFMcRY0+SA6fMZGEfQYuxcz/e8UelJ1fLDVAwYmk7KHoYzpizy0JIxAcJ+OAE+cd6a6RpwSEm/9/vizlv0vWZv2XMRAqUxk/5amlpQZE/4sRg/qJdkZZjKrSKjf5VEUQg2NytExYyYWG+3FEYpzYyUeVktmW0y/205XAuEQuxaoe+AUVKeoON1iDzvxywE42C0749XYGUFicqBSRj2eO7jm4hNWvgTapYwpswM3hV9yOAPOVQGKNXzNbLDbFTHyLw3OKayGs/4FUBa+ijlGD9VDawZq88RRaf5ztmH22gOSiKcrHXe40fsnrzh/D27uwIDAQAB
           )EOF";
 
           ProtobufWkt::Struct value;
@@ -73,6 +77,62 @@ public:
               ->mutable_metadata()
               ->mutable_filter_metadata()
               ->insert(Protobuf::MapPair<std::string, ProtobufWkt::Struct>(key, value));
+          */
+
+          // filter level config
+          auto vh = hcm.mutable_route_config()->add_virtual_hosts();
+          vh->add_domains("filter-level.com");
+          vh->set_name("filter-level.com");
+          auto* rt = vh->add_routes();
+          rt->mutable_match()->set_prefix("/test");
+          rt->mutable_route()->set_cluster("cluster_0");
+
+          // virtualhost level config
+          const std::string key = "envoy.filters.http.golang";
+          const std::string yaml =
+              R"EOF(
+              "@type": type.googleapis.com/envoy.extensions.filters.http.golang.v3.ConfigsPerRoute
+              plugins_config:
+                xx:
+                  extension_plugin_options:
+                    key: 1
+                  config:
+                    "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                    type_url: typexx
+                    value:
+                      remove: x-test-header-1
+                      set: bar
+              )EOF";
+          Protobuf::Any value;
+          TestUtility::loadFromYaml(yaml, value);
+          hcm.mutable_route_config()
+              ->mutable_virtual_hosts(0)
+              ->mutable_typed_per_filter_config()
+              ->insert(Protobuf::MapPair<std::string, Protobuf::Any>(key, value));
+
+          // route level config
+          const std::string yaml2 =
+              R"EOF(
+              "@type": type.googleapis.com/envoy.extensions.filters.http.golang.v3.ConfigsPerRoute
+              plugins_config:
+                xx:
+                  extension_plugin_options:
+                    key: 1
+                  config:
+                    "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+                    type_url: typexx
+                    value:
+                      remove: x-test-header-0
+                      set: baz
+              )EOF";
+          Protobuf::Any value2;
+          TestUtility::loadFromYaml(yaml2, value2);
+
+          auto* new_route2 = hcm.mutable_route_config()->mutable_virtual_hosts(0)->add_routes();
+          new_route2->mutable_match()->set_prefix("/route-config-test");
+          new_route2->mutable_typed_per_filter_config()->insert(
+              Protobuf::MapPair<std::string, Protobuf::Any>(key, value2));
+          new_route2->mutable_route()->set_cluster("cluster_0");
         });
 
     initialize();
@@ -92,12 +152,12 @@ typed_config:
     "@type": type.googleapis.com/udpa.type.v1.TypedStruct
     type_url: typexx
     value:
-        key: value
-        int: 10
+      remove: x-test-header-0
+      set: foo
 )EOF";
 
     auto yaml_string = absl::StrFormat(yaml_fmt, so_id);
-    initializeFilter(yaml_string);
+    initializeFilter(yaml_string, "test.com");
   }
 
   void initializeWithYaml(const std::string& filter_config, const std::string& route_config) {
@@ -198,7 +258,7 @@ typed_config:
     Http::TestRequestHeaderMapImpl request_headers{{":method", "POST"},
                                                    {":path", "/test"},
                                                    {":scheme", "http"},
-                                                   {":authority", "host"},
+                                                   {":authority", "test.com"},
                                                    {"x-forwarded-for", "10.0.0.1"}};
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
@@ -250,14 +310,13 @@ typed_config:
     codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
     Http::TestRequestHeaderMapImpl request_headers{
         {":method", "POST"},        {":path", path},
-        {":scheme", "http"},        {":authority", "host"},
+        {":scheme", "http"},        {":authority", "test.com"},
         {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
     Http::RequestEncoder& request_encoder = encoder_decoder.first;
     auto response = std::move(encoder_decoder.second);
-    codec_client_->sendData(request_encoder, "hello", false);
-    codec_client_->sendData(request_encoder, "world", false);
+    codec_client_->sendData(request_encoder, "helloworld", false);
     codec_client_->sendData(request_encoder, "", true);
 
     waitForNextUpstreamRequest();
@@ -336,12 +395,41 @@ typed_config:
     cleanup();
   }
 
+  void testRouteConfig(std::string domain, std::string path, bool header_0_existing,
+                       std::string set_header) {
+    initializeSimpleFilter(ROUTECONFIG);
+
+    codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+    Http::TestRequestHeaderMapImpl request_headers{
+        {":method", "GET"}, {":path", path}, {":scheme", "http"}, {":authority", domain}};
+
+    auto encoder_decoder = codec_client_->startRequest(request_headers, true);
+    auto response = std::move(encoder_decoder.second);
+
+    waitForNextUpstreamRequest();
+
+    Http::TestResponseHeaderMapImpl response_headers{
+        {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
+    upstream_request_->encodeHeaders(response_headers, true);
+
+    ASSERT_TRUE(response->waitForEndStream());
+
+    EXPECT_EQ(header_0_existing,
+              !response->headers().get(Http::LowerCaseString("x-test-header-0")).empty());
+
+    if (set_header != "") {
+      auto values = response->headers().get(Http::LowerCaseString(set_header));
+      EXPECT_EQ("test-value", values.empty() ? "" : values[0]->value().getStringView());
+    }
+    cleanup();
+  }
+
   void testSendLocalReply(std::string path, std::string phase) {
     initializeSimpleFilter(BASIC);
 
     codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
     Http::TestRequestHeaderMapImpl request_headers{
-        {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "host"}};
+        {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "test.com"}};
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
     Http::RequestEncoder& request_encoder = encoder_decoder.first;
@@ -378,7 +466,7 @@ typed_config:
 
     codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
     Http::TestRequestHeaderMapImpl request_headers{
-        {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "host"}};
+        {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "test.com"}};
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
     Http::RequestEncoder& request_encoder = encoder_decoder.first;
@@ -386,7 +474,7 @@ typed_config:
     // 100 + 200 > 150, excced buffer limit.
     codec_client_->sendData(request_encoder, std::string(100, '-'), false);
     // the two data buffer may be merged into a single buffer, make sure they are two buffer.
-    for (auto i = 0; i < 100; i++) {
+    for (auto i = 0; i < 50; i++) {
       codec_client_->connection()->dispatcher().run(Event::Dispatcher::RunType::NonBlock);
     }
     codec_client_->sendData(request_encoder, std::string(200, '-'), true);
@@ -430,6 +518,7 @@ typed_config:
 
   const std::string BASIC{"basic"};
   const std::string ASYNC{"async"};
+  const std::string ROUTECONFIG{"routeconfig"};
 };
 
 INSTANTIATE_TEST_SUITE_P(IpVersions, GolangIntegrationTest,
@@ -529,7 +618,7 @@ typed_config:
   Http::TestRequestHeaderMapImpl request_headers{{":method", "POST"},
                                                  {":path", "/test"},
                                                  {":scheme", "http"},
-                                                 {":authority", "host"},
+                                                 {":authority", "test.com"},
                                                  {"x-test-header-0", "foo"}};
 
   auto encoder_decoder = codec_client_->startRequest(request_headers);
@@ -555,6 +644,27 @@ TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeHeader) {
 
 TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeData) {
   testBufferExceedLimit("/test?databuffer=decode-data");
+}
+
+// config in filter
+// remove: x-test-header-0
+// set: foo
+TEST_P(GolangIntegrationTest, RouteConfig_Filter) {
+  testRouteConfig("filter-level.com", "/test", false, "foo");
+}
+
+// config in virtualhost
+// remove: x-test-header-1
+// set: bar
+TEST_P(GolangIntegrationTest, RouteConfig_VirtualHost) {
+  testRouteConfig("test.com", "/test", true, "bar");
+}
+
+// config in route
+// remove: x-test-header-0
+// set: baz
+TEST_P(GolangIntegrationTest, RouteConfig_Route) {
+  testRouteConfig("test.com", "/route-config-test", false, "baz");
 }
 
 } // namespace

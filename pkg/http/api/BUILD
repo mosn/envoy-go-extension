@@ -9,4 +9,7 @@ go_library(
     ],
     importpath = "mosn.io/envoy-go-extension/pkg/http/api",
     visibility = ["//visibility:public"],
+    deps = [
+        "@org_golang_google_protobuf//types/known/anypb",
+    ],
 )
