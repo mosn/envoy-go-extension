@@ -99,6 +99,7 @@ type MetadataMap interface {
 
 // *************** BufferInstance start **************//
 type BufferAction int
+
 const (
 	SetBuffer     BufferAction = 0
 	AppendBuffer  BufferAction = 1
