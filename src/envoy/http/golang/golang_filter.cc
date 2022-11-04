@@ -998,6 +998,31 @@ void Filter::setTrailer(absl::string_view key, absl::string_view value) {
   trailers_->setCopy(Http::LowerCaseString(key), value);
 }
 
+void Filter::getStringValue(int id, GoString* valueStr) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    ENVOY_LOG(warn, "golang filter has been destroyed");
+    return;
+  }
+  // string will copy to req->strValue, but not deep copy
+  auto req = reinterpret_cast<httpRequestInternal*>(req_);
+  switch (static_cast<StringValue>(id)) {
+  case StringValue::RouteName:
+    // TODO: add a callback wrapper to avoid this kind of ugly code
+    if (isDecodePhase()) {
+      req->strValue = decoder_callbacks_->streamInfo().getRouteName();
+    } else {
+      req->strValue = encoder_callbacks_->streamInfo().getRouteName();
+    }
+    break;
+  default:
+    ASSERT(false, "invalid string value id");
+  }
+
+  valueStr->p = req->strValue.data();
+  valueStr->n = req->strValue.length();
+}
+
 /*** FilterConfig ***/
 
 FilterConfig::FilterConfig(const envoy::extensions::filters::http::golang::v3::Config& proto_config)

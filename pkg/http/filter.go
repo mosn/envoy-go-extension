@@ -54,8 +54,22 @@ func (r *httpRequest) SendLocalReply(response_code int, body_text string, header
 	cAPI.HttpSendLocalReply(unsafe.Pointer(r.req), response_code, body_text, headers, grpc_status, details)
 }
 
+func (r *httpRequest) StreamInfo() api.StreamInfo {
+	return &streamInfo{
+		request: r,
+	}
+}
+
 func (r *httpRequest) Finalize(reason int) {
 	cAPI.HttpFinalize(unsafe.Pointer(r.req), reason)
+}
+
+type streamInfo struct {
+	request *httpRequest
+}
+
+func (s *streamInfo) GetRouteName() string {
+	return cAPI.HttpGetRouteName(unsafe.Pointer(s.request.req))
 }
 
 type httpHeaderMap struct {

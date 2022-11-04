@@ -43,13 +43,15 @@ type StreamEncoderFilter interface {
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/stream_info/stream_info.h
 type StreamInfo interface {
 	GetRouteName() string
-	VirtualClusterName() string
-	BytesReceived() int64
-	BytesSent() int64
-	Protocol() string
-	ResponseCode() int
-	GetRequestHeaders() RequestHeaderMap
-	ResponseCodeDetails() string
+	/*
+		VirtualClusterName() string
+		BytesReceived() int64
+		BytesSent() int64
+		Protocol() string
+		ResponseCode() int
+		GetRequestHeaders() RequestHeaderMap
+		ResponseCodeDetails() string
+	*/
 }
 
 type StreamFilterCallbacks interface {
@@ -57,6 +59,7 @@ type StreamFilterCallbacks interface {
 }
 
 type FilterCallbacks interface {
+	StreamFilterCallbacks
 	// Continue or SendLocalReply should be last API invoked, no more code after them.
 	Continue(StatusType)
 	SendLocalReply(response_code int, body_text string, headers map[string]string, grpc_status int64, details string)

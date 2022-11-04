@@ -102,6 +102,10 @@ enum class DestroyReason {
   Terminate,
 };
 
+enum class StringValue {
+  RouteName = 1,
+};
+
 /**
  * See docs/configuration/http_filters/golang_extension_filter.rst
  */
@@ -181,6 +185,7 @@ public:
   void setBuffer(Buffer::Instance* buffer, absl::string_view& value);
   void copyTrailers(GoString* goStrs, char* goBuf);
   void setTrailer(absl::string_view key, absl::string_view value);
+  void getStringValue(int id, GoString* valueStr);
 
 private:
   bool isDecodePhase() {
@@ -271,6 +276,8 @@ struct httpRequestInternal {
   std::weak_ptr<Filter> filter_;
   httpRequestInternal(std::weak_ptr<Filter> f) { filter_ = f; }
   std::weak_ptr<Filter> weakFilter() { return filter_; };
+  // anchor a string temporarily, make sure it won't be freed before copied to Go.
+  std::string strValue;
 };
 
 // used to count function execution time

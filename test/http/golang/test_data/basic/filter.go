@@ -74,6 +74,7 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	}
 	header.Set("test-x-set-header-0", header.Get("x-test-header-0"))
 	header.Remove("x-test-header-1")
+	header.Set("req-route-name", f.callbacks.StreamInfo().GetRouteName())
 	if !endStream && strings.Contains(f.databuffer, "decode-header") {
 		return api.StopAndBuffer
 	}
@@ -119,6 +120,7 @@ func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 	header.Set("test-req-body-length", strconv.Itoa(int(f.req_body_length)))
 	header.Set("test-query-param-foo", f.query_params.Get("foo"))
 	header.Set("test-path", f.path)
+	header.Set("rsp-route-name", f.callbacks.StreamInfo().GetRouteName())
 	return api.Continue
 }
 

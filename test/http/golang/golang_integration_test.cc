@@ -41,6 +41,9 @@ public:
               ->mutable_match()
               ->set_prefix("/test");
 
+          hcm.mutable_route_config()->mutable_virtual_hosts(0)->mutable_routes(0)->set_name(
+              "test-route-name");
+
           hcm.mutable_route_config()->mutable_virtual_hosts(0)->set_domains(0, domain);
           auto* new_route = hcm.mutable_route_config()->mutable_virtual_hosts(0)->add_routes();
           new_route->mutable_match()->set_prefix("/alt/route");
@@ -274,6 +277,14 @@ typed_config:
     EXPECT_EQ(true,
               upstream_request_->headers().get(Http::LowerCaseString("x-test-header-1")).empty());
 
+    /*
+      * TODO: check route name in decode phase
+      EXPECT_EQ("test-route-name", upstream_request_->headers()
+                                       .get(Http::LowerCaseString("req-route-name"))[0]
+                                       ->value()
+                                       .getStringView());
+    */
+
     // upper("helloworld")
     EXPECT_EQ("HELLOWORLD", upstream_request_->body().toString());
 
@@ -307,6 +318,12 @@ typed_config:
                         .get(Http::LowerCaseString("test-req-body-length"))[0]
                         ->value()
                         .getStringView());
+
+    // check route name in encode phase
+    EXPECT_EQ("test-route-name", response->headers()
+                                     .get(Http::LowerCaseString("rsp-route-name"))[0]
+                                     ->value()
+                                     .getStringView());
 
     // verify path
     EXPECT_EQ(

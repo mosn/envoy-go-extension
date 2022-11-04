@@ -16,9 +16,14 @@ import "C"
 import (
 	"reflect"
 	"runtime"
+	"strings"
 	"unsafe"
 
 	"mosn.io/envoy-go-extension/pkg/http/api"
+)
+
+const (
+	ValueRouteName = 1
 )
 
 type httpCApiImpl struct{}
@@ -110,6 +115,13 @@ func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint
 
 func (c *httpCApiImpl) HttpSetTrailer(r unsafe.Pointer, key *string, value *string) {
 	C.moeHttpSetTrailer(r, unsafe.Pointer(key), unsafe.Pointer(value))
+}
+
+func (c *httpCApiImpl) HttpGetRouteName(r unsafe.Pointer) string {
+	var value string
+	C.moeHttpGetStringValue(r, ValueRouteName, unsafe.Pointer(&value))
+	// copy the memory from c to Go.
+	return strings.Clone(value)
 }
 
 func (c *httpCApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
