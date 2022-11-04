@@ -117,9 +117,9 @@ public:
   explicit Filter(Grpc::Context& context, FilterConfigSharedPtr config, uint64_t sid,
                   Dso::DsoInstance* dynamicLib)
       : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
-        (void)context_;
-        (void)stream_id_;
-      }
+    (void)context_;
+    (void)stream_id_;
+  }
 
   // Http::StreamFilterBase
   void onDestroy() override;

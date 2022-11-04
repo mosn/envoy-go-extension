@@ -97,3 +97,8 @@ gen-build:
 		-external external \
 		-repo_root=. \
 		-go_prefix=mosn.io/envoy-go-extension
+
+.PHONY: clang-format
+clang-format:
+	find . -name "*.cc" | xargs clang-format -i
+	find . -name "*.h" | grep -v libgolang.h | xargs clang-format -i
