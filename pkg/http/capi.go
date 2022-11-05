@@ -89,15 +89,15 @@ func (c *httpCApiImpl) HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *
 
 func (c *httpCApiImpl) HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, value string, action api.BufferAction) {
 	sHeader := (*reflect.StringHeader)(unsafe.Pointer(&value))
-    var act C.bufferAction
-    switch(action) {
-    case api.SetBuffer:
-        act = C.Set
-    case api.AppendBuffer:
-        act = C.Append
-    case api.PrependBuffer:
-        act = C.Prepend
-    }
+	var act C.bufferAction
+	switch action {
+	case api.SetBuffer:
+		act = C.Set
+	case api.AppendBuffer:
+		act = C.Append
+	case api.PrependBuffer:
+		act = C.Prepend
+	}
 	C.moeHttpSetBufferHelper(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len), act)
 }
 

@@ -7,7 +7,6 @@ go_library(
         "capi.go",
         "filter.go",
         "filtermanager.go",
-        "libgolang.h",
         "moe.go",
         "passthrough.go",
     ],
