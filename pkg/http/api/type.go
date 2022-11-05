@@ -98,6 +98,13 @@ type MetadataMap interface {
 //****************** HeaderMap end ******************//
 
 // *************** BufferInstance start **************//
+type BufferAction int
+const (
+	SetBuffer     BufferAction = 0
+	AppendBuffer  BufferAction = 1
+	PrependBuffer BufferAction = 2
+)
+
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/buffer/buffer.h
 type BufferInstance interface {
 	/*
@@ -107,7 +114,8 @@ type BufferInstance interface {
 	Set(string)
 	Get() string
 	Length() uint64
-	// Append(String)
+	Append(string)
+	Prepend(string)
 }
 
 //*************** BufferInstance end **************//

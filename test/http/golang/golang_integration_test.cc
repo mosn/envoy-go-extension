@@ -285,8 +285,8 @@ typed_config:
                                        .getStringView());
     */
 
-    // upper("helloworld")
-    EXPECT_EQ("HELLOWORLD", upstream_request_->body().toString());
+    // "prepend_" + upper("helloworld") + "_append"
+    EXPECT_EQ("prepend_HELLOWORLD_append", upstream_request_->body().toString());
 
     Http::TestResponseHeaderMapImpl response_headers{
         {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};

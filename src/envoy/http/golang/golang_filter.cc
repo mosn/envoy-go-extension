@@ -967,13 +967,19 @@ void Filter::copyBuffer(Buffer::Instance* buffer, char* data) {
   }
 }
 
-void Filter::setBuffer(Buffer::Instance* buffer, absl::string_view& value) {
+void Filter::setBufferHelper(Buffer::Instance* buffer, absl::string_view& value,
+                             bufferAction action) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
     return;
   }
-  buffer->drain(buffer->length());
+  if (action == bufferAction::Set) {
+    buffer->drain(buffer->length());
+  } else if (action == bufferAction::Prepend) {
+    buffer->prepend(value);
+    return;
+  }
   buffer->add(value);
 }
 
