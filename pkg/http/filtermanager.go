@@ -30,7 +30,7 @@ func RegisterHttpFilterConfigFactory(f api.HttpFilterConfigFactory) {
 }
 
 func getOrCreateHttpFilterFactory(configId uint64) api.HttpFilterFactory {
-	config, ok := configCache[configId]
+	config, ok := configCache.Load(configId)
 	if !ok {
 		// TODO: panic
 	}

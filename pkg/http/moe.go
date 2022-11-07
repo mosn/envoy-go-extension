@@ -32,33 +32,45 @@ package http
 import "C"
 
 import (
+	"errors"
 	"runtime"
+	"sync"
 
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/pkg/http/api"
-	"mosn.io/envoy-go-extension/pkg/utils"
 )
 
-var configNum uint64
-var configCache = make(map[uint64]*anypb.Any, 16)
+var ErrDupRequestKey = errors.New("dup request key")
 
-//export moeNewHttpPluginConfig
-func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
-	buf := utils.BytesToSlice(configPtr, configLen)
-	var any anypb.Any
-	proto.Unmarshal(buf, &any)
-	configNum++
-	configCache[configNum] = &any
-	return configNum
+var Requests = &requestMap{}
+
+type requestMap struct {
+	m sync.Map // *C.httpRequest -> *httpRequest
 }
 
-//export moeDestoryHttpPluginConfig
-func moeDestoryHttpPluginConfig(id uint64) {
-	delete(configCache, id)
+func (f *requestMap) StoreReq(key *httpRequest, req *httpRequest) error {
+	if _, loaded := f.m.LoadOrStore(key, req); loaded {
+		return ErrDupRequestKey
+	}
+	return nil
 }
 
-var Requests = make(map[*C.httpRequest]*httpRequest, 64)
+func (f *requestMap) GetReq(key *httpRequest) *httpRequest {
+	if v, ok := f.m.Load(key); ok {
+		return v.(*httpRequest)
+	}
+	return nil
+}
+
+func (f *requestMap) DeleteReq(key *httpRequest) {
+	f.m.Delete(key)
+}
+
+func (f *requestMap) Clear() {
+	f.m.Range(func(key, _ interface{}) bool {
+		f.m.Delete(key)
+		return true
+	})
+}
 
 func requestFinalize(r *httpRequest) {
 	r.Finalize(api.NormalFinalize)
@@ -71,10 +83,8 @@ func createRequest(r *C.httpRequest) *httpRequest {
 	// NP: make sure filter will be deleted.
 	runtime.SetFinalizer(req, requestFinalize)
 
-	if _, ok := Requests[r]; ok {
-		// TODO: error
-	}
-	Requests[r] = req
+	// TODO: error
+	_ = Requests.StoreReq(r, req)
 
 	configId := uint64(r.configId)
 	filterFactory := getOrCreateHttpFilterFactory(configId)
@@ -85,11 +95,7 @@ func createRequest(r *C.httpRequest) *httpRequest {
 }
 
 func getRequest(r *C.httpRequest) *httpRequest {
-	req, ok := Requests[r]
-	if !ok {
-		// TODO: error
-	}
-	return req
+	return Requests.GetReq(r)
 }
 
 //export moeOnHttpHeader
@@ -165,7 +171,7 @@ func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
 	f := req.httpFilter
 	f.OnDestroy(v)
 
-	Requests[r] = nil
+	Requests.DeleteReq(r)
 
 	// no one is using req now, we can remove it manually, for better performance.
 	if v == api.Normal {
