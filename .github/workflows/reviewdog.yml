@@ -20,3 +20,13 @@ jobs:
           golangci_lint_flags: "--disable-all --enable gofmt"
           fail_on_error: true
           level: error
+
+  build-so:
+    name: build-so
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Run build-so
+        run: make build-so
