@@ -1,5 +1,5 @@
 
-BUILD_IMAGE  = golang:1.14.13
+BUILD_IMAGE  = golang:1.19
 PROJECT_NAME = mosn.io/envoy-go-extension
 
 COMPILE_MODE = dbg

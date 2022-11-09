@@ -47,21 +47,21 @@ type requestMap struct {
 	m sync.Map // *C.httpRequest -> *httpRequest
 }
 
-func (f *requestMap) StoreReq(key *httpRequest, req *httpRequest) error {
+func (f *requestMap) StoreReq(key *C.httpRequest, req *httpRequest) error {
 	if _, loaded := f.m.LoadOrStore(key, req); loaded {
 		return ErrDupRequestKey
 	}
 	return nil
 }
 
-func (f *requestMap) GetReq(key *httpRequest) *httpRequest {
+func (f *requestMap) GetReq(key *C.httpRequest) *httpRequest {
 	if v, ok := f.m.Load(key); ok {
 		return v.(*httpRequest)
 	}
 	return nil
 }
 
-func (f *requestMap) DeleteReq(key *httpRequest) {
+func (f *requestMap) DeleteReq(key *C.httpRequest) {
 	f.m.Delete(key)
 }
 
