@@ -12,7 +12,7 @@ TEST_LOG_LEVEL = debug
 BUILD_OPTS ?=
 
 # go so
-.PHONY: build-so-local, build-so, sync-headers, check-test-data-compile
+.PHONY: build-so-local, build-so, check-test-data-compile
 
 build-so-local:
 	go build \
@@ -27,7 +27,11 @@ build-so:
 check-test-data-compile:
 	./scripts/check-test-data-compile.sh
 
+.PHONY: sync-headers, sync-headers-local
 sync-headers:
+	docker run --rm -v $(shell pwd):/go/src/${PROJECT_NAME} -w /go/src/${PROJECT_NAME} ${BUILD_IMAGE} make sync-headers-local
+
+sync-headers-local:
 	# export header by cgo tool
 	cd pkg/http \
 		&& go tool cgo --exportheader libgolang.h moe.go \

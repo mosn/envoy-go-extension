@@ -35,8 +35,12 @@ import (
 	"errors"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/utils"
 )
 
 var ErrDupRequestKey = errors.New("dup request key")
@@ -96,6 +100,28 @@ func createRequest(r *C.httpRequest) *httpRequest {
 
 func getRequest(r *C.httpRequest) *httpRequest {
 	return Requests.GetReq(r)
+}
+
+var (
+	configNumGenerator uint64
+	configCache        = &sync.Map{} // uint64 -> *anypb.Any
+)
+
+//export moeNewHttpPluginConfig
+func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
+	buf := utils.BytesToSlice(configPtr, configLen)
+	var any anypb.Any
+	proto.Unmarshal(buf, &any)
+
+	configNum := atomic.AddUint64(&configNumGenerator, 1)
+	configCache.Store(configNum, &any)
+
+	return configNum
+}
+
+//export moeDestoryHttpPluginConfig
+func moeDestoryHttpPluginConfig(id uint64) {
+	configCache.Delete(id)
 }
 
 //export moeOnHttpHeader
