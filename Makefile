@@ -69,9 +69,10 @@ image: build-envoy build-so-local
 .PHONY: run
 run:
 	GODEBUG=cgocheck=0 \
-	./bazel-bin/envoy \
+	/home/yongjie.yyj/shit/2022/1108/envoy \
 		-c envoy-golang.yaml \
 		-l debug \
+		--concurrency 4 \
 		--base-id 1
 
 .PHONY: gen-toc

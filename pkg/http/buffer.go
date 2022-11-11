@@ -15,37 +15,39 @@
  * limitations under the License.
  */
 
-package buffered
+package http
 
 import (
-	"mosn.io/envoy-go-extension/pkg/http/api"
-	"mosn.io/envoy-go-extension/pkg/http/buffered"
+	"context"
+
+	"mosn.io/pkg/buffer"
 )
 
-type filter struct {
-	config    interface{}
-	callbacks api.FilterCallbackHandler
+func init() {
+	buffer.RegisterBuffer(&ins)
 }
 
-func (f *filter) Decode(header api.RequestHeaderMap, data api.BufferInstance, trailer api.RequestTrailerMap) {
-}
-func (f *filter) Encode(header api.ResponseHeaderMap, data api.BufferInstance, trailer api.ResponseTrailerMap) {
-	if data != nil {
-		data.Drain(data.Len())
-		data.Write([]byte("Foo-Bar"))
-		header.Set("Content-Length", "7")
-	}
-	header.Set("foo", "bar")
-	if trailer != nil {
-		trailer.Set("t1", "v1")
-	}
+var ins = moeBufferCtx{}
+
+type moeBufferCtx struct {
+	buffer.TempBufferCtx
 }
 
-func ConfigFactory(config interface{}) buffered.HttpFilterFactory {
-	return func(callbacks api.FilterCallbackHandler) buffered.HttpFilter {
-		return &filter{
-			config:    config,
-			callbacks: callbacks,
-		}
-	}
+func (ctx moeBufferCtx) New() interface{} {
+	return new(moeBuffers)
 }
+
+func (ctx moeBufferCtx) Reset(i interface{}) {
+	buf, _ := i.(*moeBuffers)
+	buf.stream = nil
+}
+
+type moeBuffers struct {
+	stream *ActiveStream
+}
+
+func moeBuffersByContext(context context.Context) *moeBuffers {
+	ctx := buffer.PoolContext(context)
+	return ctx.Find(&ins, nil).(*moeBuffers)
+}
+

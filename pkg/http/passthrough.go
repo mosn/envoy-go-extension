@@ -50,7 +50,6 @@ func (f *passThroughFilter) EncodeTrailers(trailers api.ResponseTrailerMap) api.
 }
 
 func (f *passThroughFilter) OnDestroy(reason api.DestroyReason) {
-	// fmt.Printf("OnDestory, reason: %d\n", reason)
 }
 
 func PassThroughFactory(interface{}) api.HttpFilterFactory {

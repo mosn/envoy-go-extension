@@ -17,6 +17,11 @@
 
 package api
 
+import (
+	mosnApi "mosn.io/api"
+	"mosn.io/pkg/buffer"
+)
+
 // ****************** filter status start ******************//
 type StatusType int
 
@@ -73,40 +78,29 @@ const (
 //******************* log level end *******************//
 
 // ****************** HeaderMap start ******************//
-// refer https://github.com/envoyproxy/envoy/blob/main/envoy/http/header_map.h
-type HeaderMap interface {
-	// Get is safe, but may low performance
-	Get(name string) string
-	// GetRaw is unsafe, reuse the memory from Envoy
-	GetRaw(name string) string
-	// override header
-	Set(name, value string)
-	Remove(name string)
-	/*
-		byteSize() uint64
-		// append header
-		AddCopy(name, value string)
-	*/
-}
 
 type RequestHeaderMap interface {
-	HeaderMap
-	// others
+	mosnApi.HeaderMap
+	// GetRaw is unsafe, reuse the memory from Envoy
+	GetRaw(name string) string
 }
 
 type RequestTrailerMap interface {
-	HeaderMap
-	// others
+	mosnApi.HeaderMap
+	// GetRaw is unsafe, reuse the memory from Envoy
+	GetRaw(name string) string
 }
 
 type ResponseHeaderMap interface {
-	HeaderMap
-	// others
+	mosnApi.HeaderMap
+	// GetRaw is unsafe, reuse the memory from Envoy
+	GetRaw(name string) string
 }
 
 type ResponseTrailerMap interface {
-	HeaderMap
-	// others
+	mosnApi.HeaderMap
+	// GetRaw is unsafe, reuse the memory from Envoy
+	GetRaw(name string) string
 }
 
 type MetadataMap interface {
@@ -123,17 +117,8 @@ const (
 	PrependBuffer BufferAction = 2
 )
 
-// refer https://github.com/envoyproxy/envoy/blob/main/envoy/buffer/buffer.h
 type BufferInstance interface {
-	/*
-		CopyOut(start uint64, p []byte) int
-		GetRawSlices() []byte
-	*/
-	Set(string)
-	Get() string
-	Length() uint64
-	Append(string)
-	Prepend(string)
+	buffer.IoBuffer
 }
 
 //*************** BufferInstance end **************//
@@ -150,11 +135,31 @@ const (
 	GCFinalize     int = 1 // finalize in GC sweep
 )
 
+type EnvoyRequestPhase int
+
 const (
-	DecodeHeaderPhase int = 1
-	DecodeDataPhase   int = 2
-	DecodeTailerPhase int = 3
-	EncodeHeaderPhase int = 4
-	EncodeDataPhase   int = 5
-	EncodeTailerPhase int = 6
+	DecodeHeaderPhase EnvoyRequestPhase = iota + 1
+	DecodeDataPhase
+	DecodeTrailerPhase
+	EncodeHeaderPhase
+	EncodeDataPhase
+	EncodeTrailerPhase
 )
+
+func (e EnvoyRequestPhase) String() string {
+	switch e {
+	case DecodeHeaderPhase:
+		return "DecodeHeader"
+	case DecodeDataPhase:
+		return "DecodeData"
+	case DecodeTrailerPhase:
+		return "DecodeTrailer"
+	case EncodeHeaderPhase:
+		return "EncodeHeader"
+	case EncodeDataPhase:
+		return "EncodeData"
+	case EncodeTrailerPhase:
+		return "EncodeTrailer"
+	}
+	return "unknown phase"
+}

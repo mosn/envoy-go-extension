@@ -47,21 +47,21 @@ type requestMap struct {
 	m sync.Map // *C.httpRequest -> *httpRequest
 }
 
-func (f *requestMap) StoreReq(key *httpRequest, req *httpRequest) error {
+func (f *requestMap) StoreReq(key *C.httpRequest, req *httpRequest) error {
 	if _, loaded := f.m.LoadOrStore(key, req); loaded {
 		return ErrDupRequestKey
 	}
 	return nil
 }
 
-func (f *requestMap) GetReq(key *httpRequest) *httpRequest {
+func (f *requestMap) GetReq(key *C.httpRequest) *httpRequest {
 	if v, ok := f.m.Load(key); ok {
 		return v.(*httpRequest)
 	}
 	return nil
 }
 
-func (f *requestMap) DeleteReq(key *httpRequest) {
+func (f *requestMap) DeleteReq(key *C.httpRequest) {
 	f.m.Delete(key)
 }
 
@@ -101,7 +101,7 @@ func getRequest(r *C.httpRequest) *httpRequest {
 //export moeOnHttpHeader
 func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64) uint64 {
 	var req *httpRequest
-	phase := int(r.phase)
+	phase := api.EnvoyRequestPhase(r.phase)
 	if phase == api.DecodeHeaderPhase {
 		req = createRequest(r)
 	} else {
@@ -117,18 +117,18 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 		request:     req,
 		headerNum:   headerNum,
 		headerBytes: headerBytes,
-		isTrailer:   phase == api.DecodeTailerPhase || phase == api.EncodeTailerPhase,
+		isTrailer:   phase == api.DecodeTrailerPhase || phase == api.EncodeTrailerPhase,
 	}
 
 	var status api.StatusType
 	switch phase {
 	case api.DecodeHeaderPhase:
 		status = f.DecodeHeaders(header, endStream == 1)
-	case api.DecodeTailerPhase:
+	case api.DecodeTrailerPhase:
 		status = f.DecodeTrailers(header)
 	case api.EncodeHeaderPhase:
 		status = f.EncodeHeaders(header, endStream == 1)
-	case api.EncodeTailerPhase:
+	case api.EncodeTrailerPhase:
 		status = f.EncodeTrailers(header)
 	}
 	return uint64(status)
@@ -139,20 +139,14 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	req := getRequest(r)
 
 	f := req.httpFilter
-	isDecode := int(r.phase) == api.DecodeDataPhase
+	isDecode := api.EnvoyRequestPhase(r.phase) == api.DecodeDataPhase
 
 	buf := &httpBuffer{
 		request:   req,
 		bufferPtr: buffer,
 		length:    length,
 	}
-	/*
-		id := ""
-		if hf, ok := f.(*httpFilter); ok {
-			id = hf.config.AsMap()["id"].(string)
-		}
-		fmt.Printf("id: %s, buffer ptr: %p, buffer data: %s\n", id, buffer, buf.Get())
-	*/
+
 	var status api.StatusType
 	if isDecode {
 		status = f.DecodeData(buf, endStream == 1)

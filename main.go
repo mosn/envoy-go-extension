@@ -18,22 +18,40 @@
 package main
 
 import (
+	"os"
+
+	_ "mosn.io/mosn/pkg/filter/stream/dsl"
+	_ "mosn.io/mosn/pkg/filter/stream/dubbo"
+	_ "mosn.io/mosn/pkg/filter/stream/faultinject"
+	_ "mosn.io/mosn/pkg/filter/stream/faulttolerance"
+	_ "mosn.io/mosn/pkg/filter/stream/flowcontrol"
+	_ "mosn.io/mosn/pkg/filter/stream/grpcmetric"
+	_ "mosn.io/mosn/pkg/filter/stream/gzip"
+	_ "mosn.io/mosn/pkg/filter/stream/headertometadata"
+	_ "mosn.io/mosn/pkg/filter/stream/ipaccess"
+	_ "mosn.io/mosn/pkg/filter/stream/mirror"
+	_ "mosn.io/mosn/pkg/filter/stream/payloadlimit"
+	_ "mosn.io/mosn/pkg/filter/stream/proxywasm"
+	_ "mosn.io/mosn/pkg/filter/stream/seata"
+	_ "mosn.io/mosn/pkg/filter/stream/transcoder/http2bolt"
+	_ "mosn.io/mosn/pkg/filter/stream/transcoder/httpconv"
+	"mosn.io/mosn/pkg/streamfilter"
+
+	_ "mosn.io/envoy-go-extension/pkg/filter/stream/echo"
 	"mosn.io/envoy-go-extension/pkg/http"
-	"mosn.io/envoy-go-extension/pkg/http/buffered"
-	"mosn.io/envoy-go-extension/samples/async"
-	asyncSleep "mosn.io/envoy-go-extension/samples/async-sleep"
-	bufferedSample "mosn.io/envoy-go-extension/samples/buffered"
 )
 
-func init() {
-	// these are useless samples
-	buffered.RegisterHttpFilterConfigFactory(bufferedSample.ConfigFactory)
-	http.RegisterHttpFilterConfigFactory(asyncSleep.ConfigFactory)
-	http.RegisterHttpFilterConfigFactory(async.ConfigFactory)
-	buffered.RegisterHttpFilterConfigFactory(bufferedSample.ConfigFactory)
+var DefaultMosnConfigPath string = "/home/yongjie.yyj/gopath/src/mosn.io/envoy-go-extension/mosn.json"
 
-	// default filter
-	http.RegisterHttpFilterConfigFactory(http.PassThroughFactory)
+func init() {
+	http.RegisterHttpFilterConfigFactory(http.ConfigFactory)
+
+	// load mosn config
+	mosnConfigPath := DefaultMosnConfigPath
+	if envPath := os.Getenv("MOSN_CONFIG"); envPath != "" {
+		mosnConfigPath = envPath
+	}
+	streamfilter.LoadAndRegisterStreamFilters(mosnConfigPath)
 }
 
 func main() {
