@@ -12,8 +12,14 @@ licenses(["notice"])  # Apache 2
 
 envoy_cc_library(
     name = "golang_filter_lib",
-    srcs = ["golang_filter.cc"],
-    hdrs = ["golang_filter.h"],
+    srcs = [
+        "golang_filter.cc",
+        "processor_state.cc",
+    ],
+    hdrs = [
+        "golang_filter.h",
+        "processor_state.h",
+    ],
     repository = "@envoy",
     deps = [
         ":cgo",
@@ -50,7 +56,10 @@ envoy_cc_library(
 envoy_cc_library(
     name = "cgo",
     srcs = ["cgo.cc"],
-    hdrs = ["golang_filter.h"],
+    hdrs = [
+        "golang_filter.h",
+        "processor_state.h",
+    ],
     repository = "@envoy",
     deps = [
         "@envoy//envoy/http:codes_interface",
