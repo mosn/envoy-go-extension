@@ -17,7 +17,7 @@ jobs:
         uses: reviewdog/action-golangci-lint@v2
         with:
           go_version: "1.18"
-          golangci_lint_flags: "--disable-all --enable gofmt"
+          golangci_lint_flags: "--disable-all --enable gofmt --enable goimports"
           fail_on_error: true
           level: error
 
