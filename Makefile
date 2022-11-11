@@ -11,6 +11,9 @@ TEST_LOG_LEVEL = debug
 # more custom options
 BUILD_OPTS ?=
 
+IMAGE_NAME = "envoy-go-extension"
+IMAGE_TAG = "latest"
+
 # go so
 .PHONY: build-so-local, build-so, check-test-data-compile
 
@@ -67,9 +70,9 @@ test-envoy:
 image: build-envoy build-so-local
 	# bazel-bin is a soft link
 	cp -f bazel-bin/envoy envoy
-	sudo docker build --no-cache -t envoy-go-extension .
-	sudo docker tag envoy-go-extension:latest mosnio/envoy-go-extension:latest
-	sudo docker push mosnio/envoy-go-extension:latest
+	sudo docker build --no-cache -t ${IMAGE_NAME}:${IMAGE_TAG} .
+	sudo docker tag ${IMAGE_NAME}:${IMAGE_TAG} mosnio/${IMAGE_NAME}:${IMAGE_TAG}
+	sudo docker push mosnio/${IMAGE_NAME}:${IMAGE_TAG}
 
 
 .PHONY: run
