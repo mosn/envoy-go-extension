@@ -52,6 +52,8 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
     return Http::FilterHeadersStatus::Continue;
   }
 
+  state.setEndStream(end_stream);
+
   bool done = doHeaders(state, headers, end_stream);
 
   return done ? Http::FilterHeadersStatus::Continue : Http::FilterHeadersStatus::StopIteration;
@@ -68,6 +70,8 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
     return Http::FilterDataStatus::Continue;
   }
+
+  state.setEndStream(end_stream);
 
   bool done = doData(state, data, end_stream);
 
@@ -107,6 +111,8 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
     // TODO return Network::FilterStatus::StopIteration and close connection immediately?
     return Http::FilterHeadersStatus::Continue;
   }
+
+  encoding_state_.setEndStream(end_stream);
 
   // NP: may enter encodeHeaders in any phase & any state_,
   // since other filters or filtermanager could call encodeHeaders or sendLocalReply in any time.
@@ -176,10 +182,11 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
     return Http::FilterDataStatus::Continue;
   }
 
+  encoding_state_.setEndStream(end_stream);
+
   if (local_reply_waiting_go_) {
     ENVOY_LOG(debug, "golang filter appending data to buffer");
     encoding_state_.addBufferData(data);
-    end_stream_ = end_stream;
     return Http::FilterDataStatus::StopIterationNoBuffer;
   }
 
@@ -302,7 +309,6 @@ bool Filter::doHeaders(ProcessorState& state, Http::RequestOrResponseHeaderMap& 
             state.stateStr(), state.phaseStr(), end_stream);
 
   ASSERT(state.isBufferDataEmpty());
-  end_stream_ = end_stream;
 
   state.processHeader(end_stream);
   auto status = doHeadersGo(state, headers, end_stream);
@@ -344,8 +350,6 @@ bool Filter::doDataGo(ProcessorState& state, Buffer::Instance& data, bool end_st
 bool Filter::doData(ProcessorState& state, Buffer::Instance& data, bool end_stream) {
   ENVOY_LOG(debug, "golang filter doData, state: {}, phase: {}, end_stream: {}", state.stateStr(),
             state.phaseStr(), end_stream);
-
-  end_stream_ = end_stream;
 
   bool done = false;
   switch (state.state()) {
@@ -410,7 +414,7 @@ bool Filter::doTrailer(ProcessorState& state, Http::HeaderMap& trailers) {
   ENVOY_LOG(debug, "golang filter doTrailer, state: {}, phase: {}", state.stateStr(),
             state.phaseStr());
 
-  ASSERT(!end_stream_ && !state.isProcessingEndStream());
+  ASSERT(!state.getEndStream() && !state.isProcessingEndStream());
 
   trailers_ = &trailers;
 
@@ -453,8 +457,8 @@ bool Filter::doTrailer(ProcessorState& state, Http::HeaderMap& trailers) {
 /*** APIs for go call C ***/
 
 void Filter::continueData(ProcessorState& state) {
-  // end_stream_ should be false, when trailers_ is not nullptr.
-  if (!end_stream_ && do_data_buffer_.length() == 0) {
+  // end_stream should be false, when trailers_ is not nullptr.
+  if (!state.getEndStream() && do_data_buffer_.length() == 0) {
     return;
   }
   state.injectDoDataBuffer(do_data_buffer_);
@@ -475,7 +479,7 @@ void Filter::continueEncodeLocalReply(ProcessorState& state) {
   // should use encoding_state_ now
   enter_encoding_ = true;
 
-  auto header_end_stream = end_stream_;
+  auto header_end_stream = encoding_state_.getEndStream();
   if (local_trailers_ != nullptr) {
     trailers_ = local_trailers_;
     header_end_stream = false;
@@ -483,7 +487,7 @@ void Filter::continueEncodeLocalReply(ProcessorState& state) {
   if (!encoding_state_.isBufferDataEmpty()) {
     header_end_stream = false;
   }
-  // NP: not overwrite end_stream_ in doHeadersGo
+  // NP: we not overwrite state end_stream in doHeadersGo
   encoding_state_.processHeader(header_end_stream);
   auto status = doHeadersGo(encoding_state_, *local_headers_, header_end_stream);
   continueStatusInternal(status);
@@ -513,7 +517,7 @@ void Filter::continueStatusInternal(GolangStatus status) {
 
       // NP: it is safe to continueData after continueProcessing
       // that means injectDecodedDataToFilterChain after continueDecoding while stream is not end
-      if (state.isProcessingEndStream() || (!end_stream_ && trailers_ == nullptr)) {
+      if (state.isProcessingEndStream() || !state.isStreamEnd()) {
         state.continueProcessing();
       }
       break;
@@ -532,10 +536,14 @@ void Filter::continueStatusInternal(GolangStatus status) {
     }
   }
 
+  // TODO: state should also grow in this case
+  // state == WaitingData && bufferData is empty && seen trailers
+
   auto current_state = state.state();
-  if ((current_state == FilterState::WaitingData && (!state.isBufferDataEmpty() || end_stream_)) ||
-      (current_state == FilterState::WaitingAllData && (end_stream_ || trailers_ != nullptr))) {
-    auto done = doDataGo(state, state.getBufferData(), end_stream_);
+  if ((current_state == FilterState::WaitingData &&
+       (!state.isBufferDataEmpty() || state.getEndStream())) ||
+      (current_state == FilterState::WaitingAllData && state.isStreamEnd())) {
+    auto done = doDataGo(state, state.getBufferData(), state.getEndStream());
     if (done) {
       continueData(state);
     } else {

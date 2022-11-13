@@ -141,6 +141,11 @@ public:
 
   std::string getRouteName() { return filter_callbacks_->streamInfo().getRouteName(); }
 
+  void setEndStream(bool end_stream) { end_stream_ = end_stream; }
+  bool getEndStream() { return end_stream_; }
+  // seen trailers also means stream is end
+  bool isStreamEnd() { return end_stream_ || seen_trailers_; }
+
 protected:
   Phase state2Phase();
   Filter& filter_;
@@ -148,6 +153,7 @@ protected:
   bool watermark_requested_{false};
   Buffer::InstancePtr data_buffer_{nullptr};
   FilterState state_{FilterState::WaitingHeader};
+  bool end_stream_{false};
   bool do_end_stream_{false};
   bool seen_trailers_{false};
 };

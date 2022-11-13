@@ -205,8 +205,6 @@ private:
 
   Buffer::OwnedImpl do_data_buffer_;
 
-  bool end_stream_; // end_stream flag that c has received.
-
   // The state of the filter on both the encoding and decoding side.
   DecodingProcessorState decoding_state_;
   EncodingProcessorState encoding_state_;
