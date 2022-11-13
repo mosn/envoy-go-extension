@@ -545,15 +545,11 @@ TEST_P(GolangIntegrationTest, Async_DataBuffer_DecodeHeader) {
   testBasic("/test?async=1&databuffer=decode-header");
 }
 
-/*
- * TODO: reponse data len not match yet, should be pass after splitting do_data_buffer_ to list
-
 TEST_P(GolangIntegrationTest, DataBuffer_DecodeData) { testBasic("/test?databuffer=decode-data"); }
 
 TEST_P(GolangIntegrationTest, Async_DataBuffer_DecodeData) {
   testBasic("/test?async=1&databuffer=decode-data");
 }
-*/
 
 TEST_P(GolangIntegrationTest, LocalReply_DecodeHeader) {
   testSendLocalReply("/test?localreply=decode-header", "decode-header");

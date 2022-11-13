@@ -203,8 +203,6 @@ private:
   Http::RequestOrResponseHeaderMap* local_headers_{nullptr};
   Http::HeaderMap* local_trailers_{nullptr};
 
-  Buffer::OwnedImpl do_data_buffer_;
-
   // The state of the filter on both the encoding and decoding side.
   DecodingProcessorState decoding_state_;
   EncodingProcessorState encoding_state_;

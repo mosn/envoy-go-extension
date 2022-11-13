@@ -8,6 +8,39 @@ namespace Extensions {
 namespace HttpFilters {
 namespace Golang {
 
+Buffer::Instance& BufferList::push(Buffer::Instance& data) {
+  bytes_ += data.length();
+
+  auto ptr = std::make_unique<Buffer::OwnedImpl>();
+  Buffer::Instance& buffer = *ptr.get();
+  buffer.move(data);
+  queue_.push_back(std::move(ptr));
+
+  return buffer;
+}
+
+void BufferList::moveOut(Buffer::Instance& data) {
+  for (auto it = queue_.begin(); it != queue_.end(); it = queue_.erase(it)) {
+    data.move(*(*it).get());
+  }
+  bytes_ = 0;
+};
+
+void BufferList::clearLatest() {
+  auto buffer = std::move(queue_.back());
+  bytes_ -= buffer->length();
+
+  // buffer data will be clear automatically?
+  // buffer->drain(buffer->length());
+
+  queue_.pop_back();
+};
+
+void BufferList::clearAll() {
+  bytes_ = 0;
+  queue_.clear();
+};
+
 // headers_ should set to nullptr when return true.
 bool ProcessorState::handleHeaderGolangStatus(const GolangStatus status) {
   ENVOY_LOG(debug, "golang filter handle header status, state: {}, phase: {}, status: {}",
@@ -104,8 +137,7 @@ bool ProcessorState::handleDataGolangStatus(const GolangStatus status) {
       ENVOY_LOG(error, "want more data while stream is end");
       // TODO: terminate the stream?
     }
-    // TODO
-    // do_data_buffer_.drain(do_data_buffer_.length());
+    doDataList.clearLatest();
     state_ = FilterState::WaitingData;
     break;
 

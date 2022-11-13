@@ -76,7 +76,7 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
   bool done = doData(state, data, end_stream);
 
   if (done) {
-    data.move(do_data_buffer_);
+    state.doDataList.moveOut(data);
     return Http::FilterDataStatus::Continue;
   }
 
@@ -142,7 +142,6 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
 
     if (inGo) {
       // NP: wait go returns to avoid concurrency conflict in go side.
-      // also, can not drain do_data_buffer_, since it may be using.
       local_reply_waiting_go_ = true;
       ENVOY_LOG(debug, "waiting go returns before handle the local reply from other filter");
 
@@ -155,11 +154,9 @@ Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers
       return Http::FilterHeadersStatus::StopIteration;
 
     } else {
-      if (do_data_buffer_.length() > 0) {
-        ENVOY_LOG(warn, "golang filter drain do_data_buffer_ before continue encodeHeader, "
-                        "since no go code is running");
-        do_data_buffer_.drain(do_data_buffer_.length());
-      }
+      ENVOY_LOG(warn, "golang filter clear do data buffer before continue encodeHeader, "
+                      "since no go code is running");
+      state.doDataList.clearAll();
     }
   }
 
@@ -193,7 +190,7 @@ Http::FilterDataStatus Filter::encodeData(Buffer::Instance& data, bool end_strea
   bool done = doData(encoding_state_, data, end_stream);
 
   if (done) {
-    data.move(do_data_buffer_);
+    state.doDataList.moveOut(data);
     return Http::FilterDataStatus::Continue;
   }
 
@@ -325,15 +322,13 @@ bool Filter::doDataGo(ProcessorState& state, Buffer::Instance& data, bool end_st
 
   state.processData(end_stream);
 
-  // FIXME: use a buffer list, for more flexible API in go side.
-  do_data_buffer_.move(data);
+  Buffer::Instance& buffer = state.doDataList.push(data);
 
   try {
     ASSERT(req_ != nullptr);
     req_->phase = static_cast<int>(state.phase());
     auto status = dynamicLib_->moeOnHttpData(req_, end_stream ? 1 : 0,
-                                             reinterpret_cast<uint64_t>(&do_data_buffer_),
-                                             do_data_buffer_.length());
+                                             reinterpret_cast<uint64_t>(&buffer), buffer.length());
 
     return state.handleDataGolangStatus(static_cast<GolangStatus>(status));
 
@@ -456,24 +451,14 @@ bool Filter::doTrailer(ProcessorState& state, Http::HeaderMap& trailers) {
 
 /*** APIs for go call C ***/
 
-void Filter::continueData(ProcessorState& state) {
-  // end_stream should be false, when trailers_ is not nullptr.
-  if (!state.getEndStream() && do_data_buffer_.length() == 0) {
-    return;
-  }
-  state.injectDoDataBuffer(do_data_buffer_);
-}
-
 void Filter::continueEncodeLocalReply(ProcessorState& state) {
   ENVOY_LOG(debug,
             "golang filter continue encodeHeader(local reply from other filters) after return from "
             "go, current state: {}, phase: {}",
             state.stateStr(), state.phaseStr());
 
-  if (do_data_buffer_.length() > 0) {
-    ENVOY_LOG(warn, "golang filter drain do_data_buffer_ before continueEncodeLocalReply");
-    do_data_buffer_.drain(do_data_buffer_.length());
-  }
+  ENVOY_LOG(warn, "golang filter drain do data buffer before continueEncodeLocalReply");
+  state.doDataList.clearAll();
 
   local_reply_waiting_go_ = false;
   // should use encoding_state_ now
@@ -515,7 +500,7 @@ void Filter::continueStatusInternal(GolangStatus status) {
       // NP: should process data first filter seen the stream is end but go doesn't,
       // otherwise, the next filter will continue with end_stream = true.
 
-      // NP: it is safe to continueData after continueProcessing
+      // NP: it is safe to continueDoData after continueProcessing
       // that means injectDecodedDataToFilterChain after continueDecoding while stream is not end
       if (state.isProcessingEndStream() || !state.isStreamEnd()) {
         state.continueProcessing();
@@ -523,11 +508,11 @@ void Filter::continueStatusInternal(GolangStatus status) {
       break;
 
     case FilterState::ProcessingData:
-      continueData(state);
+      state.continueDoData();
       break;
 
     case FilterState::ProcessingTrailer:
-      continueData(state);
+      state.continueDoData();
       state.continueProcessing();
       break;
 
@@ -545,7 +530,7 @@ void Filter::continueStatusInternal(GolangStatus status) {
       (current_state == FilterState::WaitingAllData && state.isStreamEnd())) {
     auto done = doDataGo(state, state.getBufferData(), state.getEndStream());
     if (done) {
-      continueData(state);
+      state.continueDoData();
     } else {
       // do not process trailers when data is not finished
       return;
@@ -578,10 +563,8 @@ void Filter::sendLocalReplyInternal(
     return;
   }
 
-  if (do_data_buffer_.length() > 0) {
-    ENVOY_LOG(warn, "golang filter drain do_data_buffer_ before sendLocalReply");
-    do_data_buffer_.drain(do_data_buffer_.length());
-  }
+  ENVOY_LOG(warn, "golang filter drain do data buffer before sendLocalReply");
+  state.doDataList.clearAll();
 
   // drain buffer data if it's not empty, before sendLocalReply
   state.drainBufferData();
