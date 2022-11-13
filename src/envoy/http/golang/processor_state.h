@@ -21,6 +21,28 @@ namespace Golang {
 
 class Filter;
 
+class BufferList {
+public:
+  BufferList() = default;
+  BufferList(const BufferList&) = delete;
+  BufferList& operator=(const BufferList&) = delete;
+  uint32_t bytes() const { return bytes_; }
+  bool empty() const { return queue_.empty(); }
+  // return a new buffer instance, it will existing until moveOut or drain.
+  Buffer::Instance& push(Buffer::Instance& data);
+  // return the lastest push in buffer.
+  Buffer::Instance& lastest();
+  // move all buffer into data, the list is empty then.
+  void moveOut(Buffer::Instance& data);
+  // clean all.
+  void drain();
+
+private:
+  std::deque<Buffer::InstancePtr> queue_;
+  // The total size of buffers in the list.
+  uint32_t bytes_{0};
+};
+
 // This describes the processor state.
 enum class FilterState {
   // Waiting header
@@ -145,6 +167,8 @@ public:
   bool getEndStream() { return end_stream_; }
   // seen trailers also means stream is end
   bool isStreamEnd() { return end_stream_ || seen_trailers_; }
+
+  BufferList doDataList;
 
 protected:
   Phase state2Phase();

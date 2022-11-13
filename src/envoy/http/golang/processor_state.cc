@@ -8,6 +8,17 @@ namespace Extensions {
 namespace HttpFilters {
 namespace Golang {
 
+Buffer::Instance& BufferList::push(Buffer::Instance& data) {
+  auto ptr = std::make_unique<Buffer::OwnedImpl>();
+  Buffer::Instance& buffer = *ptr.get();
+  buffer.move(data);
+  queue_.push_back(std::move(ptr));
+  return buffer;
+}
+Buffer::Instance& BufferList::lastest() { return *queue_.back().get(); };
+void BufferList::moveOut(Buffer::Instance& data) { (void)data; };
+void BufferList::drain(){};
+
 // headers_ should set to nullptr when return true.
 bool ProcessorState::handleHeaderGolangStatus(const GolangStatus status) {
   ENVOY_LOG(debug, "golang filter handle header status, state: {}, phase: {}, status: {}",
