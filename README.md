@@ -63,7 +63,7 @@ Generate executable envoy file under bazel-bin.
 make build-envoy
 
 # add more build options
-build_opts=""
+build_opts="--define=wasm=disabled"
 make build-envoy BUILD_OPTS=$build_opts
 ```
 
