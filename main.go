@@ -19,22 +19,7 @@ package main
 
 import (
 	"os"
-
-	_ "mosn.io/mosn/pkg/filter/stream/dsl"
-	_ "mosn.io/mosn/pkg/filter/stream/dubbo"
-	_ "mosn.io/mosn/pkg/filter/stream/faultinject"
-	_ "mosn.io/mosn/pkg/filter/stream/faulttolerance"
-	_ "mosn.io/mosn/pkg/filter/stream/flowcontrol"
-	_ "mosn.io/mosn/pkg/filter/stream/grpcmetric"
-	_ "mosn.io/mosn/pkg/filter/stream/gzip"
-	_ "mosn.io/mosn/pkg/filter/stream/headertometadata"
-	_ "mosn.io/mosn/pkg/filter/stream/ipaccess"
-	_ "mosn.io/mosn/pkg/filter/stream/mirror"
-	_ "mosn.io/mosn/pkg/filter/stream/payloadlimit"
-	_ "mosn.io/mosn/pkg/filter/stream/proxywasm"
-	_ "mosn.io/mosn/pkg/filter/stream/seata"
-	_ "mosn.io/mosn/pkg/filter/stream/transcoder/http2bolt"
-	_ "mosn.io/mosn/pkg/filter/stream/transcoder/httpconv"
+	
 	"mosn.io/mosn/pkg/streamfilter"
 
 	_ "mosn.io/envoy-go-extension/pkg/filter/stream/echo"
