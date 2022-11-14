@@ -30,7 +30,7 @@ import (
 	"mosn.io/pkg/log"
 	"mosn.io/pkg/variable"
 
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 var workerPool mosnSync.WorkerPool

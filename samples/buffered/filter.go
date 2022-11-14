@@ -18,7 +18,7 @@
 package buffered
 
 import (
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 	"mosn.io/envoy-go-extension/pkg/http/buffered"
 )
 

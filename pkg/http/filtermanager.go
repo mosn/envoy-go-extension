@@ -22,7 +22,7 @@ import (
 
 	"mosn.io/mosn/pkg/streamfilter"
 
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 // pass through by default

@@ -20,7 +20,7 @@ package async_sleep
 import (
 	"time"
 
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 // sleep 100 ms in each c => go call.

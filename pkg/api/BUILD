@@ -7,7 +7,7 @@ go_library(
         "filter.go",
         "type.go",
     ],
-    importpath = "mosn.io/envoy-go-extension/pkg/http/api",
+    importpath = "mosn.io/envoy-go-extension/pkg/api",
     visibility = ["//visibility:public"],
     deps = [
         "@org_golang_google_protobuf//types/known/anypb",

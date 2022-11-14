@@ -9,7 +9,7 @@ TEST_COMPILE_MODE = fastbuild
 TEST_TARGET ?= "//test/..."
 TEST_LOG_LEVEL = debug
 # more custom options
-BUILD_OPTS ?=
+BUILD_OPTS ?=--remote_http_cache=http://bazel-test.cache.alipay.net
 
 IMAGE_NAME = "envoy-go-extension"
 IMAGE_TAG = "latest"
@@ -36,11 +36,9 @@ sync-headers:
 
 sync-headers-local:
 	# export header by cgo tool
-	cd pkg/http \
-		&& go tool cgo --exportheader libgolang.h moe.go config.go \
-		&& cd ../../
-	cp pkg/http/libgolang.h src/envoy/common/dso/
-	cp pkg/http/api.h src/envoy/common/dso/
+	go tool cgo --exportheader pkg/libgolang.h pkg/export.go
+	cp pkg/libgolang.h src/envoy/common/dso/
+	cp pkg/api/api.h src/envoy/common/dso/
 
 # envoy extension
 .PHONY: build-envoy test-envoy

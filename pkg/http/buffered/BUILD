@@ -9,7 +9,7 @@ go_library(
     importpath = "mosn.io/envoy-go-extension/pkg/http/buffered",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/api",
         "//pkg/http",
-        "//pkg/http/api",
     ],
 )
