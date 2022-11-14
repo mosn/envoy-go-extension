@@ -142,9 +142,9 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	isDecode := api.EnvoyRequestPhase(r.phase) == api.DecodeDataPhase
 
 	buf := &httpBuffer{
-		request:   req,
-		bufferPtr: buffer,
-		length:    length,
+		request:             req,
+		envoyBufferInstance: buffer,
+		length:              length,
 	}
 
 	var status api.StatusType

@@ -19,6 +19,7 @@ package http
 
 import (
 	"io"
+	"strconv"
 	"unsafe"
 
 	mosnApi "mosn.io/api"
@@ -103,50 +104,20 @@ func (h *httpHeaderMap) ByteSize() uint64 {
 
 type httpBuffer struct {
 	buffer.IoBuffer
-	request   *httpRequest
-	bufferPtr uint64
-	length    uint64
-	value     string
+	request             *httpRequest
+	envoyBufferInstance uint64
+	length              uint64
+	value               string
 }
 
 var _ api.BufferInstance = (*httpBuffer)(nil)
 
-//func (b *httpBuffer) Get() string {
-//	if b.length == 0 {
-//		return ""
-//	}
-//	cAPI.HttpGetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, &b.value, b.length)
-//	return b.value
-//}
-//
-//func (b *httpBuffer) Length() uint64 {
-//	return b.length
-//}
-//
-//func (b *httpBuffer) Set(value string) {
-//	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.SetBuffer)
-//}
-//
-//func (b *httpBuffer) Append(value string) {
-//	if b.length == 0 {
-//		return
-//	}
-//	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.AppendBuffer)
-//}
-//
-//func (b *httpBuffer) Prepend(value string) {
-//	if b.length == 0 {
-//		return
-//	}
-//	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.PrependBuffer)
-//}
-
 func (b *httpBuffer) Read(p []byte) (n int, err error) {
-	panic("unsupported yet")
+	panic("implement me")
 }
 
 func (b *httpBuffer) ReadOnce(r io.Reader) (n int64, err error) {
-	panic("unsupported yet")
+	panic("implement me")
 }
 
 func (b *httpBuffer) ReadFrom(r io.Reader) (n int64, err error) {
@@ -158,27 +129,36 @@ func (b *httpBuffer) Grow(n int) error {
 }
 
 func (b *httpBuffer) Write(p []byte) (n int, err error) {
-	panic("implement me")
+	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.envoyBufferInstance, string(p), api.AppendBuffer)
+	return len(p), nil
 }
 
 func (b *httpBuffer) WriteString(s string) (n int, err error) {
-	panic("implement me")
+	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.envoyBufferInstance, s, api.AppendBuffer)
+	return len(s), nil
 }
 
 func (b *httpBuffer) WriteByte(p byte) error {
-	panic("implement me")
+	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.envoyBufferInstance, string(p), api.AppendBuffer)
+	return nil
 }
 
 func (b *httpBuffer) WriteUint16(p uint16) error {
-	panic("implement me")
+	s := strconv.FormatUint(uint64(p), 10)
+	_, err := b.WriteString(s)
+	return err
 }
 
 func (b *httpBuffer) WriteUint32(p uint32) error {
-	panic("implement me")
+	s := strconv.FormatUint(uint64(p), 10)
+	_, err := b.WriteString(s)
+	return err
 }
 
 func (b *httpBuffer) WriteUint64(p uint64) error {
-	panic("implement me")
+	s := strconv.FormatUint(uint64(p), 10)
+	_, err := b.WriteString(s)
+	return err
 }
 
 func (b *httpBuffer) WriteTo(w io.Writer) (n int64, err error) {
@@ -190,7 +170,11 @@ func (b *httpBuffer) Peek(n int) []byte {
 }
 
 func (b *httpBuffer) Bytes() []byte {
-	panic("implement me")
+	if b.length == 0 {
+		return nil
+	}
+	cAPI.HttpGetBuffer(unsafe.Pointer(b.request.req), b.envoyBufferInstance, &b.value, b.length)
+	return []byte(b.value)
 }
 
 func (b *httpBuffer) Drain(offset int) {
@@ -198,7 +182,7 @@ func (b *httpBuffer) Drain(offset int) {
 }
 
 func (b *httpBuffer) Len() int {
-	panic("implement me")
+	return int(b.length)
 }
 
 func (b *httpBuffer) Cap() int {
@@ -214,7 +198,11 @@ func (b *httpBuffer) Clone() mosnApi.IoBuffer {
 }
 
 func (b *httpBuffer) String() string {
-	panic("implement me")
+	if b.length == 0 {
+		return ""
+	}
+	cAPI.HttpGetBuffer(unsafe.Pointer(b.request.req), b.envoyBufferInstance, &b.value, b.length)
+	return b.value
 }
 
 func (b *httpBuffer) Alloc(i int) {
@@ -238,7 +226,8 @@ func (b *httpBuffer) SetEOF(eof bool) {
 }
 
 func (b *httpBuffer) Append(data []byte) error {
-	panic("implement me")
+	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.envoyBufferInstance, string(data), api.AppendBuffer)
+	return nil
 }
 
 func (b *httpBuffer) CloseWithError(err error) {

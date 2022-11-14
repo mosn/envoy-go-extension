@@ -229,7 +229,7 @@ func (s *ActiveStream) GetFilterCurrentPhase() mosnApi.ReceiverFilterPhase {
 }
 
 func (s *ActiveStream) Route() mosnApi.Route {
-	panic("implement me")
+	return nil
 }
 
 func (s *ActiveStream) RequestInfo() mosnApi.RequestInfo {

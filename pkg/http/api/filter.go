@@ -79,7 +79,7 @@ type FilterCallbacks interface {
 	StreamFilterCallbacks
 	// Continue or SendLocalReply should be last API invoked, no more code after them.
 	Continue(StatusType)
-	SendLocalReply(response_code int, body_text string, headers map[string]string, grpc_status int64, details string)
+	SendLocalReply(responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string)
 	/*
 		AddDecodedData(buffer BufferInstance, streamingFilter bool)
 	*/
