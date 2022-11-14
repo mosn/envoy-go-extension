@@ -37,7 +37,7 @@ sync-headers:
 sync-headers-local:
 	# export header by cgo tool
 	cd pkg/http \
-		&& go tool cgo --exportheader libgolang.h moe.go \
+		&& go tool cgo --exportheader libgolang.h moe.go config.go \
 		&& cd ../../
 	cp pkg/http/libgolang.h src/envoy/common/dso/
 	cp pkg/http/api.h src/envoy/common/dso/
