@@ -50,4 +50,3 @@ func moeBuffersByContext(context context.Context) *moeBuffers {
 	ctx := buffer.PoolContext(context)
 	return ctx.Find(&ins, nil).(*moeBuffers)
 }
-
