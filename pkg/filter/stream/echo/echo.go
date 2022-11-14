@@ -19,7 +19,6 @@ package echo
 
 import (
 	"context"
-	"fmt"
 	"runtime/debug"
 
 	"mosn.io/api"
