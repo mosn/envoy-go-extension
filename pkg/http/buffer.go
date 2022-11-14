@@ -15,29 +15,38 @@
  * limitations under the License.
  */
 
-package main
+package http
 
 import (
-	"os"
+	"context"
 
-	"mosn.io/mosn/pkg/streamfilter"
-
-	_ "mosn.io/envoy-go-extension/pkg/filter/stream/echo"
-	"mosn.io/envoy-go-extension/pkg/http"
+	"mosn.io/pkg/buffer"
 )
 
-var DefaultMosnConfigPath string = "/home/admin/mosn/config/mosn.json"
-
 func init() {
-	http.RegisterHttpFilterConfigFactory(http.ConfigFactory)
-
-	// load mosn config
-	mosnConfigPath := DefaultMosnConfigPath
-	if envPath := os.Getenv("MOSN_CONFIG"); envPath != "" {
-		mosnConfigPath = envPath
-	}
-	streamfilter.LoadAndRegisterStreamFilters(mosnConfigPath)
+	buffer.RegisterBuffer(&ins)
 }
 
-func main() {
+var ins = moeBufferCtx{}
+
+type moeBufferCtx struct {
+	buffer.TempBufferCtx
+}
+
+func (ctx moeBufferCtx) New() interface{} {
+	return new(moeBuffers)
+}
+
+func (ctx moeBufferCtx) Reset(i interface{}) {
+	buf, _ := i.(*moeBuffers)
+	buf.stream = nil
+}
+
+type moeBuffers struct {
+	stream *ActiveStream
+}
+
+func moeBuffersByContext(context context.Context) *moeBuffers {
+	ctx := buffer.PoolContext(context)
+	return ctx.Find(&ins, nil).(*moeBuffers)
 }

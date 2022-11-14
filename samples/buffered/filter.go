@@ -31,7 +31,8 @@ func (f *filter) Decode(header api.RequestHeaderMap, data api.BufferInstance, tr
 }
 func (f *filter) Encode(header api.ResponseHeaderMap, data api.BufferInstance, trailer api.ResponseTrailerMap) {
 	if data != nil {
-		data.Set("Foo-Bar")
+		data.Drain(data.Len())
+		data.Write([]byte("Foo-Bar"))
 		header.Set("Content-Length", "7")
 	}
 	header.Set("foo", "bar")

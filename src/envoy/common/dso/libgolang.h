@@ -34,6 +34,21 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 
 #line 1 "cgo-generated-wrapper"
 
+#line 20 "config.go"
+
+// ref https://github.com/golang/go/issues/25832
+
+
+
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "api.h"
+
+
+#line 1 "cgo-generated-wrapper"
+
 
 /* End of preamble from import "C" comments.  */
 
@@ -88,12 +103,12 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern GoUint64 moeNewHttpPluginConfig(GoUint64 configPtr, GoUint64 configLen);
-extern void moeDestoryHttpPluginConfig(GoUint64 id);
-extern GoUint64 moeHttpMergePluginConfig(GoUint64 parentId, GoUint64 childId);
 extern GoUint64 moeOnHttpHeader(httpRequest* r, GoUint64 endStream, GoUint64 headerNum, GoUint64 headerBytes);
 extern GoUint64 moeOnHttpData(httpRequest* r, GoUint64 endStream, GoUint64 buffer, GoUint64 length);
 extern void moeOnHttpDestroy(httpRequest* r, GoUint64 reason);
+extern GoUint64 moeNewHttpPluginConfig(GoUint64 configPtr, GoUint64 configLen);
+extern void moeDestoryHttpPluginConfig(GoUint64 id);
+extern GoUint64 moeHttpMergePluginConfig(GoUint64 parentId, GoUint64 childId);
 
 #ifdef __cplusplus
 }

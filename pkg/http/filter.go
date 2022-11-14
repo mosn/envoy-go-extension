@@ -50,8 +50,8 @@ func (r *httpRequest) Continue(status api.StatusType) {
 	cAPI.HttpContinue(unsafe.Pointer(r.req), uint64(status))
 }
 
-func (r *httpRequest) SendLocalReply(response_code int, body_text string, headers map[string]string, grpc_status int64, details string) {
-	cAPI.HttpSendLocalReply(unsafe.Pointer(r.req), response_code, body_text, headers, grpc_status, details)
+func (r *httpRequest) SendLocalReply(responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string) {
+	cAPI.HttpSendLocalReply(unsafe.Pointer(r.req), responseCode, bodyText, headers, grpcStatus, details)
 }
 
 func (r *httpRequest) StreamInfo() api.StreamInfo {
@@ -70,94 +70,4 @@ type streamInfo struct {
 
 func (s *streamInfo) GetRouteName() string {
 	return cAPI.HttpGetRouteName(unsafe.Pointer(s.request.req))
-}
-
-type httpHeaderMap struct {
-	request     *httpRequest
-	headers     map[string]string
-	headerNum   uint64
-	headerBytes uint64
-	isTrailer   bool
-}
-
-func (h *httpHeaderMap) GetRaw(name string) string {
-	if h.isTrailer {
-		panic("unsupported yet")
-	}
-	var value string
-	cAPI.HttpGetHeader(unsafe.Pointer(h.request.req), &name, &value)
-	return value
-}
-
-func (h *httpHeaderMap) Get(name string) string {
-	if h.headers == nil {
-		if h.isTrailer {
-			h.headers = cAPI.HttpCopyTrailers(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-		} else {
-			h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-		}
-	}
-	if value, ok := h.headers[name]; ok {
-		return value
-	}
-	return ""
-}
-
-func (h *httpHeaderMap) Set(name, value string) {
-	if h.headers != nil {
-		h.headers[name] = value
-	}
-	if h.isTrailer {
-		cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &name, &value)
-	} else {
-		cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &name, &value)
-	}
-}
-
-func (h *httpHeaderMap) Remove(name string) {
-	if h.headers != nil {
-		delete(h.headers, name)
-	}
-	if h.isTrailer {
-		panic("unsupported yet")
-	} else {
-		cAPI.HttpRemoveHeader(unsafe.Pointer(h.request.req), &name)
-	}
-}
-
-type httpBuffer struct {
-	request   *httpRequest
-	bufferPtr uint64
-	length    uint64
-	value     string
-}
-
-func (b *httpBuffer) Get() string {
-	if b.length == 0 {
-		return ""
-	}
-	cAPI.HttpGetBuffer(unsafe.Pointer(b.request.req), b.bufferPtr, &b.value, b.length)
-	return b.value
-}
-
-func (b *httpBuffer) Length() uint64 {
-	return b.length
-}
-
-func (b *httpBuffer) Set(value string) {
-	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.SetBuffer)
-}
-
-func (b *httpBuffer) Append(value string) {
-	if b.length == 0 {
-		return
-	}
-	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.AppendBuffer)
-}
-
-func (b *httpBuffer) Prepend(value string) {
-	if b.length == 0 {
-		return
-	}
-	cAPI.HttpSetBufferHelper(unsafe.Pointer(b.request.req), b.bufferPtr, value, api.PrependBuffer)
 }

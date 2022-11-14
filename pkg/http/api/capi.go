@@ -21,7 +21,7 @@ import "unsafe"
 
 type HttpCAPI interface {
 	HttpContinue(r unsafe.Pointer, status uint64)
-	HttpSendLocalReply(r unsafe.Pointer, response_code int, body_text string, headers map[string]string, grpc_status int64, details string)
+	HttpSendLocalReply(r unsafe.Pointer, responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string)
 
 	// experience api, memory unsafe
 	HttpGetHeader(r unsafe.Pointer, key *string, value *string)

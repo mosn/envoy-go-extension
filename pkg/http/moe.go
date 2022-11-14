@@ -35,12 +35,8 @@ import (
 	"errors"
 	"runtime"
 	"sync"
-	"sync/atomic"
 
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"mosn.io/envoy-go-extension/pkg/http/api"
-	"mosn.io/envoy-go-extension/pkg/utils"
 )
 
 var ErrDupRequestKey = errors.New("dup request key")
@@ -102,59 +98,10 @@ func getRequest(r *C.httpRequest) *httpRequest {
 	return Requests.GetReq(r)
 }
 
-var (
-	configNumGenerator uint64
-	configCache        = &sync.Map{} // uint64 -> *anypb.Any
-)
-
-//export moeNewHttpPluginConfig
-func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
-	buf := utils.BytesToSlice(configPtr, configLen)
-	var any anypb.Any
-	proto.Unmarshal(buf, &any)
-
-	configNum := atomic.AddUint64(&configNumGenerator, 1)
-	if httpFilterConfigParser != nil {
-		configCache.Store(configNum, httpFilterConfigParser.Parse(&any))
-	} else {
-		configCache.Store(configNum, &any)
-	}
-
-	return configNum
-}
-
-//export moeDestoryHttpPluginConfig
-func moeDestoryHttpPluginConfig(id uint64) {
-	configCache.Delete(id)
-}
-
-//export moeHttpMergePluginConfig
-func moeHttpMergePluginConfig(parentId uint64, childId uint64) uint64 {
-	if httpFilterConfigParser != nil {
-		parent, ok := configCache.Load(parentId)
-		if !ok {
-			// TODO: throw error
-		}
-		child, ok := configCache.Load(childId)
-		if !ok {
-			// TODO: throw error
-		}
-
-		new := httpFilterConfigParser.Merge(parent, child)
-		configNum := atomic.AddUint64(&configNumGenerator, 1)
-		configCache.Store(configNum, new)
-		return configNum
-
-	} else {
-		// child override parent by default
-		return childId
-	}
-}
-
 //export moeOnHttpHeader
 func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64) uint64 {
 	var req *httpRequest
-	phase := int(r.phase)
+	phase := api.EnvoyRequestPhase(r.phase)
 	if phase == api.DecodeHeaderPhase {
 		req = createRequest(r)
 	} else {
@@ -170,18 +117,18 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 		request:     req,
 		headerNum:   headerNum,
 		headerBytes: headerBytes,
-		isTrailer:   phase == api.DecodeTailerPhase || phase == api.EncodeTailerPhase,
+		isTrailer:   phase == api.DecodeTrailerPhase || phase == api.EncodeTrailerPhase,
 	}
 
 	var status api.StatusType
 	switch phase {
 	case api.DecodeHeaderPhase:
 		status = f.DecodeHeaders(header, endStream == 1)
-	case api.DecodeTailerPhase:
+	case api.DecodeTrailerPhase:
 		status = f.DecodeTrailers(header)
 	case api.EncodeHeaderPhase:
 		status = f.EncodeHeaders(header, endStream == 1)
-	case api.EncodeTailerPhase:
+	case api.EncodeTrailerPhase:
 		status = f.EncodeTrailers(header)
 	}
 	return uint64(status)
@@ -192,20 +139,14 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	req := getRequest(r)
 
 	f := req.httpFilter
-	isDecode := int(r.phase) == api.DecodeDataPhase
+	isDecode := api.EnvoyRequestPhase(r.phase) == api.DecodeDataPhase
 
 	buf := &httpBuffer{
-		request:   req,
-		bufferPtr: buffer,
-		length:    length,
+		request:             req,
+		envoyBufferInstance: buffer,
+		length:              length,
 	}
-	/*
-		id := ""
-		if hf, ok := f.(*httpFilter); ok {
-			id = hf.config.AsMap()["id"].(string)
-		}
-		fmt.Printf("id: %s, buffer ptr: %p, buffer data: %s\n", id, buffer, buf.Get())
-	*/
+
 	var status api.StatusType
 	if isDecode {
 		status = f.DecodeData(buf, endStream == 1)
