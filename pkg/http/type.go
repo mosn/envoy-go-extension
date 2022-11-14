@@ -92,11 +92,6 @@ func (h *httpHeaderMap) Range(f func(key, value string) bool) {
 	panic("unsupported yet")
 }
 
-// Clone used to deep copy header's map
-func (h *httpHeaderMap) Clone() mosnApi.HeaderMap {
-	panic("unsupported yet")
-}
-
 // ByteSize return size of HeaderMap
 func (h *httpHeaderMap) ByteSize() uint64 {
 	return h.headerBytes

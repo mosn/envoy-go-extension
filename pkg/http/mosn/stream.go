@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package http
+package mosn
 
 import (
 	"context"
@@ -32,6 +32,14 @@ import (
 
 	"mosn.io/envoy-go-extension/pkg/http/api"
 )
+
+type headerMap struct {
+	api.HeaderMap
+}
+
+func (h *headerMap) Clone() mosnApi.HeaderMap {
+	panic("unsupported yet")
+}
 
 var workerPool mosnSync.WorkerPool
 
@@ -85,12 +93,12 @@ type ActiveStream struct {
 	filterChain         *streamfilter.DefaultStreamFilterChainImpl
 	currentReceivePhase mosnApi.ReceiverFilterPhase
 	callbacks           api.FilterCallbackHandler
-	reqHeader           api.RequestHeaderMap
+	reqHeader           mosnApi.HeaderMap
 	reqBody             api.BufferInstance
-	reqTrailer          api.RequestHeaderMap
-	respHeader          api.RequestHeaderMap
+	reqTrailer          mosnApi.HeaderMap
+	respHeader          mosnApi.HeaderMap
 	respBody            api.BufferInstance
-	respTrailer         api.RequestHeaderMap
+	respTrailer         mosnApi.HeaderMap
 	workPool            mosnSync.WorkerPool
 }
 
@@ -118,7 +126,7 @@ func (s *ActiveStream) runSenderFilters() {
 }
 
 func (s *ActiveStream) DecodeHeaders(header api.RequestHeaderMap, endStream bool) api.StatusType {
-	s.reqHeader = header
+	s.reqHeader = &headerMap{header}
 	if endStream {
 		s.runReceiverFilters()
 	}
@@ -134,13 +142,13 @@ func (s *ActiveStream) DecodeData(buffer api.BufferInstance, endStream bool) api
 }
 
 func (s *ActiveStream) DecodeTrailers(trailer api.RequestTrailerMap) api.StatusType {
-	s.reqTrailer = trailer
+	s.reqTrailer = &headerMap{trailer}
 	s.runReceiverFilters()
 	return api.Running
 }
 
 func (s *ActiveStream) EncodeHeaders(header api.ResponseHeaderMap, endStream bool) api.StatusType {
-	s.respHeader = header
+	s.respHeader = &headerMap{header}
 	if endStream {
 		s.runSenderFilters()
 	}
@@ -156,7 +164,7 @@ func (s *ActiveStream) EncodeData(buffer api.BufferInstance, endStream bool) api
 }
 
 func (s *ActiveStream) EncodeTrailers(trailer api.ResponseTrailerMap) api.StatusType {
-	s.respTrailer = trailer
+	s.respTrailer = &headerMap{trailer}
 	s.runSenderFilters()
 	return api.Running
 }

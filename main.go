@@ -24,12 +24,13 @@ import (
 
 	_ "mosn.io/envoy-go-extension/pkg/filter/stream/echo"
 	"mosn.io/envoy-go-extension/pkg/http"
+	"mosn.io/envoy-go-extension/pkg/http/mosn"
 )
 
 var DefaultMosnConfigPath string = "/home/admin/mosn/config/mosn.json"
 
 func init() {
-	http.RegisterHttpFilterConfigFactory(http.ConfigFactory)
+	http.RegisterHttpFilterConfigFactory(mosn.ConfigFactory)
 
 	// load mosn config
 	mosnConfigPath := DefaultMosnConfigPath

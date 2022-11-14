@@ -18,7 +18,6 @@
 package api
 
 import (
-	mosnApi "mosn.io/api"
 	"mosn.io/pkg/buffer"
 )
 
@@ -79,28 +78,52 @@ const (
 
 // ****************** HeaderMap start ******************//
 
-type RequestHeaderMap interface {
-	mosnApi.HeaderMap
+// refer https://github.com/envoyproxy/envoy/blob/main/envoy/http/header_map.h
+type HeaderMap interface {
 	// GetRaw is unsafe, reuse the memory from Envoy
 	GetRaw(name string) string
+
+	// Get value of key
+	// If multiple values associated with this key, first one will be returned.
+	Get(key string) (string, bool)
+
+	// Set key-value pair in header map, the previous pair will be replaced if exists
+	Set(key, value string)
+
+	// Add value for given key.
+	// Multiple headers with the same key may be added with this function.
+	// Use Set for setting a single header for the given key.
+	Add(key, value string)
+
+	// Del delete pair of specified key
+	Del(key string)
+
+	// Range calls f sequentially for each key and value present in the map.
+	// If f returns false, range stops the iteration.
+	Range(f func(key, value string) bool)
+
+	// ByteSize return size of HeaderMap
+	ByteSize() uint64
+}
+
+type RequestHeaderMap interface {
+	HeaderMap
+	// others
 }
 
 type RequestTrailerMap interface {
-	mosnApi.HeaderMap
-	// GetRaw is unsafe, reuse the memory from Envoy
-	GetRaw(name string) string
+	HeaderMap
+	// others
 }
 
 type ResponseHeaderMap interface {
-	mosnApi.HeaderMap
-	// GetRaw is unsafe, reuse the memory from Envoy
-	GetRaw(name string) string
+	HeaderMap
+	// others
 }
 
 type ResponseTrailerMap interface {
-	mosnApi.HeaderMap
-	// GetRaw is unsafe, reuse the memory from Envoy
-	GetRaw(name string) string
+	HeaderMap
+	// others
 }
 
 type MetadataMap interface {
