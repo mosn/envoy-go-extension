@@ -49,8 +49,6 @@ func (f *EchoFilter) OnReceive(ctx context.Context, headers api.HeaderMap, buf b
 		}
 	}()
 
-	fmt.Println("echo filter")
-
 	if f.echoer == nil || f.echoer.Status == 0 {
 		return api.StreamFilterContinue
 	}

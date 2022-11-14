@@ -41,7 +41,7 @@ import (
 	"mosn.io/envoy-go-extension/pkg/http"
 )
 
-var DefaultMosnConfigPath string = "/home/yongjie.yyj/gopath/src/mosn.io/envoy-go-extension/mosn.json"
+var DefaultMosnConfigPath string = "/home/admin/mosn/config/mosn.json"
 
 func init() {
 	http.RegisterHttpFilterConfigFactory(http.ConfigFactory)

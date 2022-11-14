@@ -78,7 +78,7 @@ image: build-envoy build-so-local
 .PHONY: run
 run:
 	GODEBUG=cgocheck=0 \
-	/home/yongjie.yyj/shit/2022/1108/envoy \
+	./bazel-bin/envoy \
 		-c envoy-golang.yaml \
 		-l debug \
 		--concurrency 4 \

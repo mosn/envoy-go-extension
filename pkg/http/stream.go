@@ -56,7 +56,6 @@ func ConfigFactory(config interface{}) api.HttpFilterFactory {
 		return nil
 	}
 	filterChainName := v.(string)
-	log.DefaultLogger.Errorf("[moe] ConfigFactory filter_chain: %v", filterChainName)
 
 	return func(callbacks api.FilterCallbackHandler) api.HttpFilter {
 		ctx := buffer.NewBufferPoolContext(context.Background())
@@ -119,7 +118,6 @@ func (s *ActiveStream) runSenderFilters() {
 }
 
 func (s *ActiveStream) DecodeHeaders(header api.RequestHeaderMap, endStream bool) api.StatusType {
-	log.DefaultLogger.Errorf("[moe] ActiveStream.DecodeHeaders endOfStream: %v", endStream)
 	s.reqHeader = header
 	if endStream {
 		s.runReceiverFilters()
