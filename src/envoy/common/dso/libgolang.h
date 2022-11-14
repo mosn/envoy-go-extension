@@ -88,9 +88,6 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern GoUint64 moeNewHttpPluginConfig(GoUint64 configPtr, GoUint64 configLen);
-extern void moeDestoryHttpPluginConfig(GoUint64 id);
-extern GoUint64 moeHttpMergePluginConfig(GoUint64 parentId, GoUint64 childId);
 extern GoUint64 moeOnHttpHeader(httpRequest* r, GoUint64 endStream, GoUint64 headerNum, GoUint64 headerBytes);
 extern GoUint64 moeOnHttpData(httpRequest* r, GoUint64 endStream, GoUint64 buffer, GoUint64 length);
 extern void moeOnHttpDestroy(httpRequest* r, GoUint64 reason);
