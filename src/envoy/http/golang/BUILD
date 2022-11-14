@@ -12,8 +12,14 @@ licenses(["notice"])  # Apache 2
 
 envoy_cc_library(
     name = "golang_filter_lib",
-    srcs = ["golang_filter.cc"],
-    hdrs = ["golang_filter.h"],
+    srcs = [
+        "golang_filter.cc",
+        "processor_state.cc",
+    ],
+    hdrs = [
+        "golang_filter.h",
+        "processor_state.h",
+    ],
     repository = "@envoy",
     deps = [
         ":cgo",
@@ -24,6 +30,7 @@ envoy_cc_library(
         "@envoy//source/common/grpc:context_lib",
         "@envoy//source/common/http:headers_lib",
         "@envoy//source/common/http/http1:codec_lib",
+        "@envoy//source/common/http:utility_lib",
         "@envoy//source/common/buffer:watermark_buffer_lib",
         "@envoy//source/common/common:linked_object",
         "//src/envoy/common/dso:dso_lib",
@@ -49,7 +56,10 @@ envoy_cc_library(
 envoy_cc_library(
     name = "cgo",
     srcs = ["cgo.cc"],
-    hdrs = ["golang_filter.h"],
+    hdrs = [
+        "golang_filter.h",
+        "processor_state.h",
+    ],
     repository = "@envoy",
     deps = [
         "@envoy//envoy/http:codes_interface",
@@ -59,6 +69,7 @@ envoy_cc_library(
         "@envoy//source/common/grpc:context_lib",
         "@envoy//source/common/http:headers_lib",
         "@envoy//source/common/http/http1:codec_lib",
+        "@envoy//source/common/http:utility_lib",
         "@envoy//source/common/buffer:watermark_buffer_lib",
         "@envoy//source/common/common:linked_object",
         "//src/envoy/common/dso:dso_lib",

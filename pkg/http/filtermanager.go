@@ -28,9 +28,15 @@ import (
 // pass through by default
 var httpFilterConfigFactory api.HttpFilterConfigFactory = PassThroughFactory
 
-// raw mode, sync by default
 func RegisterHttpFilterConfigFactory(f api.HttpFilterConfigFactory) {
 	httpFilterConfigFactory = f
+}
+
+// no parser by default
+var httpFilterConfigParser api.HttpFilterConfigParser = nil
+
+func RegisterHttpFilterConfigParser(parser api.HttpFilterConfigParser) {
+	httpFilterConfigParser = parser
 }
 
 func getOrCreateHttpFilterFactory(configId uint64) api.HttpFilterFactory {

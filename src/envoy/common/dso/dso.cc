@@ -70,6 +70,15 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
                    dlerror());
   }
 
+  func = dlsym(handler_, "moeHttpMergePluginConfig");
+  if (func) {
+    moeHttpMergePluginConfig_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1)>(func);
+  } else {
+    loaded_ = false;
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeHttpMergePluginConfig, err: {}", dsoName,
+                   dlerror());
+  }
+
   func = dlsym(handler_, "moeOnHttpHeader");
   if (func) {
     moeOnHttpHeader_ =
@@ -104,6 +113,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
 
 DsoInstance::~DsoInstance() {
   moeNewHttpPluginConfig_ = nullptr;
+  moeHttpMergePluginConfig_ = nullptr;
   moeOnHttpHeader_ = nullptr;
   moeOnHttpData_ = nullptr;
   moeOnHttpDestroy_ = nullptr;
@@ -118,6 +128,12 @@ GoUint64 DsoInstance::moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1) {
   // TODO: use ASSERT instead
   assert(moeNewHttpPluginConfig_ != nullptr);
   return moeNewHttpPluginConfig_(p0, p1);
+}
+
+GoUint64 DsoInstance::moeHttpMergePluginConfig(GoUint64 p0, GoUint64 p1) {
+  // TODO: use ASSERT instead
+  assert(moeHttpMergePluginConfig_ != nullptr);
+  return moeHttpMergePluginConfig_(p0, p1);
 }
 
 GoUint64 DsoInstance::moeOnHttpHeader(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) {

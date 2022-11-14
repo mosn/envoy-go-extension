@@ -8,12 +8,14 @@
 #include "envoy/http/filter.h"
 #include "envoy/upstream/cluster_manager.h"
 
+#include "source/common/http/utility.h"
 #include "source/common/grpc/context_impl.h"
-
-#include "src/envoy/common/dso/dso.h"
 
 #include "source/common/common/linked_object.h"
 #include "source/common/buffer/watermark_buffer.h"
+
+#include "src/envoy/common/dso/dso.h"
+#include "src/envoy/http/golang/processor_state.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -26,6 +28,9 @@ namespace Golang {
 class FilterConfig : Logger::Loggable<Logger::Id::http> {
 public:
   FilterConfig(const envoy::extensions::filters::http::golang::v3::Config& proto_config);
+  ~FilterConfig() {
+    // TODO: delete config in Go
+  }
 
   const std::string& filter_chain() const { return filter_chain_; }
   const std::string& so_id() const { return so_id_; }
@@ -42,59 +47,42 @@ private:
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
 
+class RoutePluginConfig : Logger::Loggable<Logger::Id::http> {
+public:
+  RoutePluginConfig(const envoy::extensions::filters::http::golang::v3::RouterPlugin& config)
+      : plugin_config_(config.config()) {
+    ENVOY_LOG(debug, "initilizing golang filter route plugin config, type_url: {}",
+              config.config().type_url());
+  };
+  ~RoutePluginConfig() {
+    // TODO: delete plugin config in Go
+  }
+  uint64_t getMergedConfigId(uint64_t parent_id, std::string so_id);
+
+private:
+  const Protobuf::Any plugin_config_;
+  uint64_t config_id_{0};
+  uint64_t merged_config_id_{0};
+};
+
 /**
  * Route configuration for the filter.
  */
-class FilterConfigPerRoute : public Router::RouteSpecificFilterConfig {
+class FilterConfigPerRoute : public Router::RouteSpecificFilterConfig,
+                             Logger::Loggable<Logger::Id::http> {
 public:
-  // TODO
   FilterConfigPerRoute(const envoy::extensions::filters::http::golang::v3::ConfigsPerRoute&,
-                       Server::Configuration::ServerFactoryContext&) {}
+                       Server::Configuration::ServerFactoryContext&);
+  uint64_t getPluginConfigId(uint64_t parent_id, std::string plugin_name, std::string so_id) const;
 
-  ~FilterConfigPerRoute() override {}
-};
+  ~FilterConfigPerRoute() {
+    for (auto it = plugins_config_.cbegin(); it != plugins_config_.cend(); ++it) {
+      delete it->second;
+    }
+  }
 
-/**
- * An enum specific for Golang status.
- */
-enum class GolangStatus {
-  Running,
-  // after called sendLocalReply
-  LocalReply,
-  // Continue filter chain iteration.
-  Continue,
-  StopAndBuffer,
-  StopAndBufferWatermark,
-  StopNoBuffer,
-};
-
-/*
- * state
- */
-enum class FilterState {
-  WaitHeader,
-  DoHeader,
-  WaitData,
-  WaitFullData,
-  DoData,
-  WaitTrailer,
-  DoTrailer,
-  Done,
-  LocalReply,
-};
-
-/*
- * request phase
- */
-enum class Phase {
-  Init = 0,
-  DecodeHeader,
-  DecodeData,
-  DecodeTrailer,
-  EncodeHeader,
-  EncodeData,
-  EncodeTrailer,
-  Done,
+private:
+  std::map<std::string, RoutePluginConfig*> plugins_config_;
 };
 
 enum class DestroyReason {
@@ -118,7 +106,8 @@ class Filter : public Http::StreamFilter,
 public:
   explicit Filter(Grpc::Context& context, FilterConfigSharedPtr config, uint64_t sid,
                   Dso::DsoInstance* dynamicLib)
-      : config_(config), dynamicLib_(dynamicLib), context_(context), stream_id_(sid) {
+      : config_(config), dynamicLib_(dynamicLib), decoding_state_(*this), encoding_state_(*this),
+        context_(context), stream_id_(sid) {
     (void)context_;
     (void)stream_id_;
   }
@@ -133,7 +122,7 @@ public:
   Http::FilterDataStatus decodeData(Buffer::Instance&, bool) override;
   Http::FilterTrailersStatus decodeTrailers(Http::RequestTrailerMap&) override;
   void setDecoderFilterCallbacks(Http::StreamDecoderFilterCallbacks& callbacks) override {
-    decoder_callbacks_ = &callbacks;
+    decoding_state_.setDecoderFilterCallbacks(callbacks);
   }
 
   // Http::StreamEncoderFilter
@@ -149,7 +138,7 @@ public:
   }
 
   void setEncoderFilterCallbacks(Http::StreamEncoderFilterCallbacks& callbacks) override {
-    encoder_callbacks_ = &callbacks;
+    encoding_state_.setEncoderFilterCallbacks(callbacks);
   }
 
   // AccessLog::Instance
@@ -162,14 +151,6 @@ public:
 
   // create metadata for golang.extension namespace
   void addGolangMetadata(const std::string& k, const uint64_t v);
-
-  Event::Dispatcher& getDispatcher() {
-    if (isDecodePhase()) {
-      return decoder_callbacks_->dispatcher();
-    } else {
-      return encoder_callbacks_->dispatcher();
-    }
-  };
 
   static std::atomic<uint64_t> global_stream_id_;
 
@@ -190,38 +171,21 @@ public:
   void getStringValue(int id, GoString* valueStr);
 
 private:
-  bool isDecodePhase() {
-    return phase_ == Phase::DecodeHeader || phase_ == Phase::DecodeData ||
-           phase_ == Phase::DecodeTrailer;
-  };
-  bool isDoInGo() {
-    return state_ == FilterState::DoHeader || state_ == FilterState::DoData ||
-           state_ == FilterState::DoTrailer;
-  }
-  bool isHeaderPhase() { return phase_ == Phase::DecodeHeader || phase_ == Phase::EncodeHeader; };
-  bool isEmptyBuffer() { return data_buffer_ == nullptr || data_buffer_->length() == 0; };
+  ProcessorState& getProcessorState();
 
-  void phaseGrow(int n = 1);
-  bool handleGolangStatusInHeader(GolangStatus status);
-  bool handleGolangStatusInData(GolangStatus status);
-  bool handleGolangStatusInTrailer(GolangStatus status);
+  bool doHeaders(ProcessorState& state, Http::RequestOrResponseHeaderMap& headers, bool end_stream);
+  GolangStatus doHeadersGo(ProcessorState& state, Http::RequestOrResponseHeaderMap& headers,
+                           bool end_stream);
+  bool doData(ProcessorState& state, Buffer::Instance&, bool);
+  bool doDataGo(ProcessorState& state, Buffer::Instance& data, bool end_stream);
+  bool doTrailer(ProcessorState& state, Http::HeaderMap& trailers);
+  bool doTrailerGo(ProcessorState& state, Http::HeaderMap& trailers);
 
-  bool isThreadSafe() { return decoder_callbacks_->dispatcher().isThreadSafe(); };
+  uint64_t getMergedConfigId(ProcessorState& state);
 
-  bool doHeaders(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
-  GolangStatus doHeadersGo(Http::RequestOrResponseHeaderMap& headers, bool end_stream);
-  bool doData(Buffer::Instance&, bool);
-  bool doDataGo(Buffer::Instance& data, bool end_stream);
-  bool doTrailer(Http::HeaderMap& trailers);
-  bool doTrailerGo(Http::HeaderMap& trailers);
-  bool handleGolangStatus(GolangStatus status);
-
-  Buffer::InstancePtr createWatermarkBuffer();
-
-  void continueEncodeLocalReply();
+  void continueEncodeLocalReply(ProcessorState& state);
   void continueStatusInternal(GolangStatus status);
-  void commonContinue(bool is_decode);
-  void continueData(bool is_decode);
+  void continueData(ProcessorState& state);
 
   void onHeadersModified();
 
@@ -232,9 +196,6 @@ private:
   const FilterConfigSharedPtr config_;
   Dso::DsoInstance* dynamicLib_;
 
-  Phase phase_{Phase::Init};
-  FilterState state_{FilterState::WaitHeader};
-
   Http::RequestOrResponseHeaderMap* headers_{nullptr};
   Http::HeaderMap* trailers_{nullptr};
 
@@ -242,14 +203,11 @@ private:
   Http::RequestOrResponseHeaderMap* local_headers_{nullptr};
   Http::HeaderMap* local_trailers_{nullptr};
 
-  Buffer::InstancePtr data_buffer_;
   Buffer::OwnedImpl do_data_buffer_;
 
-  bool end_stream_;    // end_stream flag that c has received.
-  bool do_end_stream_; // end_stream flag that go is proccessing.
-
-  Http::StreamDecoderFilterCallbacks* decoder_callbacks_{nullptr};
-  Http::StreamEncoderFilterCallbacks* encoder_callbacks_{nullptr};
+  // The state of the filter on both the encoding and decoding side.
+  DecodingProcessorState decoding_state_;
+  EncodingProcessorState encoding_state_;
 
   // TODO get all context
   Grpc::Context& context_;
@@ -270,6 +228,9 @@ private:
   // will wait go return before continue.
   // this variable is read/write in safe thread, do no need lock.
   bool local_reply_waiting_go_{false};
+
+  // the filter enter encoding phase
+  bool enter_encoding_{false};
 };
 
 // Go code only touch the fields in httpRequest
@@ -278,7 +239,7 @@ struct httpRequestInternal : httpRequest {
   // anchor a string temporarily, make sure it won't be freed before copied to Go.
   std::string strValue;
   httpRequestInternal(std::weak_ptr<Filter> f) { filter_ = f; }
-  std::weak_ptr<Filter> weakFilter() { return filter_; };
+  std::weak_ptr<Filter> weakFilter() { return filter_; }
 };
 
 // used to count function execution time

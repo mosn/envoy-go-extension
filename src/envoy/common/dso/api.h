@@ -31,6 +31,8 @@ void moeHttpSetBufferHelper(void* r, unsigned long long int buffer, void* data, 
 void moeHttpCopyTrailers(void* r, void* strs, void* buf);
 void moeHttpSetTrailer(void* r, void* key, void* value);
 
+void moeHttpGetStringValue(void* r, int id, void* value);
+
 void moeHttpFinalize(void* r, int reason);
 
 #ifdef __cplusplus
