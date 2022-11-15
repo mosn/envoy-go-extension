@@ -15,7 +15,7 @@ IMAGE_NAME = "envoy-go-extension"
 IMAGE_TAG = "latest"
 
 # go so
-.PHONY: build-so-local, build-so, check-test-data-compile
+.PHONY: build-so-local, build-so
 
 build-so-local:
 	go build \
@@ -27,8 +27,12 @@ build-so-local:
 build-so:
 	docker run --rm -v $(shell pwd):/go/src/${PROJECT_NAME} -w /go/src/${PROJECT_NAME} ${BUILD_IMAGE} make build-so-local
 
-check-test-data-compile:
+.PHONY: check-test-data-compile-local, check-test-data-compile
+check-test-data-compile-local:
 	./scripts/check-test-data-compile.sh
+
+check-test-data-compile:
+	docker run --rm -v $(shell pwd):/go/src/${PROJECT_NAME} -w /go/src/${PROJECT_NAME} ${BUILD_IMAGE} make check-test-data-compile-local
 
 .PHONY: sync-headers, sync-headers-local
 sync-headers:
