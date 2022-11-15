@@ -34,11 +34,10 @@ check-test-data-compile:
 sync-headers:
 	docker run --rm -v $(shell pwd):/go/src/${PROJECT_NAME} -w /go/src/${PROJECT_NAME} ${BUILD_IMAGE} make sync-headers-local
 
-sync-headers-local:
-	# export header by cgo tool
-	go tool cgo --exportheader pkg/libgolang.h pkg/export.go
-	cp pkg/libgolang.h src/envoy/common/dso/
+sync-headers-local: build-so-local
+	mv libgolang.h src/envoy/common/dso/
 	cp pkg/api/api.h src/envoy/common/dso/
+	rm libgolang.so
 
 # envoy extension
 .PHONY: build-envoy test-envoy

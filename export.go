@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package pkg
+package main
 
 /*
 // ref https://github.com/golang/go/issues/25832
@@ -27,10 +27,15 @@ package pkg
 #include <stdlib.h>
 #include <string.h>
 
-#include "pkg/api/api.h"
+#include "api.h"
 
 */
 import "C"
+
+import (
+	_ "mosn.io/envoy-go-extension/pkg/api"
+	_ "mosn.io/envoy-go-extension/pkg/http"
+)
 
 //go:linkname moeNewHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeNewHttpPluginConfig
 //export moeNewHttpPluginConfig
