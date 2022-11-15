@@ -45,7 +45,7 @@ jobs:
         uses: numtide/clean-git-action@v1
 
   compile-test-filters:
-      name: compile-test-filters
+    name: compile-test-filters
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory

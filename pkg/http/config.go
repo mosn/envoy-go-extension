@@ -53,7 +53,11 @@ func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 	proto.Unmarshal(buf, &any)
 
 	configNum := atomic.AddUint64(&configNumGenerator, 1)
-	configCache.Store(configNum, &any)
+	if httpFilterConfigParser != nil {
+		configCache.Store(configNum, httpFilterConfigParser.Parse(&any))
+	} else {
+		configCache.Store(configNum, &any)
+	}
 
 	return configNum
 }
