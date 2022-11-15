@@ -345,7 +345,9 @@ typed_config:
     */
 
     // "prepend_" + upper("helloworld") + "_append"
-    EXPECT_EQ("prepend_HELLOWORLD_append", upstream_request_->body().toString());
+    std::string expected = "prepend_HELLOWORLD_append";
+    // only match the prefix since data buffer may be combined into a single.
+    EXPECT_EQ(expected, upstream_request_->body().toString().substr(0, expected.length()));
 
     Http::TestResponseHeaderMapImpl response_headers{
         {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};

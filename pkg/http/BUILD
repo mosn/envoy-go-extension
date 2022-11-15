@@ -5,10 +5,12 @@ go_library(
     srcs = [
         "api.h",
         "capi.go",
+        "config.go",
         "filter.go",
         "filtermanager.go",
         "moe.go",
         "passthrough.go",
+        "type.go",
     ],
     cgo = True,
     clinkopts = select({
