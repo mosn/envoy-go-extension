@@ -345,7 +345,9 @@ typed_config:
     */
 
     // "prepend_" + upper("helloworld") + "_append"
-    EXPECT_EQ("prepend_HELLOWORLD_append", upstream_request_->body().toString());
+    std::string expected = "prepend_HELLOWORLD_append";
+    // only match the prefix since data buffer may be combined into a single.
+    EXPECT_EQ(expected, upstream_request_->body().toString().substr(0, expected.length()));
 
     Http::TestResponseHeaderMapImpl response_headers{
         {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
@@ -545,15 +547,11 @@ TEST_P(GolangIntegrationTest, Async_DataBuffer_DecodeHeader) {
   testBasic("/test?async=1&databuffer=decode-header");
 }
 
-/*
- * TODO: reponse data len not match yet, should be pass after splitting do_data_buffer_ to list
-
 TEST_P(GolangIntegrationTest, DataBuffer_DecodeData) { testBasic("/test?databuffer=decode-data"); }
 
 TEST_P(GolangIntegrationTest, Async_DataBuffer_DecodeData) {
   testBasic("/test?async=1&databuffer=decode-data");
 }
-*/
 
 TEST_P(GolangIntegrationTest, LocalReply_DecodeHeader) {
   testSendLocalReply("/test?localreply=decode-header", "decode-header");

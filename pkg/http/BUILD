@@ -4,10 +4,12 @@ go_library(
     name = "http",
     srcs = [
         "capi.go",
+        "config.go",
         "filter.go",
         "filtermanager.go",
         "moe.go",
         "passthrough.go",
+        "type.go",
     ],
     cgo = True,
     clinkopts = select({

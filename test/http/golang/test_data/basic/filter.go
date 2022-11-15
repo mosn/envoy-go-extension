@@ -39,7 +39,7 @@ func parseQuery(path string) url.Values {
 }
 
 func (f *filter) initRequest(header api.HeaderMap) {
-	f.path = header.Get(":path")
+	f.path, _ = header.Get(":path")
 	f.query_params = parseQuery(f.path)
 	if f.query_params.Get("async") != "" {
 		f.async = true
@@ -72,8 +72,9 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	if strings.Contains(f.localreplay, "decode-header") {
 		return f.sendLocalReply("decode-header")
 	}
-	header.Set("test-x-set-header-0", header.Get("x-test-header-0"))
-	header.Remove("x-test-header-1")
+	origin, _ := header.Get("x-test-header-0")
+	header.Set("test-x-set-header-0", origin)
+	header.Del("x-test-header-1")
 	header.Set("req-route-name", f.callbacks.StreamInfo().GetRouteName())
 	if !endStream && strings.Contains(f.databuffer, "decode-header") {
 		return api.StopAndBuffer
@@ -89,11 +90,11 @@ func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	if strings.Contains(f.localreplay, "decode-data") {
 		return f.sendLocalReply("decode-data")
 	}
-	f.req_body_length += buffer.Length()
-	data := buffer.Get()
-	buffer.Set(strings.ToUpper(data))
-	buffer.Append("_append")
-	buffer.Prepend("prepend_")
+	f.req_body_length += uint64(buffer.Len())
+	data := buffer.String()
+	buffer.SetString(strings.ToUpper(data))
+	buffer.AppendString("_append")
+	buffer.PrependString("prepend_")
 	if !endStream && strings.Contains(f.databuffer, "decode-data") {
 		return api.StopAndBuffer
 	}
@@ -117,8 +118,9 @@ func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 	if strings.Contains(f.localreplay, "encode-header") {
 		return f.sendLocalReply("encode-header")
 	}
-	header.Set("test-x-set-header-0", header.Get("x-test-header-0"))
-	header.Remove("x-test-header-1")
+	origin, _ := header.Get("x-test-header-0")
+	header.Set("test-x-set-header-0", origin)
+	header.Del("x-test-header-1")
 	header.Set("test-req-body-length", strconv.Itoa(int(f.req_body_length)))
 	header.Set("test-query-param-foo", f.query_params.Get("foo"))
 	header.Set("test-path", f.path)
@@ -133,8 +135,8 @@ func (f *filter) encodeData(buffer api.BufferInstance, endStream bool) api.Statu
 	if strings.Contains(f.localreplay, "encode-data") {
 		return f.sendLocalReply("encode-data")
 	}
-	data := buffer.Get()
-	buffer.Set(strings.ToUpper(data))
+	data := buffer.String()
+	buffer.SetString(strings.ToUpper(data))
 	return api.Continue
 }
 

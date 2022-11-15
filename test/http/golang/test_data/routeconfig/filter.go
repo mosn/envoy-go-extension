@@ -69,7 +69,7 @@ func (f *filter) DecodeTrailers(trailers api.RequestTrailerMap) api.StatusType {
 
 func (f *filter) EncodeHeaders(header api.ResponseHeaderMap, endStream bool) api.StatusType {
 	if f.config.removeHeader != "" {
-		header.Remove(f.config.removeHeader)
+		header.Del(f.config.removeHeader)
 	}
 	if f.config.setHeader != "" {
 		header.Set(f.config.setHeader, "test-value")

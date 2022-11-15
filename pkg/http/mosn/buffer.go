@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package http
+package mosn
 
 import (
 	"context"
