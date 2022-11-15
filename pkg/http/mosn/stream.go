@@ -33,14 +33,6 @@ import (
 	"mosn.io/envoy-go-extension/pkg/http/api"
 )
 
-type headerMap struct {
-	api.HeaderMap
-}
-
-func (h *headerMap) Clone() mosnApi.HeaderMap {
-	panic("unsupported yet")
-}
-
 var workerPool mosnSync.WorkerPool
 
 func init() {
@@ -94,10 +86,10 @@ type ActiveStream struct {
 	currentReceivePhase mosnApi.ReceiverFilterPhase
 	callbacks           api.FilterCallbackHandler
 	reqHeader           mosnApi.HeaderMap
-	reqBody             api.BufferInstance
+	reqBody             mosnApi.IoBuffer
 	reqTrailer          mosnApi.HeaderMap
 	respHeader          mosnApi.HeaderMap
-	respBody            api.BufferInstance
+	respBody            mosnApi.IoBuffer
 	respTrailer         mosnApi.HeaderMap
 	workPool            mosnSync.WorkerPool
 }
@@ -126,7 +118,7 @@ func (s *ActiveStream) runSenderFilters() {
 }
 
 func (s *ActiveStream) DecodeHeaders(header api.RequestHeaderMap, endStream bool) api.StatusType {
-	s.reqHeader = &headerMap{header}
+	s.reqHeader = &headerMapImpl{header}
 	if endStream {
 		s.runReceiverFilters()
 	}
@@ -134,7 +126,7 @@ func (s *ActiveStream) DecodeHeaders(header api.RequestHeaderMap, endStream bool
 }
 
 func (s *ActiveStream) DecodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
-	s.reqBody = buffer
+	s.reqBody = &bufferImpl{buffer}
 	if endStream {
 		s.runReceiverFilters()
 	}
@@ -142,13 +134,13 @@ func (s *ActiveStream) DecodeData(buffer api.BufferInstance, endStream bool) api
 }
 
 func (s *ActiveStream) DecodeTrailers(trailer api.RequestTrailerMap) api.StatusType {
-	s.reqTrailer = &headerMap{trailer}
+	s.reqTrailer = &headerMapImpl{trailer}
 	s.runReceiverFilters()
 	return api.Running
 }
 
 func (s *ActiveStream) EncodeHeaders(header api.ResponseHeaderMap, endStream bool) api.StatusType {
-	s.respHeader = &headerMap{header}
+	s.respHeader = &headerMapImpl{header}
 	if endStream {
 		s.runSenderFilters()
 	}
@@ -156,7 +148,7 @@ func (s *ActiveStream) EncodeHeaders(header api.ResponseHeaderMap, endStream boo
 }
 
 func (s *ActiveStream) EncodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
-	s.respBody = buffer
+	s.respBody = &bufferImpl{buffer}
 	if endStream {
 		s.runSenderFilters()
 	}
@@ -164,7 +156,7 @@ func (s *ActiveStream) EncodeData(buffer api.BufferInstance, endStream bool) api
 }
 
 func (s *ActiveStream) EncodeTrailers(trailer api.ResponseTrailerMap) api.StatusType {
-	s.respTrailer = &headerMap{trailer}
+	s.respTrailer = &headerMapImpl{trailer}
 	s.runSenderFilters()
 	return api.Running
 }
