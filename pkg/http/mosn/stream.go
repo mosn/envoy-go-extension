@@ -20,14 +20,16 @@ package mosn
 import (
 	"context"
 	"runtime"
+	"strconv"
 
 	udpa "github.com/cncf/xds/go/udpa/type/v1"
 	"google.golang.org/protobuf/types/known/anypb"
 	mosnApi "mosn.io/api"
+	"mosn.io/mosn/pkg/log"
 	"mosn.io/mosn/pkg/streamfilter"
 	mosnSync "mosn.io/mosn/pkg/sync"
+	"mosn.io/mosn/pkg/types"
 	"mosn.io/pkg/buffer"
-	"mosn.io/pkg/log"
 	"mosn.io/pkg/variable"
 
 	"mosn.io/envoy-go-extension/pkg/api"
@@ -98,13 +100,13 @@ var _ api.HttpFilter = (*ActiveStream)(nil)
 var _ mosnApi.StreamReceiverFilterHandler = (*ActiveStream)(nil)
 var _ mosnApi.StreamSenderFilterHandler = (*ActiveStream)(nil)
 
-func (s *ActiveStream) SetCurrentReveivePhase(phase mosnApi.ReceiverFilterPhase) {
+func (s *ActiveStream) SetCurrentReceiverPhase(phase mosnApi.ReceiverFilterPhase) {
 	s.currentReceivePhase = phase
 }
 
 func (s *ActiveStream) runReceiverFilters() {
 	s.workPool.ScheduleAuto(func() {
-		s.SetCurrentReveivePhase(mosnApi.BeforeRoute)
+		s.SetCurrentReceiverPhase(mosnApi.BeforeRoute)
 		s.filterChain.RunReceiverFilter(s.ctx, mosnApi.BeforeRoute, s.reqHeader, s.reqBody, s.reqTrailer, nil)
 		s.callbacks.Continue(api.Continue)
 	})
@@ -122,6 +124,7 @@ func (s *ActiveStream) DecodeHeaders(header api.RequestHeaderMap, endStream bool
 	if endStream {
 		s.runReceiverFilters()
 	}
+
 	return api.Running
 }
 
@@ -136,6 +139,7 @@ func (s *ActiveStream) DecodeData(buffer api.BufferInstance, endStream bool) api
 func (s *ActiveStream) DecodeTrailers(trailer api.RequestTrailerMap) api.StatusType {
 	s.reqTrailer = &headerMapImpl{trailer}
 	s.runReceiverFilters()
+
 	return api.Running
 }
 
@@ -144,6 +148,7 @@ func (s *ActiveStream) EncodeHeaders(header api.ResponseHeaderMap, endStream boo
 	if endStream {
 		s.runSenderFilters()
 	}
+
 	return api.Running
 }
 
@@ -152,6 +157,7 @@ func (s *ActiveStream) EncodeData(buffer api.BufferInstance, endStream bool) api
 	if endStream {
 		s.runSenderFilters()
 	}
+
 	return api.Running
 }
 
@@ -171,31 +177,80 @@ func (s *ActiveStream) OnDestroy(reason api.DestroyReason) {
 }
 
 func (s *ActiveStream) AppendHeaders(headers mosnApi.HeaderMap, endStream bool) {
-	panic("implement me")
+	s.respHeader = headers
+	if endStream {
+		s.SendDirectResponse(s.respHeader, s.respBody, s.respTrailer)
+	}
 }
 
 func (s *ActiveStream) AppendData(buf mosnApi.IoBuffer, endStream bool) {
-	panic("implement me")
+	s.respBody = buf
+	if endStream {
+		s.SendDirectResponse(s.respHeader, s.respBody, s.respTrailer)
+	}
 }
 
 func (s *ActiveStream) AppendTrailers(trailers mosnApi.HeaderMap) {
-	panic("implement me")
+	s.respTrailer = trailers
+	s.SendDirectResponse(s.respHeader, s.respBody, s.respTrailer)
 }
 
 func (s *ActiveStream) SendHijackReply(code int, headers mosnApi.HeaderMap) {
-	panic("implement me")
+	// TODO: stupid map convert due to callbacks parameter type
+	h := make(map[string]string)
+	headers.Range(func(key, value string) bool {
+		h[key] = value
+		return true
+	})
+
+	s.callbacks.SendLocalReply(code, "", h, 0, "")
 }
 
 func (s *ActiveStream) SendHijackReplyWithBody(code int, headers mosnApi.HeaderMap, body string) {
-	panic("implement me")
+	// TODO: stupid map convert due to callbacks parameter type
+	h := make(map[string]string)
+	headers.Range(func(key, value string) bool {
+		h[key] = value
+		return true
+	})
+
+	s.callbacks.SendLocalReply(code, body, h, 0, "")
 }
 
 func (s *ActiveStream) SendDirectResponse(headers mosnApi.HeaderMap, buf mosnApi.IoBuffer, trailers mosnApi.HeaderMap) {
-	panic("implement me")
+	codeStr, err := variable.GetString(s.ctx, types.VarHeaderStatus)
+	if err != nil {
+		return
+	}
+
+	code, err := strconv.Atoi(codeStr)
+	if err != nil {
+		return
+	}
+
+	h := make(map[string]string)
+	headers.Range(func(key, value string) bool {
+		h[key] = value
+		return true
+	})
+
+	s.callbacks.SendLocalReply(code, buf.String(), h, 0, "")
 }
 
 func (s *ActiveStream) TerminateStream(code int) bool {
-	panic("implement me")
+	if s.respHeader != nil {
+		return false
+	}
+
+	h := make(map[string]string)
+	s.reqHeader.Range(func(key, value string) bool {
+		h[key] = value
+		return true
+	})
+
+	s.callbacks.SendLocalReply(code, "", h, 0, "")
+
+	return true
 }
 
 func (s *ActiveStream) GetRequestHeaders() mosnApi.HeaderMap {
@@ -227,7 +282,7 @@ func (s *ActiveStream) GetFilterCurrentPhase() mosnApi.ReceiverFilterPhase {
 }
 
 func (s *ActiveStream) Route() mosnApi.Route {
-	return nil
+	panic("implement me")
 }
 
 func (s *ActiveStream) RequestInfo() mosnApi.RequestInfo {
