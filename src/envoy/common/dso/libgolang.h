@@ -93,11 +93,11 @@ extern "C" {
 //go:linkname moeNewHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeNewHttpPluginConfig
 extern GoUint64 moeNewHttpPluginConfig(GoUint64 configPtr, GoUint64 configLen);
 
-//go:linkname moeDestoryHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeDestoryHttpPluginConfig
-extern void moeDestoryHttpPluginConfig(GoUint64 id);
+//go:linkname moeDestroyHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeDestroyHttpPluginConfig
+extern void moeDestroyHttpPluginConfig(GoUint64 id);
 
-//go:linkname moeHttpMergePluginConfig mosn.io/envoy-go-extension/pkg/http.moeHttpMergePluginConfig
-extern GoUint64 moeHttpMergePluginConfig(GoUint64 parentId, GoUint64 childId);
+//go:linkname moeMergeHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeMergeHttpPluginConfig
+extern GoUint64 moeMergeHttpPluginConfig(GoUint64 parentId, GoUint64 childId);
 
 //go:linkname moeOnHttpHeader mosn.io/envoy-go-extension/pkg/http.moeOnHttpHeader
 extern GoUint64 moeOnHttpHeader(httpRequest* r, GoUint64 endStream, GoUint64 headerNum, GoUint64 headerBytes);

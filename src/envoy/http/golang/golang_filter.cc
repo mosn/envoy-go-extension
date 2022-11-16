@@ -859,7 +859,7 @@ uint64_t RoutePluginConfig::getMergedConfigId(uint64_t parent_id, std::string so
     ENVOY_LOG(debug, "golang filter new plugin config, id: {}", config_id_);
   }
 
-  merged_config_id_ = dlib->moeHttpMergePluginConfig(parent_id, config_id_);
+  merged_config_id_ = dlib->moeMergeHttpPluginConfig(parent_id, config_id_);
   if (merged_config_id_ == 0) {
     // TODO: throw error
     ENVOY_LOG(error, "invalid golang plugin config");

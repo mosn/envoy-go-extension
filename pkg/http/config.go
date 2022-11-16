@@ -61,11 +61,11 @@ func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 	return configNum
 }
 
-func moeDestoryHttpPluginConfig(id uint64) {
+func moeDestroyHttpPluginConfig(id uint64) {
 	configCache.Delete(id)
 }
 
-func moeHttpMergePluginConfig(parentId uint64, childId uint64) uint64 {
+func moeMergeHttpPluginConfig(parentId uint64, childId uint64) uint64 {
 	if httpFilterConfigParser != nil {
 		parent, ok := configCache.Load(parentId)
 		if !ok {

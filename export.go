@@ -41,13 +41,13 @@ import (
 //export moeNewHttpPluginConfig
 func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64
 
-//go:linkname moeDestoryHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeDestoryHttpPluginConfig
-//export moeDestoryHttpPluginConfig
-func moeDestoryHttpPluginConfig(id uint64)
+//go:linkname moeDestroyHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeDestroyHttpPluginConfig
+//export moeDestroyHttpPluginConfig
+func moeDestroyHttpPluginConfig(id uint64)
 
-//go:linkname moeHttpMergePluginConfig mosn.io/envoy-go-extension/pkg/http.moeHttpMergePluginConfig
-//export moeHttpMergePluginConfig
-func moeHttpMergePluginConfig(parentId uint64, childId uint64) uint64
+//go:linkname moeMergeHttpPluginConfig mosn.io/envoy-go-extension/pkg/http.moeMergeHttpPluginConfig
+//export moeMergeHttpPluginConfig
+func moeMergeHttpPluginConfig(parentId uint64, childId uint64) uint64
 
 //go:linkname moeOnHttpHeader mosn.io/envoy-go-extension/pkg/http.moeOnHttpHeader
 //export moeOnHttpHeader

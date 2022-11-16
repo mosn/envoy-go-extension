@@ -12,12 +12,12 @@ func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 	return 100
 }
 
-//export moeDestoryHttpPluginConfig
-func moeDestoryHttpPluginConfig(id uint64) {
+//export moeDestroyHttpPluginConfig
+func moeDestroyHttpPluginConfig(id uint64) {
 }
 
-//export moeHttpMergePluginConfig
-func moeHttpMergePluginConfig(parentId uint64, childId uint64) uint64 {
+//export moeMergeHttpPluginConfig
+func moeMergeHttpPluginConfig(parentId uint64, childId uint64) uint64 {
 	return 0
 }
 

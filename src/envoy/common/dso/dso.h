@@ -17,7 +17,7 @@ public:
   ~DsoInstance();
 
   GoUint64 moeNewHttpPluginConfig(GoUint64 p0, GoUint64 p1);
-  GoUint64 moeHttpMergePluginConfig(GoUint64 p0, GoUint64 p1);
+  GoUint64 moeMergeHttpPluginConfig(GoUint64 p0, GoUint64 p1);
 
   GoUint64 moeOnHttpHeader(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3);
   GoUint64 moeOnHttpData(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3);
@@ -32,7 +32,7 @@ private:
   bool loaded_{false};
 
   GoUint64 (*moeNewHttpPluginConfig_)(GoUint64 p0, GoUint64 p1) = {nullptr};
-  GoUint64 (*moeHttpMergePluginConfig_)(GoUint64 p0, GoUint64 p1) = {nullptr};
+  GoUint64 (*moeMergeHttpPluginConfig_)(GoUint64 p0, GoUint64 p1) = {nullptr};
 
   GoUint64 (*moeOnHttpHeader_)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
   GoUint64 (*moeOnHttpData_)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
