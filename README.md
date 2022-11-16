@@ -37,7 +37,7 @@ coming soon.
 ## Requirements
 
 1. Go >= 1.18
-2. Gcc >= 11 or Clang >= 11.1.0
+2. Gcc >= 9 or Clang >= 11.1.0
 3. Bazel >= 5.1.1
 
 ## Samples
