@@ -4,6 +4,7 @@
       "name": "demo",
       "stream_filters": [
         {
+          "status": 200,
           "type": "echo"
         }
       ]

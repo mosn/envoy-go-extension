@@ -9,6 +9,7 @@ user.bazelrc
 *.sh
 libgolang.so
 vendor
-pkg/http/libgolang.h
+libgolang.h
+_obj
 pkg/http/_obj/
 go.sum

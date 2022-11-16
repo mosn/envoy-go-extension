@@ -21,7 +21,8 @@ import (
 	"io"
 
 	mosnApi "mosn.io/api"
-	"mosn.io/envoy-go-extension/pkg/http/api"
+
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 type headerMapImpl struct {

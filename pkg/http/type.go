@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"unsafe"
 
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 type httpHeaderMap struct {
@@ -32,10 +32,7 @@ type httpHeaderMap struct {
 	isTrailer   bool
 }
 
-var _ api.RequestHeaderMap = (*httpHeaderMap)(nil)
-var _ api.RequestTrailerMap = (*httpHeaderMap)(nil)
-var _ api.ResponseHeaderMap = (*httpHeaderMap)(nil)
-var _ api.ResponseTrailerMap = (*httpHeaderMap)(nil)
+var _ api.HeaderMap = (*httpHeaderMap)(nil)
 
 func (h *httpHeaderMap) GetRaw(key string) string {
 	if h.isTrailer {

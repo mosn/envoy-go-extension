@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"mosn.io/envoy-go-extension/pkg/api"
 	"mosn.io/envoy-go-extension/pkg/http"
-	"mosn.io/envoy-go-extension/pkg/http/api"
 )
 
 func init() {

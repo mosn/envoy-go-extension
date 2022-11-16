@@ -20,6 +20,7 @@ package http
 /*
 // ref https://github.com/golang/go/issues/25832
 
+#cgo CFLAGS: -I../api
 #cgo linux LDFLAGS: -Wl,-unresolved-symbols=ignore-all
 #cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
 
@@ -36,7 +37,7 @@ import (
 	"runtime"
 	"sync"
 
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 var ErrDupRequestKey = errors.New("dup request key")
@@ -98,7 +99,6 @@ func getRequest(r *C.httpRequest) *httpRequest {
 	return Requests.GetReq(r)
 }
 
-//export moeOnHttpHeader
 func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64) uint64 {
 	var req *httpRequest
 	phase := api.EnvoyRequestPhase(r.phase)
@@ -134,7 +134,6 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 	return uint64(status)
 }
 
-//export moeOnHttpData
 func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	req := getRequest(r)
 
@@ -156,7 +155,6 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	return uint64(status)
 }
 
-//export moeOnHttpDestroy
 func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
 	req := getRequest(r)
 

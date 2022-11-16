@@ -25,7 +25,7 @@ def go_filter_so(**kwargs):
         ],
         deps = [
           "@io_mosn_envoy_go_extension//pkg/http:http",
-          "@io_mosn_envoy_go_extension//pkg/http/api:api",
+          "@io_mosn_envoy_go_extension//pkg/api:api",
           "@io_mosn_envoy_go_extension//pkg/http/buffered:buffered",
           "@io_mosn_envoy_go_extension//pkg/utils:utils",
           "@com_github_cncf_xds_go//udpa/type/v1:type",

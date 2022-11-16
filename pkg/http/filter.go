@@ -20,6 +20,7 @@ package http
 /*
 // ref https://github.com/golang/go/issues/25832
 
+#cgo CFLAGS: -I../api
 #cgo linux LDFLAGS: -Wl,-unresolved-symbols=ignore-all
 #cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
 
@@ -34,7 +35,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 type httpRequest struct {

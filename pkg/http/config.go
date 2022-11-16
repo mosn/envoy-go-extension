@@ -46,7 +46,6 @@ var (
 	configCache        = &sync.Map{} // uint64 -> *anypb.Any
 )
 
-//export moeNewHttpPluginConfig
 func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 	buf := utils.BytesToSlice(configPtr, configLen)
 	var any anypb.Any
@@ -62,12 +61,10 @@ func moeNewHttpPluginConfig(configPtr uint64, configLen uint64) uint64 {
 	return configNum
 }
 
-//export moeDestoryHttpPluginConfig
 func moeDestoryHttpPluginConfig(id uint64) {
 	configCache.Delete(id)
 }
 
-//export moeHttpMergePluginConfig
 func moeHttpMergePluginConfig(parentId uint64, childId uint64) uint64 {
 	if httpFilterConfigParser != nil {
 		parent, ok := configCache.Load(parentId)

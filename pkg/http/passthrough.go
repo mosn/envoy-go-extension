@@ -18,7 +18,7 @@
 package http
 
 import (
-	"mosn.io/envoy-go-extension/pkg/http/api"
+	"mosn.io/envoy-go-extension/pkg/api"
 )
 
 type passThroughFilter struct {
