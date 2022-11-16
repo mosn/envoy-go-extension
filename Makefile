@@ -39,9 +39,8 @@ sync-headers:
 	docker run --rm -v $(shell pwd):/go/src/${PROJECT_NAME} -w /go/src/${PROJECT_NAME} ${BUILD_IMAGE} make sync-headers-local
 
 sync-headers-local: build-so-local
-	mv libgolang.h src/envoy/common/dso/
-	cp pkg/api/api.h src/envoy/common/dso/
-	rm libgolang.so
+	cp libgolang.h pkg/api/api.h src/envoy/common/dso/
+	rm libgolang.h libgolang.so
 
 # envoy extension
 .PHONY: build-envoy test-envoy
