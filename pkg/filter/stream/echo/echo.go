@@ -19,7 +19,6 @@ package echo
 
 import (
 	"context"
-	"fmt"
 	"runtime/debug"
 
 	"mosn.io/api"
@@ -48,8 +47,6 @@ func (f *EchoFilter) OnReceive(ctx context.Context, headers api.HeaderMap, buf b
 			log.Proxy.Errorf(ctx, "[stream filter] [echo] OnReceive() panic %v\n%s", r, string(debug.Stack()))
 		}
 	}()
-
-	fmt.Println("echo filter")
 
 	if f.echoer == nil || f.echoer.Status == 0 {
 		return api.StreamFilterContinue

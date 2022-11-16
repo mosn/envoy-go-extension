@@ -9,7 +9,7 @@ TEST_COMPILE_MODE = fastbuild
 TEST_TARGET ?= "//test/..."
 TEST_LOG_LEVEL = debug
 # more custom options
-BUILD_OPTS ?=--remote_http_cache=http://bazel-test.cache.alipay.net
+BUILD_OPTS ?=
 
 IMAGE_NAME = "envoy-go-extension"
 IMAGE_TAG = "latest"
