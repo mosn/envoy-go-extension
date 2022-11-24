@@ -76,9 +76,6 @@ const (
 
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/http/header_map.h
 type HeaderMap interface {
-	// GetRaw is unsafe, reuse the memory from Envoy
-	GetRaw(name string) string
-
 	// Get value of key
 	// If multiple values associated with this key, first one will be returned.
 	Get(key string) (string, bool)
@@ -104,7 +101,14 @@ type HeaderMap interface {
 
 type RequestHeaderMap interface {
 	HeaderMap
-	// others
+	Protocol() string
+	Scheme() string
+	Method() string
+	Host() string
+	Path() string
+
+	// GetRaw is unsafe, reuse the memory from Envoy
+	GetRaw(name string) string
 }
 
 type RequestTrailerMap interface {
@@ -114,6 +118,7 @@ type RequestTrailerMap interface {
 
 type ResponseHeaderMap interface {
 	HeaderMap
+	Status() int
 	// others
 }
 
