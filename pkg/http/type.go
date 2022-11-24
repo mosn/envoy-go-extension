@@ -18,78 +18,220 @@
 package http
 
 import (
+	"fmt"
 	"strconv"
 	"unsafe"
 
 	"mosn.io/envoy-go-extension/pkg/api"
 )
 
-type httpHeaderMap struct {
+// api.HeaderMap
+type headerMapImpl struct {
 	request     *httpRequest
 	headers     map[string]string
 	headerNum   uint64
 	headerBytes uint64
-	isTrailer   bool
 }
 
-var _ api.HeaderMap = (*httpHeaderMap)(nil)
+// ByteSize return size of HeaderMap
+func (h *headerMapImpl) ByteSize() uint64 {
+	return h.headerBytes
+}
 
-func (h *httpHeaderMap) GetRaw(key string) string {
-	if h.isTrailer {
-		panic("unsupported yet")
+func (h *headerMapImpl) Range(f func(key, value string) bool) {
+	panic("unsupported yet")
+}
+
+func (h *headerMapImpl) checkPhase(want api.EnvoyRequestPhase) {
+	phase := api.EnvoyRequestPhase(h.request.req.phase)
+	if phase != want {
+		panic(fmt.Errorf("invalid phase %v while expect %v", phase, want))
 	}
+}
+
+// api.RequestHeaderMap
+type requestHeaderMapImpl struct {
+	headerMapImpl
+}
+
+var _ api.RequestHeaderMap = (*requestHeaderMapImpl)(nil)
+
+func (h *requestHeaderMapImpl) GetRaw(key string) string {
+	h.checkPhase(api.DecodeHeaderPhase)
 	var value string
 	cAPI.HttpGetHeader(unsafe.Pointer(h.request.req), &key, &value)
 	return value
 }
 
-func (h *httpHeaderMap) Get(key string) (string, bool) {
+func (h *requestHeaderMapImpl) Get(key string) (string, bool) {
+	h.checkPhase(api.DecodeHeaderPhase)
 	if h.headers == nil {
-		if h.isTrailer {
-			h.headers = cAPI.HttpCopyTrailers(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-		} else {
-			h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-		}
+		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
 	}
 	value, ok := h.headers[key]
 	return value, ok
 }
 
-func (h *httpHeaderMap) Set(key, value string) {
+func (h *requestHeaderMapImpl) Set(key, value string) {
+	h.checkPhase(api.DecodeHeaderPhase)
 	if h.headers != nil {
 		h.headers[key] = value
 	}
-	if h.isTrailer {
-		cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &key, &value)
-	} else {
-		cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value)
-	}
+	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value)
 }
 
-func (h *httpHeaderMap) Add(key, value string) {
+func (h *requestHeaderMapImpl) Add(key, value string) {
+	h.checkPhase(api.DecodeHeaderPhase)
 	// TODO: add
 }
 
-func (h *httpHeaderMap) Del(key string) {
+func (h *requestHeaderMapImpl) Del(key string) {
+	h.checkPhase(api.DecodeHeaderPhase)
 	if h.headers != nil {
 		delete(h.headers, key)
 	}
-	if h.isTrailer {
-		panic("unsupported yet")
-	} else {
-		cAPI.HttpRemoveHeader(unsafe.Pointer(h.request.req), &key)
+	cAPI.HttpRemoveHeader(unsafe.Pointer(h.request.req), &key)
+}
+
+func (h *requestHeaderMapImpl) Protocol() string {
+	v, _ := h.Get(":protocol")
+	return v
+}
+
+func (h *requestHeaderMapImpl) Scheme() string {
+	v, _ := h.Get(":scheme")
+	return v
+}
+
+func (h *requestHeaderMapImpl) Method() string {
+	v, _ := h.Get(":method")
+	return v
+}
+
+func (h *requestHeaderMapImpl) Path() string {
+	v, _ := h.Get(":path")
+	return v
+}
+
+func (h *requestHeaderMapImpl) Host() string {
+	v, _ := h.Get(":authority")
+	return v
+}
+
+// api.ResponseHeaderMap
+type responseHeaderMapImpl struct {
+	headerMapImpl
+}
+
+var _ api.ResponseHeaderMap = (*responseHeaderMapImpl)(nil)
+
+func (h *responseHeaderMapImpl) Get(key string) (string, bool) {
+	h.checkPhase(api.EncodeHeaderPhase)
+	if h.headers == nil {
+		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
 	}
+	value, ok := h.headers[key]
+	return value, ok
 }
 
-func (h *httpHeaderMap) Range(f func(key, value string) bool) {
-	panic("unsupported yet")
+func (h *responseHeaderMapImpl) Set(key, value string) {
+	h.checkPhase(api.EncodeHeaderPhase)
+	if h.headers != nil {
+		h.headers[key] = value
+	}
+	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value)
 }
 
-// ByteSize return size of HeaderMap
-func (h *httpHeaderMap) ByteSize() uint64 {
-	return h.headerBytes
+func (h *responseHeaderMapImpl) Add(key, value string) {
+	h.checkPhase(api.EncodeHeaderPhase)
+	// TODO: add
 }
 
+func (h *responseHeaderMapImpl) Del(key string) {
+	h.checkPhase(api.EncodeHeaderPhase)
+	if h.headers != nil {
+		delete(h.headers, key)
+	}
+	cAPI.HttpRemoveHeader(unsafe.Pointer(h.request.req), &key)
+}
+
+func (h *responseHeaderMapImpl) Status() int {
+	if str, ok := h.Get(":status"); ok {
+		v, _ := strconv.Atoi(str)
+		return v
+	}
+	return 0
+}
+
+// api.RequestTrailerMap
+type requestTrailerMapImpl struct {
+	headerMapImpl
+}
+
+var _ api.RequestTrailerMap = (*requestTrailerMapImpl)(nil)
+
+func (h *requestTrailerMapImpl) Get(key string) (string, bool) {
+	h.checkPhase(api.DecodeTrailerPhase)
+	if h.headers == nil {
+		h.headers = cAPI.HttpCopyTrailers(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+	}
+	value, ok := h.headers[key]
+	return value, ok
+}
+
+func (h *requestTrailerMapImpl) Set(key, value string) {
+	h.checkPhase(api.DecodeTrailerPhase)
+	if h.headers != nil {
+		h.headers[key] = value
+	}
+	cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &key, &value)
+}
+
+func (h *requestTrailerMapImpl) Add(key, value string) {
+	h.checkPhase(api.DecodeTrailerPhase)
+	// TODO: add
+}
+
+func (h *requestTrailerMapImpl) Del(key string) {
+	h.checkPhase(api.DecodeTrailerPhase)
+	panic("implement me")
+}
+
+// api.ResponseTrailerMap
+type responseTrailerMapImpl struct {
+	headerMapImpl
+}
+
+var _ api.ResponseTrailerMap = (*responseTrailerMapImpl)(nil)
+
+func (h *responseTrailerMapImpl) Get(key string) (string, bool) {
+	h.checkPhase(api.EncodeTrailerPhase)
+	if h.headers == nil {
+		h.headers = cAPI.HttpCopyTrailers(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+	}
+	value, ok := h.headers[key]
+	return value, ok
+}
+
+func (h *responseTrailerMapImpl) Set(key, value string) {
+	h.checkPhase(api.EncodeTrailerPhase)
+	if h.headers != nil {
+		h.headers[key] = value
+	}
+	cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &key, &value)
+}
+
+func (h *responseTrailerMapImpl) Add(key, value string) {
+	h.checkPhase(api.EncodeTrailerPhase)
+	// TODO: add
+}
+
+func (h *responseTrailerMapImpl) Del(key string) {
+	h.checkPhase(api.EncodeTrailerPhase)
+	panic("implement me")
+}
+
+// api.BufferInstance
 type httpBuffer struct {
 	request             *httpRequest
 	envoyBufferInstance uint64
