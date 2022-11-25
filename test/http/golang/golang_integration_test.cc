@@ -640,9 +640,12 @@ TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeHeader) {
   testBufferExceedLimit("/test?databuffer=decode-header");
 }
 
+/*
+TODO: This test case it not stable
 TEST_P(GolangIntegrationTest, BufferExceedLimit_DecodeData) {
   testBufferExceedLimit("/test?databuffer=decode-data");
 }
+*/
 
 // config in filter
 // remove: x-test-header-0
