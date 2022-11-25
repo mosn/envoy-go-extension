@@ -234,6 +234,10 @@ const (
 	GCFinalize     int = 1 // finalize in GC sweep
 )
 
+const (
+	IsInGo int = 1
+)
+
 type EnvoyRequestPhase int
 
 const (

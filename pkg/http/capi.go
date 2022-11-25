@@ -43,6 +43,8 @@ const (
 	ValueRouteName = 1
 )
 
+type cHttpRequest *C.httpRequest
+
 type httpCApiImpl struct{}
 
 func (c *httpCApiImpl) HttpContinue(r unsafe.Pointer, status uint64) {

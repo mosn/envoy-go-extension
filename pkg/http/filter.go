@@ -20,7 +20,6 @@ package http
 /*
 // ref https://github.com/golang/go/issues/25832
 
-#cgo CFLAGS: -I../api
 #cgo linux LDFLAGS: -Wl,-unresolved-symbols=ignore-all
 #cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
 
@@ -38,9 +37,17 @@ import (
 	"mosn.io/envoy-go-extension/pkg/api"
 )
 
+// api.FilterCallbacks
 type httpRequest struct {
 	req        *C.httpRequest
 	httpFilter api.HttpFilter
+}
+
+func (r *httpRequest) checkState() {
+	if int(r.req.ingo) != api.IsInGo {
+		// Already callback to Envoy, no Go API allowed.
+		panic("unexpected API call")
+	}
 }
 
 func (r *httpRequest) Continue(status api.StatusType) {
@@ -48,10 +55,12 @@ func (r *httpRequest) Continue(status api.StatusType) {
 		fmt.Printf("warning: LocalReply status is useless after sendLocalReply, ignoring")
 		return
 	}
+	r.checkState()
 	cAPI.HttpContinue(unsafe.Pointer(r.req), uint64(status))
 }
 
 func (r *httpRequest) SendLocalReply(responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string) {
+	r.checkState()
 	cAPI.HttpSendLocalReply(unsafe.Pointer(r.req), responseCode, bodyText, headers, grpcStatus, details)
 }
 
@@ -65,10 +74,12 @@ func (r *httpRequest) Finalize(reason int) {
 	cAPI.HttpFinalize(unsafe.Pointer(r.req), reason)
 }
 
+// api.StreamInfo
 type streamInfo struct {
 	request *httpRequest
 }
 
 func (s *streamInfo) GetRouteName() string {
+	s.request.checkState()
 	return cAPI.HttpGetRouteName(unsafe.Pointer(s.request.req))
 }

@@ -47,6 +47,11 @@ func (h *headerMapImpl) checkPhase(want api.EnvoyRequestPhase) {
 	if phase != want {
 		panic(fmt.Errorf("invalid phase %v while expect %v", phase, want))
 	}
+
+	if int(h.request.req.ingo) != api.IsInGo {
+		// Already callback to Envoy, no Go API allowed.
+		panic("unexpected API call")
+	}
 }
 
 // api.RequestHeaderMap
