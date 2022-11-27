@@ -235,7 +235,8 @@ const (
 )
 
 const (
-	IsInGo int = 1
+	ReqStateInGo    int = 1
+	ReqStateDestroy int = 2
 )
 
 type EnvoyRequestPhase int

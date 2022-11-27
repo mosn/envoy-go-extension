@@ -7,7 +7,7 @@ extern "C" {
 typedef struct {
   unsigned long long int configId;
   int phase;
-  int ingo;
+  int state;
 } httpRequest;
 
 typedef enum {

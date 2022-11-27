@@ -22,6 +22,9 @@ namespace Extensions {
 namespace HttpFilters {
 namespace Golang {
 
+const int ReqStateInGo = 1;
+const int ReqStateDestroy = 2;
+
 /**
  * Configuration for the HTTP golang extension filter.
  */

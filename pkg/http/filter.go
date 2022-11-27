@@ -43,10 +43,15 @@ type httpRequest struct {
 	httpFilter api.HttpFilter
 }
 
-func (r *httpRequest) checkState() {
-	if int(r.req.ingo) != api.IsInGo {
+func (r *httpRequest) checkState(leaving bool) {
+	if int(r.req.state)&api.ReqStateInGo == 0 {
 		// Already callback to Envoy, no Go API allowed.
 		panic("unexpected API call")
+	}
+	if leaving {
+		// means leaving Go.
+		fmt.Printf("change state from %v to %v\n", int(r.req.state), int(r.req.state) & ^api.ReqStateInGo)
+		r.req.state = C.int(int(r.req.state) & ^api.ReqStateInGo)
 	}
 }
 
@@ -55,12 +60,12 @@ func (r *httpRequest) Continue(status api.StatusType) {
 		fmt.Printf("warning: LocalReply status is useless after sendLocalReply, ignoring")
 		return
 	}
-	r.checkState()
+	r.checkState(true)
 	cAPI.HttpContinue(unsafe.Pointer(r.req), uint64(status))
 }
 
 func (r *httpRequest) SendLocalReply(responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string) {
-	r.checkState()
+	r.checkState(true)
 	cAPI.HttpSendLocalReply(unsafe.Pointer(r.req), responseCode, bodyText, headers, grpcStatus, details)
 }
 
@@ -71,6 +76,9 @@ func (r *httpRequest) StreamInfo() api.StreamInfo {
 }
 
 func (r *httpRequest) Finalize(reason int) {
+	if int(r.req.state)&api.ReqStateDestroy == 0 {
+		panic("not destroy yet")
+	}
 	cAPI.HttpFinalize(unsafe.Pointer(r.req), reason)
 }
 
@@ -80,6 +88,6 @@ type streamInfo struct {
 }
 
 func (s *streamInfo) GetRouteName() string {
-	s.request.checkState()
+	s.request.checkState(false)
 	return cAPI.HttpGetRouteName(unsafe.Pointer(s.request.req))
 }

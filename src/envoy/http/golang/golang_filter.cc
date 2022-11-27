@@ -241,6 +241,8 @@ void Filter::onDestroy() {
 
   try {
     ASSERT(req_ != nullptr);
+    ASSERT((req_->state & ReqStateDestroy) == 0);
+    req_->state |= ReqStateDestroy;
     auto& state = getProcessorState();
     auto reason = state.isProcessingInGo() ? DestroyReason::Terminate : DestroyReason::Normal;
 
@@ -283,8 +285,10 @@ GolangStatus Filter::doHeadersGo(ProcessorState& state, Http::RequestOrResponseH
       req_ = new httpRequestInternal(weak_from_this());
       req_->configId = getMergedConfigId(state);
     }
+    ASSERT((req_->state & ReqStateInGo) == 0);
 
     req_->phase = static_cast<int>(state.phase());
+    req_->state |= ReqStateInGo;
     headers_ = &headers;
     auto status =
         dynamicLib_->moeOnHttpHeader(req_, end_stream ? 1 : 0, headers.size(), headers.byteSize());
@@ -326,7 +330,9 @@ bool Filter::doDataGo(ProcessorState& state, Buffer::Instance& data, bool end_st
 
   try {
     ASSERT(req_ != nullptr);
+    ASSERT((req_->state & ReqStateInGo) == 0);
     req_->phase = static_cast<int>(state.phase());
+    req_->state |= ReqStateInGo;
     auto status = dynamicLib_->moeOnHttpData(req_, end_stream ? 1 : 0,
                                              reinterpret_cast<uint64_t>(&buffer), buffer.length());
 
@@ -392,7 +398,9 @@ bool Filter::doTrailerGo(ProcessorState& state, Http::HeaderMap& trailers) {
   bool done = true;
   try {
     ASSERT(req_ != nullptr);
+    ASSERT((req_->state & ReqStateInGo) == 0);
     req_->phase = static_cast<int>(state.phase());
+    req_->state |= ReqStateInGo;
     auto status = dynamicLib_->moeOnHttpHeader(req_, 1, trailers.size(), trailers.byteSize());
     done = state.handleTrailerGolangStatus(static_cast<GolangStatus>(status));
 
@@ -575,7 +583,9 @@ void Filter::sendLocalReplyInternal(
 void Filter::sendLocalReply(Http::Code response_code, absl::string_view body_text,
                             std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
                             Grpc::Status::GrpcStatus grpc_status, absl::string_view details) {
-  ENVOY_LOG(debug, "sendLocalReply, response code: {}", int(response_code));
+  ENVOY_LOG(debug, "sendLocalReply, response code: {}, req.state: {}", int(response_code),
+            req_->state);
+  ASSERT((req_->state & ReqStateInGo) == 0);
 
   auto& state = getProcessorState();
   auto weak_ptr = weak_from_this();
@@ -595,8 +605,10 @@ void Filter::continueStatus(GolangStatus status) {
   // TODO: skip post event to dispatcher, and return continue in the caller,
   // when it's invoked in the current envoy thread, for better performance & latency.
   auto& state = getProcessorState();
-  ENVOY_LOG(debug, "golang filter continue from Go, status: {}, state: {}, phase: {}", int(status),
-            state.stateStr(), state.phaseStr());
+  ENVOY_LOG(debug,
+            "golang filter continue from Go, status: {}, state: {}, phase: {}, req.state: {}",
+            int(status), state.stateStr(), state.phaseStr(), req_->state);
+  ASSERT((req_->state & ReqStateInGo) == 0);
 
   auto weak_ptr = weak_from_this();
   state.getDispatcher().post([this, &state, weak_ptr, status] {
@@ -611,6 +623,8 @@ void Filter::continueStatus(GolangStatus status) {
 }
 
 absl::optional<absl::string_view> Filter::getHeader(absl::string_view key) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -652,6 +666,8 @@ void copyHeaderMapToGo(Http::HeaderMap& m, GoString* goStrs, char* goBuf) {
 }
 
 void Filter::copyHeaders(GoString* goStrs, char* goBuf) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -662,6 +678,8 @@ void Filter::copyHeaders(GoString* goStrs, char* goBuf) {
 }
 
 void Filter::setHeader(absl::string_view key, absl::string_view value) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -672,6 +690,8 @@ void Filter::setHeader(absl::string_view key, absl::string_view value) {
 }
 
 void Filter::removeHeader(absl::string_view key) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -682,6 +702,8 @@ void Filter::removeHeader(absl::string_view key) {
 }
 
 void Filter::copyBuffer(Buffer::Instance* buffer, char* data) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -695,6 +717,8 @@ void Filter::copyBuffer(Buffer::Instance* buffer, char* data) {
 
 void Filter::setBufferHelper(Buffer::Instance* buffer, absl::string_view& value,
                              bufferAction action) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -710,6 +734,8 @@ void Filter::setBufferHelper(Buffer::Instance* buffer, absl::string_view& value,
 }
 
 void Filter::copyTrailers(GoString* goStrs, char* goBuf) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -720,6 +746,8 @@ void Filter::copyTrailers(GoString* goStrs, char* goBuf) {
 }
 
 void Filter::setTrailer(absl::string_view key, absl::string_view value) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
@@ -730,6 +758,8 @@ void Filter::setTrailer(absl::string_view key, absl::string_view value) {
 }
 
 void Filter::getStringValue(int id, GoString* valueStr) {
+  ASSERT((req_->state & ReqStateInGo) > 0);
+
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     ENVOY_LOG(warn, "golang filter has been destroyed");
