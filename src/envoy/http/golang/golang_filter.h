@@ -154,21 +154,21 @@ public:
 
   static std::atomic<uint64_t> global_stream_id_;
 
-  void continueStatus(GolangStatus status);
+  int continueStatus(GolangStatus status);
 
-  void sendLocalReply(Http::Code response_code, absl::string_view body_text,
-                      std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
-                      Grpc::Status::GrpcStatus grpc_status, absl::string_view details);
+  int sendLocalReply(Http::Code response_code, absl::string_view body_text,
+                     std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
+                     Grpc::Status::GrpcStatus grpc_status, absl::string_view details);
 
-  absl::optional<absl::string_view> getHeader(absl::string_view key);
-  void copyHeaders(GoString* goStrs, char* goBuf);
-  void setHeader(absl::string_view key, absl::string_view value);
-  void removeHeader(absl::string_view key);
-  void copyBuffer(Buffer::Instance* buffer, char* data);
-  void setBufferHelper(Buffer::Instance* buffer, absl::string_view& value, bufferAction action);
-  void copyTrailers(GoString* goStrs, char* goBuf);
-  void setTrailer(absl::string_view key, absl::string_view value);
-  void getStringValue(int id, GoString* valueStr);
+  int getHeader(absl::string_view key, GoString* goValue);
+  int copyHeaders(GoString* goStrs, char* goBuf);
+  int setHeader(absl::string_view key, absl::string_view value);
+  int removeHeader(absl::string_view key);
+  int copyBuffer(Buffer::Instance* buffer, char* data);
+  int setBufferHelper(Buffer::Instance* buffer, absl::string_view& value, bufferAction action);
+  int copyTrailers(GoString* goStrs, char* goBuf);
+  int setTrailer(absl::string_view key, absl::string_view value);
+  int getStringValue(int id, GoString* valueStr);
 
 private:
   ProcessorState& getProcessorState();
