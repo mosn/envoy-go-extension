@@ -4,6 +4,13 @@
 extern "C" {
 #endif
 
+// This describes the return value of a C Api from Go.
+#define CAPIOK 0
+#define CAPIFilterIsGone -1
+#define CAPIFilterIsDestroy -2
+#define CAPINotInGo -3
+#define CAPIInvalidPhase -4
+
 typedef struct {
   unsigned long long int configId;
   int phase;
@@ -15,23 +22,23 @@ typedef enum {
   Prepend,
 } bufferAction;
 
-void moeHttpContinue(void* r, int status);
-void moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
-                           long long int grpc_status, void* details);
+int moeHttpContinue(void* r, int status);
+int moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
+                          long long int grpc_status, void* details);
 
-void moeHttpGetHeader(void* r, void* key, void* value);
-void moeHttpCopyHeaders(void* r, void* strs, void* buf);
-void moeHttpSetHeader(void* r, void* key, void* value);
-void moeHttpRemoveHeader(void* r, void* key);
+int moeHttpGetHeader(void* r, void* key, void* value);
+int moeHttpCopyHeaders(void* r, void* strs, void* buf);
+int moeHttpSetHeader(void* r, void* key, void* value);
+int moeHttpRemoveHeader(void* r, void* key);
 
-void moeHttpGetBuffer(void* r, unsigned long long int buffer, void* value);
-void moeHttpSetBufferHelper(void* r, unsigned long long int buffer, void* data, int length,
-                            bufferAction action);
+int moeHttpGetBuffer(void* r, unsigned long long int buffer, void* value);
+int moeHttpSetBufferHelper(void* r, unsigned long long int buffer, void* data, int length,
+                           bufferAction action);
 
-void moeHttpCopyTrailers(void* r, void* strs, void* buf);
-void moeHttpSetTrailer(void* r, void* key, void* value);
+int moeHttpCopyTrailers(void* r, void* strs, void* buf);
+int moeHttpSetTrailer(void* r, void* key, void* value);
 
-void moeHttpGetStringValue(void* r, int id, void* value);
+int moeHttpGetStringValue(void* r, int id, void* value);
 
 void moeHttpFinalize(void* r, int reason);
 

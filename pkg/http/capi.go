@@ -45,8 +45,25 @@ const (
 
 type httpCApiImpl struct{}
 
+// Only CAPIOK is expected, otherwise, panic here.
+func handleCApiStatus(status C.int) {
+	switch status {
+	case C.CAPIOK:
+		return
+	case C.CAPIFilterIsGone:
+		panic("request has been finished")
+	case C.CAPIFilterIsDestroy:
+		panic("golang filter has been destroyed")
+	case C.CAPINotInGo:
+		panic("not proccessing Go")
+	case C.CAPIInvalidPhase:
+		panic("invalid phase, maybe headers/buffer already continued")
+	}
+}
+
 func (c *httpCApiImpl) HttpContinue(r unsafe.Pointer, status uint64) {
-	C.moeHttpContinue(r, C.int(status))
+	res := C.moeHttpContinue(r, C.int(status))
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpSendLocalReply(r unsafe.Pointer, response_code int, body_text string, headers map[string]string, grpc_status int64, details string) {
@@ -55,11 +72,13 @@ func (c *httpCApiImpl) HttpSendLocalReply(r unsafe.Pointer, response_code int, b
 	for k, v := range headers {
 		strs = append(strs, k, v)
 	}
-	C.moeHttpSendLocalReply(r, C.int(response_code), unsafe.Pointer(&body_text), unsafe.Pointer(&strs), C.longlong(grpc_status), unsafe.Pointer(&details))
+	res := C.moeHttpSendLocalReply(r, C.int(response_code), unsafe.Pointer(&body_text), unsafe.Pointer(&strs), C.longlong(grpc_status), unsafe.Pointer(&details))
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpGetHeader(r unsafe.Pointer, key *string, value *string) {
-	C.moeHttpGetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
+	res := C.moeHttpGetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string {
@@ -74,7 +93,8 @@ func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint6
 	sHeader := (*reflect.SliceHeader)(unsafe.Pointer(&strs))
 	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
 
-	C.moeHttpCopyHeaders(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+	res := C.moeHttpCopyHeaders(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+	handleCApiStatus(res)
 
 	m := make(map[string][]string, num)
 	for i := uint64(0); i < num*2; i += 2 {
@@ -93,11 +113,13 @@ func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint6
 }
 
 func (c *httpCApiImpl) HttpSetHeader(r unsafe.Pointer, key *string, value *string) {
-	C.moeHttpSetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
+	res := C.moeHttpSetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpRemoveHeader(r unsafe.Pointer, key *string) {
-	C.moeHttpRemoveHeader(r, unsafe.Pointer(key))
+	res := C.moeHttpRemoveHeader(r, unsafe.Pointer(key))
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *string, length uint64) {
@@ -106,7 +128,8 @@ func (c *httpCApiImpl) HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *
 	sHeader := (*reflect.StringHeader)(unsafe.Pointer(value))
 	sHeader.Data = bHeader.Data
 	sHeader.Len = int(length)
-	C.moeHttpGetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
+	res := C.moeHttpGetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, value string, action api.BufferAction) {
@@ -120,7 +143,8 @@ func (c *httpCApiImpl) HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, v
 	case api.PrependBuffer:
 		act = C.Prepend
 	}
-	C.moeHttpSetBufferHelper(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len), act)
+	res := C.moeHttpSetBufferHelper(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len), act)
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string {
@@ -133,7 +157,8 @@ func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint
 	sHeader := (*reflect.SliceHeader)(unsafe.Pointer(&strs))
 	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
 
-	C.moeHttpCopyTrailers(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+	res := C.moeHttpCopyTrailers(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+	handleCApiStatus(res)
 
 	m := make(map[string][]string, num)
 	for i := uint64(0); i < num*2; i += 2 {
@@ -149,18 +174,21 @@ func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint
 }
 
 func (c *httpCApiImpl) HttpSetTrailer(r unsafe.Pointer, key *string, value *string) {
-	C.moeHttpSetTrailer(r, unsafe.Pointer(key), unsafe.Pointer(value))
+	res := C.moeHttpSetTrailer(r, unsafe.Pointer(key), unsafe.Pointer(value))
+	handleCApiStatus(res)
 }
 
 func (c *httpCApiImpl) HttpGetRouteName(r unsafe.Pointer) string {
 	var value string
-	C.moeHttpGetStringValue(r, ValueRouteName, unsafe.Pointer(&value))
+	res := C.moeHttpGetStringValue(r, ValueRouteName, unsafe.Pointer(&value))
+	handleCApiStatus(res)
 	// copy the memory from c to Go.
 	return strings.Clone(value)
 }
 
 func (c *httpCApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
-	C.moeHttpFinalize(r, C.int(reason))
+	res := C.moeHttpFinalize(r, C.int(reason))
+	handleCApiStatus(res)
 }
 
 var cAPI api.HttpCAPI = &httpCApiImpl{}

@@ -110,10 +110,12 @@ func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.Statu
 		return f.sendLocalReply("decode-data")
 	}
 	f.req_body_length += uint64(buffer.Len())
-	data := buffer.String()
-	buffer.SetString(strings.ToUpper(data))
-	buffer.AppendString("_append")
-	buffer.PrependString("prepend_")
+	if buffer.Len() != 0 {
+		data := buffer.String()
+		buffer.SetString(strings.ToUpper(data))
+		buffer.AppendString("_append")
+		buffer.PrependString("prepend_")
+	}
 	if !endStream && strings.Contains(f.databuffer, "decode-data") {
 		return api.StopAndBuffer
 	}
