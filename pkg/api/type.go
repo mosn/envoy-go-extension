@@ -120,6 +120,9 @@ type ResponseHeaderMap interface {
 	HeaderMap
 	Status() int
 	// others
+
+	// GetRaw is unsafe, reuse the memory from Envoy
+	GetRaw(name string) string
 }
 
 type ResponseTrailerMap interface {

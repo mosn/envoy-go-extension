@@ -125,6 +125,13 @@ type responseHeaderMapImpl struct {
 
 var _ api.ResponseHeaderMap = (*responseHeaderMapImpl)(nil)
 
+func (h *responseHeaderMapImpl) GetRaw(key string) string {
+	h.checkPhase(api.EncodeHeaderPhase)
+	var value string
+	cAPI.HttpGetHeader(unsafe.Pointer(h.request.req), &key, &value)
+	return value
+}
+
 func (h *responseHeaderMapImpl) Get(key string) (string, bool) {
 	h.checkPhase(api.EncodeHeaderPhase)
 	if h.headers == nil {
