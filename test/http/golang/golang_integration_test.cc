@@ -311,7 +311,9 @@ typed_config:
     Http::TestRequestHeaderMapImpl request_headers{
         {":method", "POST"},        {":path", path},
         {":scheme", "http"},        {":authority", "test.com"},
-        {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
+        {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"},
+        {"x-test-repeated-header", "foo"}, {"x-test-repeated-header", "bar"},
+    };
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
     Http::RequestEncoder& request_encoder = encoder_decoder.first;
@@ -336,6 +338,11 @@ typed_config:
     EXPECT_EQ(true,
               upstream_request_->headers().get(Http::LowerCaseString("x-test-header-1")).empty());
 
+    // check handling for repeated headers
+    EXPECT_EQ("foobar", upstream_request_->headers()
+                         .get(Http::LowerCaseString("test-x-repeated-header"))[0]
+                         ->value()
+                         .getStringView());
     /*
       * TODO: check route name in decode phase
       EXPECT_EQ("test-route-name", upstream_request_->headers()
@@ -350,7 +357,9 @@ typed_config:
     EXPECT_EQ(expected, upstream_request_->body().toString().substr(0, expected.length()));
 
     Http::TestResponseHeaderMapImpl response_headers{
-        {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"}};
+        {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"},
+        {"x-test-repeated-header", "foo"}, {"x-test-repeated-header", "bar"},
+    };
     upstream_request_->encodeHeaders(response_headers, false);
     Buffer::OwnedImpl response_data1("good");
     upstream_request_->encodeData(response_data1, false);
@@ -373,6 +382,12 @@ typed_config:
 
     // check resp header exists which removed in golang side: x-test-header-1
     EXPECT_EQ(true, response->headers().get(Http::LowerCaseString("x-test-header-1")).empty());
+
+    // check handling for repeated headers
+    EXPECT_EQ("foobar", upstream_request_->headers()
+                         .get(Http::LowerCaseString("test-x-repeated-header"))[0]
+                         ->value()
+                         .getStringView());
 
     // length("helloworld") = 10
     EXPECT_EQ("10", response->headers()
