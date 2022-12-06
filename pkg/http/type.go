@@ -28,7 +28,7 @@ import (
 // api.HeaderMap
 type headerMapImpl struct {
 	request     *httpRequest
-	headers     map[string]string
+	headers     map[string][]string
 	headerNum   uint64
 	headerBytes uint64
 }
@@ -49,6 +49,35 @@ func (h *headerMapImpl) checkPhase(want api.EnvoyRequestPhase) {
 	}
 }
 
+func (h *headerMapImpl) get(key string) (string, bool) {
+	if h.headers == nil {
+		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+	}
+	value, ok := h.headers[key]
+	if !ok {
+		return "", false
+	}
+	return value[0], ok
+}
+
+func (h *headerMapImpl) values(key string) []string {
+	if h.headers == nil {
+		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
+	}
+	value, ok := h.headers[key]
+	if !ok {
+		return nil
+	}
+	return value
+}
+
+func (h *headerMapImpl) set(key, value string) {
+	if h.headers != nil {
+		h.headers[key] = []string{value}
+	}
+	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value)
+}
+
 // api.RequestHeaderMap
 type requestHeaderMapImpl struct {
 	headerMapImpl
@@ -65,19 +94,17 @@ func (h *requestHeaderMapImpl) GetRaw(key string) string {
 
 func (h *requestHeaderMapImpl) Get(key string) (string, bool) {
 	h.checkPhase(api.DecodeHeaderPhase)
-	if h.headers == nil {
-		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-	}
-	value, ok := h.headers[key]
-	return value, ok
+	return h.get(key)
+}
+
+func (h *requestHeaderMapImpl) Values(key string) []string {
+	h.checkPhase(api.DecodeHeaderPhase)
+	return h.values(key)
 }
 
 func (h *requestHeaderMapImpl) Set(key, value string) {
 	h.checkPhase(api.DecodeHeaderPhase)
-	if h.headers != nil {
-		h.headers[key] = value
-	}
-	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value)
+	h.set(key, value)
 }
 
 func (h *requestHeaderMapImpl) Add(key, value string) {
@@ -127,19 +154,17 @@ var _ api.ResponseHeaderMap = (*responseHeaderMapImpl)(nil)
 
 func (h *responseHeaderMapImpl) Get(key string) (string, bool) {
 	h.checkPhase(api.EncodeHeaderPhase)
-	if h.headers == nil {
-		h.headers = cAPI.HttpCopyHeaders(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-	}
-	value, ok := h.headers[key]
-	return value, ok
+	return h.get(key)
+}
+
+func (h *responseHeaderMapImpl) Values(key string) []string {
+	h.checkPhase(api.EncodeHeaderPhase)
+	return h.values(key)
 }
 
 func (h *responseHeaderMapImpl) Set(key, value string) {
 	h.checkPhase(api.EncodeHeaderPhase)
-	if h.headers != nil {
-		h.headers[key] = value
-	}
-	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value)
+	h.set(key, value)
 }
 
 func (h *responseHeaderMapImpl) Add(key, value string) {
@@ -172,19 +197,17 @@ var _ api.RequestTrailerMap = (*requestTrailerMapImpl)(nil)
 
 func (h *requestTrailerMapImpl) Get(key string) (string, bool) {
 	h.checkPhase(api.DecodeTrailerPhase)
-	if h.headers == nil {
-		h.headers = cAPI.HttpCopyTrailers(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-	}
-	value, ok := h.headers[key]
-	return value, ok
+	return h.get(key)
+}
+
+func (h *requestTrailerMapImpl) Values(key string) []string {
+	h.checkPhase(api.DecodeTrailerPhase)
+	return h.values(key)
 }
 
 func (h *requestTrailerMapImpl) Set(key, value string) {
 	h.checkPhase(api.DecodeTrailerPhase)
-	if h.headers != nil {
-		h.headers[key] = value
-	}
-	cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &key, &value)
+	h.set(key, value)
 }
 
 func (h *requestTrailerMapImpl) Add(key, value string) {
@@ -206,19 +229,17 @@ var _ api.ResponseTrailerMap = (*responseTrailerMapImpl)(nil)
 
 func (h *responseTrailerMapImpl) Get(key string) (string, bool) {
 	h.checkPhase(api.EncodeTrailerPhase)
-	if h.headers == nil {
-		h.headers = cAPI.HttpCopyTrailers(unsafe.Pointer(h.request.req), h.headerNum, h.headerBytes)
-	}
-	value, ok := h.headers[key]
-	return value, ok
+	return h.get(key)
+}
+
+func (h *responseTrailerMapImpl) Values(key string) []string {
+	h.checkPhase(api.EncodeTrailerPhase)
+	return h.values(key)
 }
 
 func (h *responseTrailerMapImpl) Set(key, value string) {
 	h.checkPhase(api.EncodeTrailerPhase)
-	if h.headers != nil {
-		h.headers[key] = value
-	}
-	cAPI.HttpSetTrailer(unsafe.Pointer(h.request.req), &key, &value)
+	h.set(key, value)
 }
 
 func (h *responseTrailerMapImpl) Add(key, value string) {

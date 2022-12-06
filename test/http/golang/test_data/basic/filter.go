@@ -57,6 +57,12 @@ func (f *filter) initRequest(header api.HeaderMap) {
 	f.localreplay = f.query_params.Get("localreply")
 }
 
+func (f *filter) fail(msg string, a ...any) api.StatusType {
+	body := fmt.Sprintf(msg, a)
+	f.callbacks.SendLocalReply(500, body, nil, -1, "")
+	return api.LocalReply
+}
+
 func (f *filter) sendLocalReply(phase string) api.StatusType {
 	headers := make(map[string]string)
 	body := fmt.Sprintf("forbidden from go in %s\r\n", phase)
@@ -64,7 +70,7 @@ func (f *filter) sendLocalReply(phase string) api.StatusType {
 	return api.LocalReply
 }
 
-// test: get, set, remove
+// test: get, set, remove, values
 func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.StatusType {
 	if f.sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
@@ -72,7 +78,20 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	if strings.Contains(f.localreplay, "decode-header") {
 		return f.sendLocalReply("decode-header")
 	}
-	origin, _ := header.Get("x-test-header-0")
+
+	origin, found := header.Get("x-test-header-0")
+	if found {
+		hdrs := header.Values("x-test-header-0")
+		if hdrs[0] != origin {
+			return f.fail("header Values: expected %v, got %v", origin, hdrs[0])
+		}
+	}
+
+	repeatedHdr := header.Values("x-test-repeated-header")
+	if len(repeatedHdr) > 0 {
+		header.Set("test-x-repeated-header", strings.Join(repeatedHdr, ""))
+	}
+
 	header.Set("test-x-set-header-0", origin)
 	header.Del("x-test-header-1")
 	header.Set("req-route-name", f.callbacks.StreamInfo().GetRouteName())
@@ -118,7 +137,20 @@ func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 	if strings.Contains(f.localreplay, "encode-header") {
 		return f.sendLocalReply("encode-header")
 	}
-	origin, _ := header.Get("x-test-header-0")
+
+	origin, found := header.Get("x-test-header-0")
+	if found {
+		hdrs := header.Values("x-test-header-0")
+		if hdrs[0] != origin {
+			return f.fail("header Values: expected %v, got %v", origin, hdrs[0])
+		}
+	}
+
+	repeatedHdr := header.Values("x-test-repeated-header")
+	if len(repeatedHdr) > 0 {
+		header.Set("test-x-repeated-header", strings.Join(repeatedHdr, ""))
+	}
+
 	header.Set("test-x-set-header-0", origin)
 	header.Del("x-test-header-1")
 	header.Set("test-req-body-length", strconv.Itoa(int(f.req_body_length)))
