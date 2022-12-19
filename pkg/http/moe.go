@@ -127,7 +127,7 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 		status = f.DecodeHeaders(header, endStream == 1)
 	case api.DecodeTrailerPhase:
 		header := &requestTrailerMapImpl{
-			headerMapImpl{
+			headerTrailerMapImpl{
 				request:     req,
 				headerNum:   headerNum,
 				headerBytes: headerBytes,
@@ -145,7 +145,7 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 		status = f.EncodeHeaders(header, endStream == 1)
 	case api.EncodeTrailerPhase:
 		header := &responseTrailerMapImpl{
-			headerMapImpl{
+			headerTrailerMapImpl{
 				request:     req,
 				headerNum:   headerNum,
 				headerBytes: headerBytes,
