@@ -187,8 +187,7 @@ func (c *httpCApiImpl) HttpGetRouteName(r unsafe.Pointer) string {
 }
 
 func (c *httpCApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
-	res := C.moeHttpFinalize(r, C.int(reason))
-	handleCApiStatus(res)
+	C.moeHttpFinalize(r, C.int(reason))
 }
 
 var cAPI api.HttpCAPI = &httpCApiImpl{}
