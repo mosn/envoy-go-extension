@@ -112,6 +112,13 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 			req = createRequest(r)
 		}
 	}
+	if req.paniced {
+		req.safeReplyPanic()
+		// only may hit it when filter is just destroyed
+		// status is meaningless then.
+		return uint64(api.Continue)
+	}
+	defer req.RecoverPanic()
 	f := req.httpFilter
 
 	var status api.StatusType
@@ -159,6 +166,13 @@ func moeOnHttpHeader(r *C.httpRequest, endStream, headerNum, headerBytes uint64)
 //export moeOnHttpData
 func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 	req := getRequest(r)
+	if req.paniced {
+		req.safeReplyPanic()
+		// only may hit it when filter is just destroyed
+		// status is meaningless then.
+		return uint64(api.Continue)
+	}
+	defer req.RecoverPanic()
 
 	f := req.httpFilter
 	isDecode := api.EnvoyRequestPhase(r.phase) == api.DecodeDataPhase
@@ -181,6 +195,10 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 //export moeOnHttpDestroy
 func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
 	req := getRequest(r)
+	if req.paniced {
+		// do nothing
+	}
+	defer req.RecoverPanic()
 
 	v := api.DestroyReason(reason)
 
