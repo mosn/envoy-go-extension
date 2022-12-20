@@ -29,6 +29,7 @@ type bufferedFilter struct {
 
 func (f *bufferedFilter) runDecode(header api.RequestHeaderMap, data api.BufferInstance, trailer api.RequestTrailerMap) {
 	go func() {
+		defer f.callbacks.RecoverPanic()
 		f.filter.Decode(header, data, trailer)
 		f.callbacks.Continue(api.Continue)
 	}()
@@ -36,6 +37,7 @@ func (f *bufferedFilter) runDecode(header api.RequestHeaderMap, data api.BufferI
 
 func (f *bufferedFilter) runEncode(header api.ResponseHeaderMap, data api.BufferInstance, trailer api.ResponseTrailerMap) {
 	go func() {
+		defer f.callbacks.RecoverPanic()
 		f.filter.Encode(header, data, trailer)
 		f.callbacks.Continue(api.Continue)
 	}()

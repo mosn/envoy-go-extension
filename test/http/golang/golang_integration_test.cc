@@ -309,10 +309,14 @@ typed_config:
 
     codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
     Http::TestRequestHeaderMapImpl request_headers{
-        {":method", "POST"},        {":path", path},
-        {":scheme", "http"},        {":authority", "test.com"},
-        {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"},
-        {"x-test-repeated-header", "foo"}, {"x-test-repeated-header", "bar"},
+        {":method", "POST"},
+        {":path", path},
+        {":scheme", "http"},
+        {":authority", "test.com"},
+        {"x-test-header-0", "foo"},
+        {"x-test-header-1", "bar"},
+        {"x-test-repeated-header", "foo"},
+        {"x-test-repeated-header", "bar"},
     };
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
@@ -340,9 +344,9 @@ typed_config:
 
     // check handling for repeated headers
     EXPECT_EQ("foobar", upstream_request_->headers()
-                         .get(Http::LowerCaseString("test-x-repeated-header"))[0]
-                         ->value()
-                         .getStringView());
+                            .get(Http::LowerCaseString("test-x-repeated-header"))[0]
+                            ->value()
+                            .getStringView());
     /*
       * TODO: check route name in decode phase
       EXPECT_EQ("test-route-name", upstream_request_->headers()
@@ -357,8 +361,11 @@ typed_config:
     EXPECT_EQ(expected, upstream_request_->body().toString().substr(0, expected.length()));
 
     Http::TestResponseHeaderMapImpl response_headers{
-        {":status", "200"}, {"x-test-header-0", "foo"}, {"x-test-header-1", "bar"},
-        {"x-test-repeated-header", "foo"}, {"x-test-repeated-header", "bar"},
+        {":status", "200"},
+        {"x-test-header-0", "foo"},
+        {"x-test-header-1", "bar"},
+        {"x-test-repeated-header", "foo"},
+        {"x-test-repeated-header", "bar"},
     };
     upstream_request_->encodeHeaders(response_headers, false);
     Buffer::OwnedImpl response_data1("good");
@@ -385,9 +392,9 @@ typed_config:
 
     // check handling for repeated headers
     EXPECT_EQ("foobar", upstream_request_->headers()
-                         .get(Http::LowerCaseString("test-x-repeated-header"))[0]
-                         ->value()
-                         .getStringView());
+                            .get(Http::LowerCaseString("test-x-repeated-header"))[0]
+                            ->value()
+                            .getStringView());
 
     // length("helloworld") = 10
     EXPECT_EQ("10", response->headers()
@@ -438,6 +445,42 @@ typed_config:
       auto values = response->headers().get(Http::LowerCaseString(set_header));
       EXPECT_EQ("test-value", values.empty() ? "" : values[0]->value().getStringView());
     }
+    cleanup();
+  }
+
+  void testPanicRecover(std::string path) {
+    initializeSimpleFilter(BASIC);
+
+    codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+    Http::TestRequestHeaderMapImpl request_headers{
+        {":method", "POST"}, {":path", path}, {":scheme", "http"}, {":authority", "test.com"}};
+
+    auto encoder_decoder = codec_client_->startRequest(request_headers);
+    Http::RequestEncoder& request_encoder = encoder_decoder.first;
+    auto response = std::move(encoder_decoder.second);
+    codec_client_->sendData(request_encoder, "hello", false);
+    codec_client_->sendData(request_encoder, "world", true);
+
+    // need upstream request then when not seen decode-
+    if (path.find("decode-") == std::string::npos) {
+      waitForNextUpstreamRequest();
+      Http::TestResponseHeaderMapImpl response_headers{{":status", "200"}};
+      upstream_request_->encodeHeaders(response_headers, false);
+      Buffer::OwnedImpl response_data1("good");
+      upstream_request_->encodeData(response_data1, false);
+      Buffer::OwnedImpl response_data2("bye");
+      upstream_request_->encodeData(response_data2, true);
+    }
+
+    ASSERT_TRUE(response->waitForEndStream());
+
+    // check resp status
+    EXPECT_EQ("500", response->headers().getStatusValue());
+
+    // error happened in Go filter\r\n
+    auto body = StringUtil::toUpper("error happened in Go filter\r\n");
+    EXPECT_EQ(body, StringUtil::toUpper(response->body()));
+
     cleanup();
   }
 
@@ -681,6 +724,26 @@ TEST_P(GolangIntegrationTest, RouteConfig_VirtualHost) {
 // set: baz
 TEST_P(GolangIntegrationTest, RouteConfig_Route) {
   testRouteConfig("test.com", "/route-config-test", false, "baz");
+}
+
+TEST_P(GolangIntegrationTest, PanicRecover_DecodeHeader) {
+  testPanicRecover("/test?panic=decode-header");
+}
+
+TEST_P(GolangIntegrationTest, PanicRecover_DecodeHeader_Async) {
+  testPanicRecover("/test?async=1&panic=decode-header");
+}
+
+TEST_P(GolangIntegrationTest, PanicRecover_DecodeData) {
+  testPanicRecover("/test?panic=decode-data");
+}
+
+TEST_P(GolangIntegrationTest, PanicRecover_DecodeData_Async) {
+  testPanicRecover("/test?async=1&sleep=1&panic=decode-data");
+}
+
+TEST_P(GolangIntegrationTest, PanicRecover_EncodeData_Async) {
+  testPanicRecover("/test?async=1&sleep=1&panic=encode-data");
 }
 
 } // namespace

@@ -87,6 +87,8 @@ type FilterCallbacks interface {
 	// Continue or SendLocalReply should be last API invoked, no more code after them.
 	Continue(StatusType)
 	SendLocalReply(responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string)
+	// RecoverPanic recover panic in defer
+	RecoverPanic()
 	/*
 		AddDecodedData(buffer BufferInstance, streamingFilter bool)
 	*/

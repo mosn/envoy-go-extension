@@ -24,6 +24,14 @@ import (
 	"mosn.io/envoy-go-extension/pkg/api"
 )
 
+// panic error messages when C API return not ok
+var (
+	ErrRequestFinished = "request has been finished"
+	ErrFilterDestroyed = "golang filter has been destroyed"
+	ErrNotInGo         = "not proccessing Go"
+	ErrInvalidPhase    = "invalid phase, maybe headers/buffer already continued"
+)
+
 // api.HeaderMap
 type headerMapImpl struct {
 	request     *httpRequest
