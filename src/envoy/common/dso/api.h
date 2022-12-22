@@ -22,13 +22,18 @@ typedef enum {
   Prepend,
 } bufferAction;
 
+typedef enum {
+  HeaderSet,
+  HeaderAdd,
+} headerAction;
+
 int moeHttpContinue(void* r, int status);
 int moeHttpSendLocalReply(void* r, int response_code, void* body_text, void* headers,
                           long long int grpc_status, void* details);
 
 int moeHttpGetHeader(void* r, void* key, void* value);
 int moeHttpCopyHeaders(void* r, void* strs, void* buf);
-int moeHttpSetHeader(void* r, void* key, void* value);
+int moeHttpSetHeaderHelper(void* r, void* key, void* value, headerAction action);
 int moeHttpRemoveHeader(void* r, void* key);
 
 int moeHttpGetBuffer(void* r, unsigned long long int buffer, void* value);

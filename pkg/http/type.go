@@ -75,11 +75,18 @@ func (h *headerMapImpl) Set(key, value string) {
 	if h.headers != nil {
 		h.headers[key] = []string{value}
 	}
-	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value)
+	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value, false)
 }
 
 func (h *headerMapImpl) Add(key, value string) {
-	// TODO: add
+	if h.headers != nil {
+		if hdrs, found := h.headers[key]; found {
+			h.headers[key] = append(hdrs, value)
+		} else {
+			h.headers[key] = []string{value}
+		}
+	}
+	cAPI.HttpSetHeader(unsafe.Pointer(h.request.req), &key, &value, true)
 }
 
 func (h *headerMapImpl) Del(key string) {
@@ -138,10 +145,6 @@ func (h *responseHeaderMapImpl) GetRaw(key string) string {
 	var value string
 	cAPI.HttpGetHeader(unsafe.Pointer(h.request.req), &key, &value)
 	return value
-}
-
-func (h *responseHeaderMapImpl) Add(key, value string) {
-	// TODO: add
 }
 
 func (h *responseHeaderMapImpl) Del(key string) {

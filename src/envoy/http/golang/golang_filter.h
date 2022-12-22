@@ -162,7 +162,7 @@ public:
 
   int getHeader(absl::string_view key, GoString* goValue);
   int copyHeaders(GoString* goStrs, char* goBuf);
-  int setHeader(absl::string_view key, absl::string_view value);
+  int setHeader(absl::string_view key, absl::string_view value, headerAction act);
   int removeHeader(absl::string_view key);
   int copyBuffer(Buffer::Instance* buffer, char* data);
   int setBufferHelper(Buffer::Instance* buffer, absl::string_view& value, bufferAction action);

@@ -584,7 +584,8 @@ int Filter::sendLocalReply(Http::Code response_code, absl::string_view body_text
   if (!state.isProcessingInGo()) {
     return CAPINotInGo;
   }
-  ENVOY_LOG(debug, "sendLocalReply, response code: {}", int(response_code));
+
+  ENVOY_LOG(debug, "sendLocalReply, response code: {}, body: {}", int(response_code), body_text);
 
   auto weak_ptr = weak_from_this();
   state.getDispatcher().post(
@@ -693,7 +694,7 @@ int Filter::copyHeaders(GoString* goStrs, char* goBuf) {
   return CAPIOK;
 }
 
-int Filter::setHeader(absl::string_view key, absl::string_view value) {
+int Filter::setHeader(absl::string_view key, absl::string_view value, headerAction act) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     return CAPIFilterIsDestroy;
@@ -705,7 +706,20 @@ int Filter::setHeader(absl::string_view key, absl::string_view value) {
   if (headers_ == nullptr) {
     return CAPIInvalidPhase;
   }
-  headers_->setCopy(Http::LowerCaseString(key), value);
+
+  switch (act) {
+  case HeaderAdd:
+    headers_->addCopy(Http::LowerCaseString(key), value);
+    break;
+
+  case HeaderSet:
+    headers_->setCopy(Http::LowerCaseString(key), value);
+    break;
+
+  default:
+    ENVOY_LOG(error, "unknown header action {}, ignored", act);
+  }
+
   return CAPIOK;
 }
 
