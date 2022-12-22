@@ -65,11 +65,11 @@ int moeHttpCopyHeaders(void* r, void* strs, void* buf) {
   });
 }
 
-int moeHttpSetHeader(void* r, void* key, void* value) {
-  return moeHandlerWrapper(r, [key, value](std::shared_ptr<Filter>& filter) -> int {
+int moeHttpSetHeaderHelper(void* r, void* key, void* value, headerAction act) {
+  return moeHandlerWrapper(r, [key, value, act](std::shared_ptr<Filter>& filter) -> int {
     auto keyStr = copyGoString(key);
     auto valueStr = copyGoString(value);
-    return filter->setHeader(keyStr, valueStr);
+    return filter->setHeader(keyStr, valueStr, act);
   });
 }
 

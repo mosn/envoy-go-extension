@@ -419,6 +419,58 @@ typed_config:
     cleanup();
   }
 
+  void testAddHeader() {
+    initializeSimpleFilter(BASIC);
+
+    codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+    Http::TestRequestHeaderMapImpl request_headers{
+        {":method", "POST"},        {":path", "/test?add_header=1"},
+        {":scheme", "http"},        {":authority", "test.com"},
+        {"x-test-header-0", "foo"},
+    };
+
+    auto encoder_decoder = codec_client_->startRequest(request_headers);
+    Http::RequestEncoder& request_encoder = encoder_decoder.first;
+    auto response = std::move(encoder_decoder.second);
+    codec_client_->sendData(request_encoder, "", true);
+
+    waitForNextUpstreamRequest();
+
+    EXPECT_EQ("foo", upstream_request_->headers()
+                         .get(Http::LowerCaseString("x-test-header-0"))[0]
+                         ->value()
+                         .getStringView());
+    EXPECT_EQ("bar", upstream_request_->headers()
+                         .get(Http::LowerCaseString("x-test-header-0"))[1]
+                         ->value()
+                         .getStringView());
+    EXPECT_EQ("baz", upstream_request_->headers()
+                         .get(Http::LowerCaseString("x-test-header-1"))[0]
+                         ->value()
+                         .getStringView());
+
+    Http::TestResponseHeaderMapImpl response_headers{
+        {":status", "200"}, {"x-test-header-0", "foo"}};
+    upstream_request_->encodeHeaders(response_headers, true);
+
+    ASSERT_TRUE(response->waitForEndStream());
+
+    EXPECT_EQ("foo", response->headers()
+                         .get(Http::LowerCaseString("x-test-header-0"))[0]
+                         ->value()
+                         .getStringView());
+    EXPECT_EQ("bar", response->headers()
+                         .get(Http::LowerCaseString("x-test-header-0"))[1]
+                         ->value()
+                         .getStringView());
+    EXPECT_EQ("baz", response->headers()
+                         .get(Http::LowerCaseString("x-test-header-1"))[0]
+                         ->value()
+                         .getStringView());
+
+    cleanup();
+  }
+
   void testRouteConfig(std::string domain, std::string path, bool header_0_existing,
                        std::string set_header) {
     initializeSimpleFilter(ROUTECONFIG);
@@ -588,6 +640,8 @@ INSTANTIATE_TEST_SUITE_P(IpVersions, GolangIntegrationTest,
 TEST_P(GolangIntegrationTest, Basic) { testBasic("/test"); }
 
 TEST_P(GolangIntegrationTest, Async) { testBasic("/test?async=1"); }
+
+TEST_P(GolangIntegrationTest, AddHeader) { testAddHeader(); }
 
 TEST_P(GolangIntegrationTest, DataBuffer_DecodeHeader) {
   testBasic("/test?databuffer=decode-header");

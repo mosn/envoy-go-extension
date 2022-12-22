@@ -28,6 +28,7 @@ type filter struct {
 	localreplay string // send local reply
 	databuffer  string // return api.Stop
 	panic       string // trigger panic in which phase
+	add_header  bool   // add header
 }
 
 func parseQuery(path string) url.Values {
@@ -54,13 +55,16 @@ func (f *filter) initRequest(header api.HeaderMap) {
 	if f.query_params.Get("decode_localrepaly") != "" {
 		f.data_sleep = true
 	}
+	if f.query_params.Get("add_header") != "" {
+		f.add_header = true
+	}
 	f.databuffer = f.query_params.Get("databuffer")
 	f.localreplay = f.query_params.Get("localreply")
 	f.panic = f.query_params.Get("panic")
 }
 
 func (f *filter) fail(msg string, a ...any) api.StatusType {
-	body := fmt.Sprintf(msg, a)
+	body := fmt.Sprintf(msg, a...)
 	f.callbacks.SendLocalReply(500, body, nil, -1, "")
 	return api.LocalReply
 }
@@ -79,6 +83,26 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	}
 	if strings.Contains(f.localreplay, "decode-header") {
 		return f.sendLocalReply("decode-header")
+	}
+	if f.add_header {
+		// Trigger the cache
+		header.Get("x-test-header-0")
+		// Add to existed header
+		header.Add("x-test-header-0", "bar")
+		// Add to non-existed header
+		header.Add("x-test-header-1", "baz")
+
+		// check the cache
+		hdrs := header.Values("x-test-header-0")
+		if len(hdrs) != 2 || hdrs[0] != "foo" || hdrs[1] != "bar" {
+			return f.fail("header Values x-test-header-0: unexpected %v", hdrs)
+		}
+
+		hdrs = header.Values("x-test-header-1")
+		if len(hdrs) != 1 || hdrs[0] != "baz" {
+			return f.fail("header Values x-test-header-1: unexpected %v", hdrs)
+		}
+		return api.Continue
 	}
 
 	origin, found := header.Get("x-test-header-0")
@@ -111,6 +135,9 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 func (f *filter) decodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
 	if f.sleep || f.data_sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
+	}
+	if f.add_header {
+		return api.Continue
 	}
 	if strings.Contains(f.localreplay, "decode-data") {
 		return f.sendLocalReply("decode-data")
@@ -153,6 +180,26 @@ func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 	if strings.Contains(f.localreplay, "encode-header") {
 		return f.sendLocalReply("encode-header")
 	}
+	if f.add_header {
+		// Trigger the cache
+		header.Get("x-test-header-0")
+		// Add to existed header
+		header.Add("x-test-header-0", "bar")
+		// Add to non-existed header
+		header.Add("x-test-header-1", "baz")
+
+		// check the cache
+		hdrs := header.Values("x-test-header-0")
+		if len(hdrs) != 2 || hdrs[0] != "foo" || hdrs[1] != "bar" {
+			return f.fail("header Values x-test-header-0: unexpected %v", hdrs)
+		}
+
+		hdrs = header.Values("x-test-header-1")
+		if len(hdrs) != 1 || hdrs[0] != "baz" {
+			return f.fail("header Values x-test-header-1: unexpected %v", hdrs)
+		}
+		return api.Continue
+	}
 
 	origin, found := header.Get("x-test-header-0")
 	if found {
@@ -183,6 +230,9 @@ func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 func (f *filter) encodeData(buffer api.BufferInstance, endStream bool) api.StatusType {
 	if f.sleep || f.data_sleep {
 		time.Sleep(time.Millisecond * 100) // sleep 100 ms
+	}
+	if f.add_header {
+		return api.Continue
 	}
 	if strings.Contains(f.localreplay, "encode-data") {
 		return f.sendLocalReply("encode-data")
