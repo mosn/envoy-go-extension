@@ -849,7 +849,7 @@ uint64_t Filter::getMergedConfigId(ProcessorState& state) {
         route_config_list.push_back(dynamic_cast<const FilterConfigPerRoute*>(&cfg));
       });
 
-  ENVOY_LOG(error, "golang filter route config list length: {}.", route_config_list.size());
+  ENVOY_LOG(info, "golang filter route config list length: {}.", route_config_list.size());
 
   auto id = config_->getConfigId();
   for (auto it = route_config_list.cbegin(); it != route_config_list.cend(); ++it) {
