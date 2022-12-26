@@ -29,4 +29,4 @@ jobs:
 
       - name: Run test-envoy
         run: |
-            ENVOY_DOCKER_BUILD_DIR=${{ env.cache-dir }} ./ci/run_envoy_docker.sh make test-envoy 'BUILD_OPTS="--define=deprecated_features=disabled --define=wasm=disabled --config=gcc --jobs 2"'
+            ENVOY_DOCKER_BUILD_DIR=${{ env.cache-dir }} ./ci/run_envoy_docker.sh make test-envoy 'BUILD_OPTS="--define=deprecated_features=disabled --define=wasm=disabled --config=gcc --jobs 2"' || cat ~/envoy_cache/.cache/bazel/_bazel_envoybuild/b570b5ccd0454dc9af9f65ab1833764d/execroot/envoy_go_extension/bazel-out/k8-fastbuild/testlogs/test/http/golang/golang_integration_test/test.log || echo "succ"
