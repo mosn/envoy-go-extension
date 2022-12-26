@@ -10,6 +10,7 @@ go_library(
         "filtermanager.go",
         "moe.go",
         "passthrough.go",
+        "sema.go",
         "type.go",
     ],
     cgo = True,
@@ -35,5 +36,6 @@ go_library(
         "//pkg/utils",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/anypb",
+        "@org_golang_google_protobuf//types/known/structpb",
     ],
 )

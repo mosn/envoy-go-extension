@@ -107,6 +107,7 @@ extern "C" {
 extern GoUint64 moeOnHttpHeader(httpRequest* r, GoUint64 endStream, GoUint64 headerNum, GoUint64 headerBytes);
 extern GoUint64 moeOnHttpData(httpRequest* r, GoUint64 endStream, GoUint64 buffer, GoUint64 length);
 extern void moeOnHttpDestroy(httpRequest* r, GoUint64 reason);
+extern void moeOnHttpSemaCallback(GoUint64 id);
 extern GoUint64 moeNewHttpPluginConfig(GoUint64 configPtr, GoUint64 configLen);
 extern void moeDestroyHttpPluginConfig(GoUint64 id);
 extern GoUint64 moeMergeHttpPluginConfig(GoUint64 parentId, GoUint64 childId);

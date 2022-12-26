@@ -37,5 +37,8 @@ type HttpCAPI interface {
 
 	HttpGetRouteName(r unsafe.Pointer) string
 
+	HttpGetDynamicMetadata(r unsafe.Pointer, filterName string) map[string]interface{}
+	HttpSetDynamicMetadata(r unsafe.Pointer, filterName string, key string, value interface{})
+
 	HttpFinalize(r unsafe.Pointer, reason int)
 }

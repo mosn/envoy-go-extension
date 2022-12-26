@@ -63,10 +63,16 @@ type StreamEncoderFilter interface {
 	*/
 }
 
+type DynamicMetadata interface {
+	Get(filterName string) map[string]interface{}
+	Set(filterName string, key string, value interface{})
+}
+
 // stream info
 // refer https://github.com/envoyproxy/envoy/blob/main/envoy/stream_info/stream_info.h
 type StreamInfo interface {
 	GetRouteName() string
+	DynamicMetadata() DynamicMetadata
 	/*
 		VirtualClusterName() string
 		BytesReceived() int64

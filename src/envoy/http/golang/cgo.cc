@@ -18,6 +18,14 @@ absl::string_view copyGoString(void* str) {
   return absl::string_view(goStr->p, goStr->n);
 }
 
+absl::string_view stringViewFromGoSlice(void* slice) {
+  if (slice == nullptr) {
+    return "";
+  }
+  auto goSlice = reinterpret_cast<GoSlice*>(slice);
+  return absl::string_view(static_cast<const char*>(goSlice->data), goSlice->len);
+}
+
 extern "C" {
 
 int moeHandlerWrapper(void* r, std::function<int(std::shared_ptr<Filter>&)> f) {
@@ -125,6 +133,23 @@ void moeHttpFinalize(void* r, int reason) {
   (void)reason;
   auto req = reinterpret_cast<httpRequestInternal*>(r);
   delete req;
+}
+
+int moeHttpGetDynamicMetadata(void* r, unsigned long long id, void* name, void* buf) {
+  return moeHandlerWrapper(r, [id, name, buf](std::shared_ptr<Filter>& filter) -> int {
+    auto nameStr = std::string(copyGoString(name));
+    auto bufSlice = reinterpret_cast<GoSlice*>(buf);
+    return filter->getDynamicMetadata(id, nameStr, bufSlice);
+  });
+}
+
+int moeHttpSetDynamicMetadata(void* r, void* name, void* key, void* buf) {
+  return moeHandlerWrapper(r, [name, key, buf](std::shared_ptr<Filter>& filter) -> int {
+    auto nameStr = std::string(copyGoString(name));
+    auto keyStr = std::string(copyGoString(key));
+    auto bufStr = stringViewFromGoSlice(buf);
+    return filter->setDynamicMetadata(nameStr, keyStr, bufStr);
+  });
 }
 }
 
