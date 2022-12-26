@@ -36,6 +36,8 @@ import (
 	"strings"
 	"unsafe"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"mosn.io/envoy-go-extension/pkg/api"
 )
 
@@ -194,6 +196,40 @@ func (c *httpCApiImpl) HttpGetRouteName(r unsafe.Pointer) string {
 
 func (c *httpCApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
 	C.moeHttpFinalize(r, C.int(reason))
+}
+
+func (c *httpCApiImpl) HttpGetDynamicMetadata(r unsafe.Pointer, filterName string) map[string]interface{} {
+	var buf []byte
+	wg, id := addWg()
+	res := C.moeHttpGetDynamicMetadata(r, C.ulonglong(id), unsafe.Pointer(&filterName), unsafe.Pointer(&buf))
+	if res == C.CAPIYield {
+		// wg will be deleted in getWg before it resumed.
+		wg.Wait()
+	} else {
+		deleteWg(id)
+		handleCApiStatus(res)
+	}
+	// means not found
+	if len(buf) == 0 {
+		return map[string]interface{}{}
+	}
+	// copy the memory from c to Go.
+	var meta structpb.Struct
+	proto.Unmarshal(buf, &meta)
+	return meta.AsMap()
+}
+
+func (c *httpCApiImpl) HttpSetDynamicMetadata(r unsafe.Pointer, filterName string, key string, value interface{}) {
+	v, err := structpb.NewValue(value)
+	if err != nil {
+		panic(err)
+	}
+	buf, err := proto.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	res := C.moeHttpSetDynamicMetadata(r, unsafe.Pointer(&filterName), unsafe.Pointer(&key), unsafe.Pointer(&buf))
+	handleCApiStatus(res)
 }
 
 var cAPI api.HttpCAPI = &httpCApiImpl{}

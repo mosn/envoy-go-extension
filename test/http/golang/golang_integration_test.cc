@@ -419,14 +419,50 @@ typed_config:
     cleanup();
   }
 
+  void testDynamicMetadata(std::string path) {
+    initializeSimpleFilter(BASIC);
+
+    codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
+    Http::TestRequestHeaderMapImpl request_headers{
+        {":method", "POST"},
+        {":path", path},
+        {":scheme", "http"},
+        {":authority", "test.com"},
+    };
+
+    auto encoder_decoder = codec_client_->startRequest(request_headers);
+    Http::RequestEncoder& request_encoder = encoder_decoder.first;
+    auto response = std::move(encoder_decoder.second);
+    codec_client_->sendData(request_encoder, "helloworld", true);
+
+    waitForNextUpstreamRequest();
+    // check no dynamic metadata
+    EXPECT_EQ(true,
+              upstream_request_->headers().get(Http::LowerCaseString("dy-envoy-lb-foo")).empty());
+
+    Http::TestResponseHeaderMapImpl response_headers{
+        {":status", "200"},
+    };
+    upstream_request_->encodeHeaders(response_headers, true);
+
+    ASSERT_TRUE(response->waitForEndStream());
+
+    // check dynamic metadata existing
+    EXPECT_EQ("bar", response->headers()
+                         .get(Http::LowerCaseString("dy-envoy-lb-foo"))[0]
+                         ->value()
+                         .getStringView());
+
+    cleanup();
+  }
+
   void testAddHeader() {
     initializeSimpleFilter(BASIC);
 
     codec_client_ = makeHttpConnection(makeClientConnection(lookupPort("http")));
     Http::TestRequestHeaderMapImpl request_headers{
-        {":method", "POST"},        {":path", "/test?add_header=1"},
-        {":scheme", "http"},        {":authority", "test.com"},
-        {"x-test-header-0", "foo"},
+        {":method", "POST"},        {":path", "/test?add_header=1"}, {":scheme", "http"},
+        {":authority", "test.com"}, {"x-test-header-0", "foo"},
     };
 
     auto encoder_decoder = codec_client_->startRequest(request_headers);
@@ -449,8 +485,8 @@ typed_config:
                          ->value()
                          .getStringView());
 
-    Http::TestResponseHeaderMapImpl response_headers{
-        {":status", "200"}, {"x-test-header-0", "foo"}};
+    Http::TestResponseHeaderMapImpl response_headers{{":status", "200"},
+                                                     {"x-test-header-0", "foo"}};
     upstream_request_->encodeHeaders(response_headers, true);
 
     ASSERT_TRUE(response->waitForEndStream());
@@ -798,6 +834,16 @@ TEST_P(GolangIntegrationTest, PanicRecover_DecodeData_Async) {
 
 TEST_P(GolangIntegrationTest, PanicRecover_EncodeData_Async) {
   testPanicRecover("/test?async=1&sleep=1&panic=encode-data");
+}
+
+TEST_P(GolangIntegrationTest, DynamicMetadata) { testDynamicMetadata("/test?dymeta=1"); }
+
+TEST_P(GolangIntegrationTest, DynamicMetadata_Async) {
+  testDynamicMetadata("/test?dymeta=1&async=1");
+}
+
+TEST_P(GolangIntegrationTest, DynamicMetadata_Async_Sleep) {
+  testDynamicMetadata("/test?dymeta=1&async=1&sleep=1");
 }
 
 } // namespace

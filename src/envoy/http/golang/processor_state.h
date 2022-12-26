@@ -167,7 +167,7 @@ public:
                               std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
                               Grpc::Status::GrpcStatus grpc_status, absl::string_view details) PURE;
 
-  std::string getRouteName() { return filter_callbacks_->streamInfo().getRouteName(); }
+  StreamInfo::StreamInfo& streamInfo() { return filter_callbacks_->streamInfo(); }
 
   void setEndStream(bool end_stream) { end_stream_ = end_stream; }
   bool getEndStream() { return end_stream_; }

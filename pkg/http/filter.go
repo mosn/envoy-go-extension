@@ -112,3 +112,21 @@ type streamInfo struct {
 func (s *streamInfo) GetRouteName() string {
 	return cAPI.HttpGetRouteName(unsafe.Pointer(s.request.req))
 }
+
+type dynamicMetadata struct {
+	request *httpRequest
+}
+
+func (s *streamInfo) DynamicMetadata() api.DynamicMetadata {
+	return &dynamicMetadata{
+		request: s.request,
+	}
+}
+
+func (d *dynamicMetadata) Get(filterName string) map[string]interface{} {
+	return cAPI.HttpGetDynamicMetadata(unsafe.Pointer(d.request.req), filterName)
+}
+
+func (d *dynamicMetadata) Set(filterName string, key string, value interface{}) {
+	cAPI.HttpSetDynamicMetadata(unsafe.Pointer(d.request.req), filterName, key, value)
+}

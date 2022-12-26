@@ -10,9 +10,11 @@ extern "C" {
 #define CAPIFilterIsDestroy -2
 #define CAPINotInGo -3
 #define CAPIInvalidPhase -4
+#define CAPIYield -5
 
 typedef struct {
   unsigned long long int configId;
+  unsigned long long int semaId;
   int phase;
 } httpRequest;
 
@@ -46,6 +48,9 @@ int moeHttpSetTrailer(void* r, void* key, void* value);
 int moeHttpGetStringValue(void* r, int id, void* value);
 
 void moeHttpFinalize(void* r, int reason);
+
+int moeHttpGetDynamicMetadata(void* r, unsigned long long id, void* name, void* buf);
+int moeHttpSetDynamicMetadata(void* r, void* name, void* key, void* buf);
 
 #ifdef __cplusplus
 } // extern "C"

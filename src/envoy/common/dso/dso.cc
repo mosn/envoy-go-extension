@@ -101,6 +101,15 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
                    dlerror());
   }
 
+  func = dlsym(handler_, "moeOnHttpSemaCallback");
+  if (func) {
+    moeOnHttpSemaCallback_ = reinterpret_cast<void (*)(GoUint64 p0)>(func);
+  } else {
+    loaded_ = false;
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpSemaCallback, err: {}", dsoName,
+                   dlerror());
+  }
+
   func = dlsym(handler_, "moeOnHttpDestroy");
   if (func) {
     moeOnHttpDestroy_ = reinterpret_cast<void (*)(httpRequest * p0, GoUint64 p1)>(func);
@@ -116,6 +125,7 @@ DsoInstance::~DsoInstance() {
   moeMergeHttpPluginConfig_ = nullptr;
   moeOnHttpHeader_ = nullptr;
   moeOnHttpData_ = nullptr;
+  moeOnHttpSemaCallback_ = nullptr;
   moeOnHttpDestroy_ = nullptr;
 
   if (handler_ != nullptr) {
@@ -144,6 +154,11 @@ GoUint64 DsoInstance::moeOnHttpHeader(httpRequest* p0, GoUint64 p1, GoUint64 p2,
 GoUint64 DsoInstance::moeOnHttpData(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) {
   assert(moeOnHttpData_ != nullptr);
   return moeOnHttpData_(p0, p1, p2, p3);
+}
+
+void DsoInstance::moeOnHttpSemaCallback(GoUint64 p0) {
+  assert(moeOnHttpSemaCallback_ != nullptr);
+  return moeOnHttpSemaCallback_(p0);
 }
 
 void DsoInstance::moeOnHttpDestroy(httpRequest* p0, int p1) {

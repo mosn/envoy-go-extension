@@ -826,7 +826,7 @@ int Filter::getStringValue(int id, GoString* valueStr) {
   switch (static_cast<StringValue>(id)) {
   case StringValue::RouteName:
     // string will copy to req->strValue, but not deep copy
-    req_->strValue = state.getRouteName();
+    req_->strValue = state.streamInfo().getRouteName();
     break;
   default:
     ASSERT(false, "invalid string value id");
@@ -835,6 +835,104 @@ int Filter::getStringValue(int id, GoString* valueStr) {
   valueStr->p = req_->strValue.data();
   valueStr->n = req_->strValue.length();
   return CAPIOK;
+}
+
+int Filter::getDynamicMetadata(uint64_t id, std::string filter_name, GoSlice* bufSlice) {
+  (void)id;
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    return CAPIFilterIsDestroy;
+  }
+  auto& state = getProcessorState();
+  if (!state.isProcessingInGo()) {
+    return CAPINotInGo;
+  }
+  if (!state.isThreadSafe()) {
+    auto weak_ptr = weak_from_this();
+    // save the sema id, it will be used in OnDestroy in Go side.
+    // Go will resume the sema when Go is On Destroy and semaId != 0.
+    req_->semaId = id;
+    state.getDispatcher().post([this, &state, weak_ptr, id, filter_name, bufSlice] {
+      // do not need lock here, since it's the work thread now.
+      if (!weak_ptr.expired() && !has_destroyed_) {
+        ASSERT(state.isThreadSafe());
+        req_->semaId = 0;
+        getDynamicMetadataAsync(id, filter_name, bufSlice);
+      } else {
+        ENVOY_LOG(info, "golang filter has gone or destroyed in getDynamicMetadata");
+      }
+    });
+    return CAPIYield;
+  }
+
+  // it's safe to do read since we are in the safe envoy worker thread now.
+  const auto& metadata = state.streamInfo().dynamicMetadata().filter_metadata();
+  const auto filter_it = metadata.find(filter_name);
+  if (filter_it == metadata.end()) {
+    // empty buf slice means not found
+    return CAPIOK;
+  }
+
+  filter_it->second.SerializeToString(&req_->strValue);
+  bufSlice->data = req_->strValue.data();
+  bufSlice->len = req_->strValue.length();
+  bufSlice->cap = req_->strValue.length();
+
+  return CAPIOK;
+}
+
+void Filter::getDynamicMetadataAsync(uint64_t id, std::string filter_name, GoSlice* bufSlice) {
+  auto& state = getProcessorState();
+  const auto& metadata = state.streamInfo().dynamicMetadata().filter_metadata();
+  const auto filter_it = metadata.find(filter_name);
+  if (filter_it != metadata.end()) {
+    filter_it->second.SerializeToString(&req_->strValue);
+    bufSlice->data = req_->strValue.data();
+    bufSlice->len = req_->strValue.length();
+    bufSlice->cap = req_->strValue.length();
+  }
+  dynamicLib_->moeOnHttpSemaCallback(id);
+}
+
+int Filter::setDynamicMetadata(std::string filter_name, std::string key, absl::string_view bufStr) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (has_destroyed_) {
+    return CAPIFilterIsDestroy;
+  }
+  auto& state = getProcessorState();
+  if (!state.isProcessingInGo()) {
+    return CAPINotInGo;
+  }
+  if (!state.isThreadSafe()) {
+    auto weak_ptr = weak_from_this();
+    state.getDispatcher().post([this, &state, weak_ptr, filter_name, key, bufStr] {
+      // do not need lock here, since it's the work thread now.
+      if (!weak_ptr.expired() && !has_destroyed_) {
+        ASSERT(state.isThreadSafe());
+        // it's safe reuse bufStr since Go will wait until C callback.
+        setDynamicMetadataInternal(state, filter_name, key, bufStr);
+      } else {
+        ENVOY_LOG(info, "golang filter has gone or destroyed in setDynamicMetadata");
+      }
+    });
+    return CAPIOK;
+  }
+
+  // it's safe to do read since we are in the safe envoy worker thread now.
+  setDynamicMetadataInternal(state, filter_name, key, bufStr);
+  return CAPIOK;
+}
+
+void Filter::setDynamicMetadataInternal(ProcessorState& state, std::string filter_name,
+                                        std::string key, const absl::string_view& bufStr) {
+  ProtobufWkt::Struct value;
+
+  ProtobufWkt::Value v;
+  v.ParseFromArray(bufStr.data(), bufStr.length());
+
+  (*value.mutable_fields())[key] = v;
+
+  state.streamInfo().setDynamicMetadata(filter_name, value);
 }
 
 /* ConfigId */

@@ -29,6 +29,7 @@ type filter struct {
 	databuffer  string // return api.Stop
 	panic       string // trigger panic in which phase
 	add_header  bool   // add header
+	dymeta      bool   // dynamic metadata
 }
 
 func parseQuery(path string) url.Values {
@@ -58,6 +59,9 @@ func (f *filter) initRequest(header api.HeaderMap) {
 	if f.query_params.Get("add_header") != "" {
 		f.add_header = true
 	}
+	if f.query_params.Get("dymeta") != "" {
+		f.dymeta = true
+	}
 	f.databuffer = f.query_params.Get("databuffer")
 	f.localreplay = f.query_params.Get("localreply")
 	f.panic = f.query_params.Get("panic")
@@ -83,6 +87,16 @@ func (f *filter) decodeHeaders(header api.RequestHeaderMap, endStream bool) api.
 	}
 	if strings.Contains(f.localreplay, "decode-header") {
 		return f.sendLocalReply("decode-header")
+	}
+	if f.dymeta {
+		dymeta := f.callbacks.StreamInfo().DynamicMetadata()
+		m := dymeta.Get("envoy.lb")
+		for k, v := range m {
+			if s, ok := v.(string); ok {
+				header.Set("dy-envoy-lb-"+k, s)
+			}
+		}
+		dymeta.Set("envoy.lb", "foo", "bar")
 	}
 	if f.add_header {
 		// Trigger the cache
@@ -179,6 +193,15 @@ func (f *filter) encodeHeaders(header api.ResponseHeaderMap, endStream bool) api
 	}
 	if strings.Contains(f.localreplay, "encode-header") {
 		return f.sendLocalReply("encode-header")
+	}
+	if f.dymeta {
+		dymeta := f.callbacks.StreamInfo().DynamicMetadata()
+		m := dymeta.Get("envoy.lb")
+		for k, v := range m {
+			if s, ok := v.(string); ok {
+				header.Set("dy-envoy-lb-"+k, s)
+			}
+		}
 	}
 	if f.add_header {
 		// Trigger the cache
