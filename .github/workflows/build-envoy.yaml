@@ -22,7 +22,7 @@ jobs:
       - name: Cache compilation
         uses: actions/cache@v3
         env:
-          cache-name: test-cache-compilation
+          cache-name: cache-for-build
         with:
           path: ${{ env.cache-dir }}
           key: ${{ runner.os }}-${{ env.cache-name }}
