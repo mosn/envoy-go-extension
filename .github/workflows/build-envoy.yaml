@@ -29,4 +29,4 @@ jobs:
 
       - name: Run build-envoy
         run: |
-            ENVOY_DOCKER_BUILD_DIR=${{ env.cache-dir }} ./ci/run_envoy_docker.sh make build-envoy 'BUILD_OPTS="--define=wasm=disabled"' 'COMPILE_MODE=fastbuild'
+          ENVOY_DOCKER_BUILD_DIR=${{ env.cache-dir }} ./ci/run_envoy_docker.sh make build-envoy 'BUILD_OPTS="--define=deprecated_features=disabled --define=wasm=disabled"' 'COMPILE_MODE=fastbuild'
