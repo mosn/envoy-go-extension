@@ -135,11 +135,11 @@ void moeHttpFinalize(void* r, int reason) {
   delete req;
 }
 
-int moeHttpGetDynamicMetadata(void* r, unsigned long long id, void* name, void* buf) {
-  return moeHandlerWrapper(r, [id, name, buf](std::shared_ptr<Filter>& filter) -> int {
+int moeHttpGetDynamicMetadata(void* r, void* name, void* buf) {
+  return moeHandlerWrapper(r, [name, buf](std::shared_ptr<Filter>& filter) -> int {
     auto nameStr = std::string(copyGoString(name));
     auto bufSlice = reinterpret_cast<GoSlice*>(buf);
-    return filter->getDynamicMetadata(id, nameStr, bufSlice);
+    return filter->getDynamicMetadata(nameStr, bufSlice);
   });
 }
 

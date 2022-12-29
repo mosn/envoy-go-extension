@@ -14,8 +14,9 @@ extern "C" {
 
 typedef struct {
   unsigned long long int configId;
-  unsigned long long int semaId;
+  // TODO: combine these fields into a single int, for save memory
   int phase;
+  int waitSema; // :1
 } httpRequest;
 
 typedef enum {
@@ -49,7 +50,7 @@ int moeHttpGetStringValue(void* r, int id, void* value);
 
 void moeHttpFinalize(void* r, int reason);
 
-int moeHttpGetDynamicMetadata(void* r, unsigned long long id, void* name, void* buf);
+int moeHttpGetDynamicMetadata(void* r, void* name, void* buf);
 int moeHttpSetDynamicMetadata(void* r, void* name, void* key, void* buf);
 
 #ifdef __cplusplus

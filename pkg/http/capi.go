@@ -45,6 +45,30 @@ const (
 	ValueRouteName = 1
 )
 
+type HttpCAPI interface {
+	HttpContinue(r unsafe.Pointer, status uint64)
+	HttpSendLocalReply(r unsafe.Pointer, responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string)
+
+	// experience api, memory unsafe
+	HttpGetHeader(r unsafe.Pointer, key *string, value *string)
+	HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string
+	HttpSetHeader(r unsafe.Pointer, key *string, value *string, add bool)
+	HttpRemoveHeader(r unsafe.Pointer, key *string)
+
+	HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *string, length uint64)
+	HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, value string, action api.BufferAction)
+
+	HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string
+	HttpSetTrailer(r unsafe.Pointer, key *string, value *string)
+
+	HttpGetRouteName(r unsafe.Pointer) string
+
+	HttpGetDynamicMetadata(r *httpRequest, filterName string) map[string]interface{}
+	HttpSetDynamicMetadata(r unsafe.Pointer, filterName string, key string, value interface{})
+
+	HttpFinalize(r unsafe.Pointer, reason int)
+}
+
 type httpCApiImpl struct{}
 
 // Only CAPIOK is expected, otherwise, panic here.
@@ -198,15 +222,15 @@ func (c *httpCApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
 	C.moeHttpFinalize(r, C.int(reason))
 }
 
-func (c *httpCApiImpl) HttpGetDynamicMetadata(r unsafe.Pointer, filterName string) map[string]interface{} {
+func (c *httpCApiImpl) HttpGetDynamicMetadata(r *httpRequest, filterName string) map[string]interface{} {
 	var buf []byte
-	wg, id := addWg()
-	res := C.moeHttpGetDynamicMetadata(r, C.ulonglong(id), unsafe.Pointer(&filterName), unsafe.Pointer(&buf))
+	r.sema.Add(1)
+	res := C.moeHttpGetDynamicMetadata(unsafe.Pointer(r.req), unsafe.Pointer(&filterName), unsafe.Pointer(&buf))
 	if res == C.CAPIYield {
-		// wg will be deleted in getWg before it resumed.
-		wg.Wait()
+		// means C post a callback to the Envoy worker thread, waitting the C callback
+		r.sema.Wait()
 	} else {
-		deleteWg(id)
+		r.sema.Done()
 		handleCApiStatus(res)
 	}
 	// means not found
@@ -232,9 +256,9 @@ func (c *httpCApiImpl) HttpSetDynamicMetadata(r unsafe.Pointer, filterName strin
 	handleCApiStatus(res)
 }
 
-var cAPI api.HttpCAPI = &httpCApiImpl{}
+var cAPI HttpCAPI = &httpCApiImpl{}
 
 // SetHttpCAPI for mock cAPI
-func SetHttpCAPI(api api.HttpCAPI) {
+func SetHttpCAPI(api HttpCAPI) {
 	cAPI = api
 }

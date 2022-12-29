@@ -103,7 +103,7 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
 
   func = dlsym(handler_, "moeOnHttpSemaCallback");
   if (func) {
-    moeOnHttpSemaCallback_ = reinterpret_cast<void (*)(GoUint64 p0)>(func);
+    moeOnHttpSemaCallback_ = reinterpret_cast<void (*)(httpRequest * p0)>(func);
   } else {
     loaded_ = false;
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpSemaCallback, err: {}", dsoName,
@@ -156,7 +156,7 @@ GoUint64 DsoInstance::moeOnHttpData(httpRequest* p0, GoUint64 p1, GoUint64 p2, G
   return moeOnHttpData_(p0, p1, p2, p3);
 }
 
-void DsoInstance::moeOnHttpSemaCallback(GoUint64 p0) {
+void DsoInstance::moeOnHttpSemaCallback(httpRequest* p0) {
   assert(moeOnHttpSemaCallback_ != nullptr);
   return moeOnHttpSemaCallback_(p0);
 }
