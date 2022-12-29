@@ -169,7 +169,7 @@ public:
   int copyTrailers(GoString* goStrs, char* goBuf);
   int setTrailer(absl::string_view key, absl::string_view value);
   int getStringValue(int id, GoString* valueStr);
-  int getDynamicMetadata(uint64_t id, std::string filter_name, GoSlice* bufSlice);
+  int getDynamicMetadata(std::string filter_name, GoSlice* bufSlice);
   int setDynamicMetadata(std::string filter_name, std::string key, absl::string_view bufStr);
 
 private:
@@ -195,7 +195,7 @@ private:
                               std::function<void(Http::ResponseHeaderMap& headers)> modify_headers,
                               Grpc::Status::GrpcStatus grpc_status, absl::string_view details);
 
-  void getDynamicMetadataAsync(uint64_t id, std::string filter_name, GoSlice* bufSlice);
+  void getDynamicMetadataAsync(std::string filter_name, GoSlice* bufSlice);
   void setDynamicMetadataInternal(ProcessorState& state, std::string filter_name, std::string key,
                                   const absl::string_view& bufStr);
 
@@ -244,7 +244,7 @@ struct httpRequestInternal : httpRequest {
   std::string strValue;
   httpRequestInternal(std::weak_ptr<Filter> f) {
     filter_ = f;
-    semaId = 0;
+    waitSema = 0;
   }
   std::weak_ptr<Filter> weakFilter() { return filter_; }
 };

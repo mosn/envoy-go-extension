@@ -34,6 +34,7 @@ import "C"
 import (
 	"fmt"
 	"runtime/debug"
+	"sync"
 	"unsafe"
 
 	"mosn.io/envoy-go-extension/pkg/api"
@@ -44,6 +45,7 @@ type httpRequest struct {
 	httpFilter api.HttpFilter
 	paniced    bool
 	safePanic  bool
+	sema       sync.WaitGroup
 }
 
 func (r *httpRequest) Phase() string {
@@ -124,7 +126,7 @@ func (s *streamInfo) DynamicMetadata() api.DynamicMetadata {
 }
 
 func (d *dynamicMetadata) Get(filterName string) map[string]interface{} {
-	return cAPI.HttpGetDynamicMetadata(unsafe.Pointer(d.request.req), filterName)
+	return cAPI.HttpGetDynamicMetadata(d.request, filterName)
 }
 
 func (d *dynamicMetadata) Set(filterName string, key string, value interface{}) {

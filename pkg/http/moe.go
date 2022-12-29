@@ -194,16 +194,16 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 
 //export moeOnHttpDestroy
 func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
-	if id := uint64(r.semaId); id != 0 {
-		// wakeup the waited goroutine
-		sema := getWg(id)
-		sema.Done()
-	}
 	req := getRequest(r)
 	if req.paniced {
 		// do nothing
 	}
 	defer req.RecoverPanic()
+
+	// should wakeup the waiting goroutine when request destroyed earlier.
+	if r.waitSema == 1 {
+		req.sema.Done()
+	}
 
 	v := api.DestroyReason(reason)
 
@@ -220,7 +220,8 @@ func moeOnHttpDestroy(r *C.httpRequest, reason uint64) {
 }
 
 //export moeOnHttpSemaCallback
-func moeOnHttpSemaCallback(id uint64) {
-	sema := getWg(id)
-	sema.Done()
+func moeOnHttpSemaCallback(r *C.httpRequest) {
+	req := getRequest(r)
+	defer req.RecoverPanic()
+	req.sema.Done()
 }

@@ -10,7 +10,6 @@ go_library(
         "filtermanager.go",
         "moe.go",
         "passthrough.go",
-        "sema.go",
         "type.go",
     ],
     cgo = True,

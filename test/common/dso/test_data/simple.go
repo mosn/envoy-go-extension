@@ -32,7 +32,7 @@ func moeOnHttpData(r *C.httpRequest, endStream, buffer, length uint64) uint64 {
 }
 
 //export moeOnHttpSemaCallback
-func moeOnHttpSemaCallback(id uint64) {
+func moeOnHttpSemaCallback(r *C.httpRequest) {
 }
 
 //export moeOnHttpDestroy

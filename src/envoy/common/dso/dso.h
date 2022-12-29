@@ -22,7 +22,7 @@ public:
   GoUint64 moeOnHttpHeader(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3);
   GoUint64 moeOnHttpData(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3);
 
-  void moeOnHttpSemaCallback(GoUint64 p0);
+  void moeOnHttpSemaCallback(httpRequest* p0);
 
   void moeOnHttpDestroy(httpRequest* p0, int p1);
 
@@ -39,7 +39,7 @@ private:
   GoUint64 (*moeOnHttpHeader_)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
   GoUint64 (*moeOnHttpData_)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
 
-  void (*moeOnHttpSemaCallback_)(GoUint64 p0) = {nullptr};
+  void (*moeOnHttpSemaCallback_)(httpRequest* p0) = {nullptr};
 
   void (*moeOnHttpDestroy_)(httpRequest* p0, GoUint64 p1) = {nullptr};
 };

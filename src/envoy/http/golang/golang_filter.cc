@@ -837,8 +837,7 @@ int Filter::getStringValue(int id, GoString* valueStr) {
   return CAPIOK;
 }
 
-int Filter::getDynamicMetadata(uint64_t id, std::string filter_name, GoSlice* bufSlice) {
-  (void)id;
+int Filter::getDynamicMetadata(std::string filter_name, GoSlice* bufSlice) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (has_destroyed_) {
     return CAPIFilterIsDestroy;
@@ -849,15 +848,17 @@ int Filter::getDynamicMetadata(uint64_t id, std::string filter_name, GoSlice* bu
   }
   if (!state.isThreadSafe()) {
     auto weak_ptr = weak_from_this();
-    // save the sema id, it will be used in OnDestroy in Go side.
-    // Go will resume the sema when Go is On Destroy and semaId != 0.
-    req_->semaId = id;
-    state.getDispatcher().post([this, &state, weak_ptr, id, filter_name, bufSlice] {
+    // mark it is waiting sema, it will be used in OnDestroy in Go side.
+    // Go will resume the sema when Go is On Destroy and waitSema = 1.
+    req_->waitSema = 1;
+    ENVOY_LOG(info, "golang filter getDynamicMetadata will go to async mode");
+    state.getDispatcher().post([this, &state, weak_ptr, filter_name, bufSlice] {
+      ENVOY_LOG(info, "golang filter getDynamicMetadata entering async mode");
       // do not need lock here, since it's the work thread now.
       if (!weak_ptr.expired() && !has_destroyed_) {
         ASSERT(state.isThreadSafe());
-        req_->semaId = 0;
-        getDynamicMetadataAsync(id, filter_name, bufSlice);
+        req_->waitSema = 0;
+        getDynamicMetadataAsync(filter_name, bufSlice);
       } else {
         ENVOY_LOG(info, "golang filter has gone or destroyed in getDynamicMetadata");
       }
@@ -881,7 +882,7 @@ int Filter::getDynamicMetadata(uint64_t id, std::string filter_name, GoSlice* bu
   return CAPIOK;
 }
 
-void Filter::getDynamicMetadataAsync(uint64_t id, std::string filter_name, GoSlice* bufSlice) {
+void Filter::getDynamicMetadataAsync(std::string filter_name, GoSlice* bufSlice) {
   auto& state = getProcessorState();
   const auto& metadata = state.streamInfo().dynamicMetadata().filter_metadata();
   const auto filter_it = metadata.find(filter_name);
@@ -891,7 +892,8 @@ void Filter::getDynamicMetadataAsync(uint64_t id, std::string filter_name, GoSli
     bufSlice->len = req_->strValue.length();
     bufSlice->cap = req_->strValue.length();
   }
-  dynamicLib_->moeOnHttpSemaCallback(id);
+  ENVOY_LOG(info, "golang filter async callback getDynamicMetadata");
+  dynamicLib_->moeOnHttpSemaCallback(req_);
 }
 
 int Filter::setDynamicMetadata(std::string filter_name, std::string key, absl::string_view bufStr) {
