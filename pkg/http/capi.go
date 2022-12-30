@@ -45,28 +45,29 @@ const (
 	ValueRouteName = 1
 )
 
+// declare this interface in http module, since it depends on the httpRequest struct
 type HttpCAPI interface {
-	HttpContinue(r unsafe.Pointer, status uint64)
-	HttpSendLocalReply(r unsafe.Pointer, responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string)
+	HttpContinue(r *httpRequest, status uint64)
+	HttpSendLocalReply(r *httpRequest, responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string)
 
 	// experience api, memory unsafe
-	HttpGetHeader(r unsafe.Pointer, key *string, value *string)
-	HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string
-	HttpSetHeader(r unsafe.Pointer, key *string, value *string, add bool)
-	HttpRemoveHeader(r unsafe.Pointer, key *string)
+	HttpGetHeader(r *httpRequest, key *string, value *string)
+	HttpCopyHeaders(r *httpRequest, num uint64, bytes uint64) map[string][]string
+	HttpSetHeader(r *httpRequest, key *string, value *string, add bool)
+	HttpRemoveHeader(r *httpRequest, key *string)
 
-	HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *string, length uint64)
-	HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, value string, action api.BufferAction)
+	HttpGetBuffer(r *httpRequest, bufferPtr uint64, value *string, length uint64)
+	HttpSetBufferHelper(r *httpRequest, bufferPtr uint64, value string, action api.BufferAction)
 
-	HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string
-	HttpSetTrailer(r unsafe.Pointer, key *string, value *string)
+	HttpCopyTrailers(r *httpRequest, num uint64, bytes uint64) map[string][]string
+	HttpSetTrailer(r *httpRequest, key *string, value *string)
 
-	HttpGetRouteName(r unsafe.Pointer) string
+	HttpGetRouteName(r *httpRequest) string
 
 	HttpGetDynamicMetadata(r *httpRequest, filterName string) map[string]interface{}
-	HttpSetDynamicMetadata(r unsafe.Pointer, filterName string, key string, value interface{})
+	HttpSetDynamicMetadata(r *httpRequest, filterName string, key string, value interface{})
 
-	HttpFinalize(r unsafe.Pointer, reason int)
+	HttpFinalize(r *httpRequest, reason int)
 }
 
 type httpCApiImpl struct{}
@@ -87,27 +88,27 @@ func handleCApiStatus(status C.int) {
 	}
 }
 
-func (c *httpCApiImpl) HttpContinue(r unsafe.Pointer, status uint64) {
-	res := C.moeHttpContinue(r, C.int(status))
+func (c *httpCApiImpl) HttpContinue(r *httpRequest, status uint64) {
+	res := C.moeHttpContinue(unsafe.Pointer(r.req), C.int(status))
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpSendLocalReply(r unsafe.Pointer, response_code int, body_text string, headers map[string]string, grpc_status int64, details string) {
+func (c *httpCApiImpl) HttpSendLocalReply(r *httpRequest, response_code int, body_text string, headers map[string]string, grpc_status int64, details string) {
 	hLen := len(headers)
 	strs := make([]string, 0, hLen)
 	for k, v := range headers {
 		strs = append(strs, k, v)
 	}
-	res := C.moeHttpSendLocalReply(r, C.int(response_code), unsafe.Pointer(&body_text), unsafe.Pointer(&strs), C.longlong(grpc_status), unsafe.Pointer(&details))
+	res := C.moeHttpSendLocalReply(unsafe.Pointer(r.req), C.int(response_code), unsafe.Pointer(&body_text), unsafe.Pointer(&strs), C.longlong(grpc_status), unsafe.Pointer(&details))
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpGetHeader(r unsafe.Pointer, key *string, value *string) {
-	res := C.moeHttpGetHeader(r, unsafe.Pointer(key), unsafe.Pointer(value))
+func (c *httpCApiImpl) HttpGetHeader(r *httpRequest, key *string, value *string) {
+	res := C.moeHttpGetHeader(unsafe.Pointer(r.req), unsafe.Pointer(key), unsafe.Pointer(value))
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string {
+func (c *httpCApiImpl) HttpCopyHeaders(r *httpRequest, num uint64, bytes uint64) map[string][]string {
 	// TODO: use a memory pool for better performance,
 	// since these go strings in strs, will be copied into the following map.
 	strs := make([]string, num*2)
@@ -119,7 +120,7 @@ func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint6
 	sHeader := (*reflect.SliceHeader)(unsafe.Pointer(&strs))
 	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
 
-	res := C.moeHttpCopyHeaders(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+	res := C.moeHttpCopyHeaders(unsafe.Pointer(r.req), unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
 	handleCApiStatus(res)
 
 	m := make(map[string][]string, num)
@@ -138,33 +139,33 @@ func (c *httpCApiImpl) HttpCopyHeaders(r unsafe.Pointer, num uint64, bytes uint6
 	return m
 }
 
-func (c *httpCApiImpl) HttpSetHeader(r unsafe.Pointer, key *string, value *string, add bool) {
+func (c *httpCApiImpl) HttpSetHeader(r *httpRequest, key *string, value *string, add bool) {
 	var act C.headerAction
 	if add {
 		act = C.HeaderAdd
 	} else {
 		act = C.HeaderSet
 	}
-	res := C.moeHttpSetHeaderHelper(r, unsafe.Pointer(key), unsafe.Pointer(value), act)
+	res := C.moeHttpSetHeaderHelper(unsafe.Pointer(r.req), unsafe.Pointer(key), unsafe.Pointer(value), act)
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpRemoveHeader(r unsafe.Pointer, key *string) {
-	res := C.moeHttpRemoveHeader(r, unsafe.Pointer(key))
+func (c *httpCApiImpl) HttpRemoveHeader(r *httpRequest, key *string) {
+	res := C.moeHttpRemoveHeader(unsafe.Pointer(r.req), unsafe.Pointer(key))
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpGetBuffer(r unsafe.Pointer, bufferPtr uint64, value *string, length uint64) {
+func (c *httpCApiImpl) HttpGetBuffer(r *httpRequest, bufferPtr uint64, value *string, length uint64) {
 	buf := make([]byte, length)
 	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
 	sHeader := (*reflect.StringHeader)(unsafe.Pointer(value))
 	sHeader.Data = bHeader.Data
 	sHeader.Len = int(length)
-	res := C.moeHttpGetBuffer(r, C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
+	res := C.moeHttpGetBuffer(unsafe.Pointer(r.req), C.ulonglong(bufferPtr), unsafe.Pointer(bHeader.Data))
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, value string, action api.BufferAction) {
+func (c *httpCApiImpl) HttpSetBufferHelper(r *httpRequest, bufferPtr uint64, value string, action api.BufferAction) {
 	sHeader := (*reflect.StringHeader)(unsafe.Pointer(&value))
 	var act C.bufferAction
 	switch action {
@@ -175,11 +176,11 @@ func (c *httpCApiImpl) HttpSetBufferHelper(r unsafe.Pointer, bufferPtr uint64, v
 	case api.PrependBuffer:
 		act = C.Prepend
 	}
-	res := C.moeHttpSetBufferHelper(r, C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len), act)
+	res := C.moeHttpSetBufferHelper(unsafe.Pointer(r.req), C.ulonglong(bufferPtr), unsafe.Pointer(sHeader.Data), C.int(sHeader.Len), act)
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint64) map[string][]string {
+func (c *httpCApiImpl) HttpCopyTrailers(r *httpRequest, num uint64, bytes uint64) map[string][]string {
 	// TODO: use a memory pool for better performance,
 	// but, should be very careful, since string is const in go,
 	// and we have to make sure the strings is not using before reusing,
@@ -189,7 +190,7 @@ func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint
 	sHeader := (*reflect.SliceHeader)(unsafe.Pointer(&strs))
 	bHeader := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
 
-	res := C.moeHttpCopyTrailers(r, unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
+	res := C.moeHttpCopyTrailers(unsafe.Pointer(r.req), unsafe.Pointer(sHeader.Data), unsafe.Pointer(bHeader.Data))
 	handleCApiStatus(res)
 
 	m := make(map[string][]string, num)
@@ -205,21 +206,21 @@ func (c *httpCApiImpl) HttpCopyTrailers(r unsafe.Pointer, num uint64, bytes uint
 	return m
 }
 
-func (c *httpCApiImpl) HttpSetTrailer(r unsafe.Pointer, key *string, value *string) {
-	res := C.moeHttpSetTrailer(r, unsafe.Pointer(key), unsafe.Pointer(value))
+func (c *httpCApiImpl) HttpSetTrailer(r *httpRequest, key *string, value *string) {
+	res := C.moeHttpSetTrailer(unsafe.Pointer(r.req), unsafe.Pointer(key), unsafe.Pointer(value))
 	handleCApiStatus(res)
 }
 
-func (c *httpCApiImpl) HttpGetRouteName(r unsafe.Pointer) string {
+func (c *httpCApiImpl) HttpGetRouteName(r *httpRequest) string {
 	var value string
-	res := C.moeHttpGetStringValue(r, ValueRouteName, unsafe.Pointer(&value))
+	res := C.moeHttpGetStringValue(unsafe.Pointer(r.req), ValueRouteName, unsafe.Pointer(&value))
 	handleCApiStatus(res)
 	// copy the memory from c to Go.
 	return strings.Clone(value)
 }
 
-func (c *httpCApiImpl) HttpFinalize(r unsafe.Pointer, reason int) {
-	C.moeHttpFinalize(r, C.int(reason))
+func (c *httpCApiImpl) HttpFinalize(r *httpRequest, reason int) {
+	C.moeHttpFinalize(unsafe.Pointer(r.req), C.int(reason))
 }
 
 func (c *httpCApiImpl) HttpGetDynamicMetadata(r *httpRequest, filterName string) map[string]interface{} {
@@ -243,7 +244,7 @@ func (c *httpCApiImpl) HttpGetDynamicMetadata(r *httpRequest, filterName string)
 	return meta.AsMap()
 }
 
-func (c *httpCApiImpl) HttpSetDynamicMetadata(r unsafe.Pointer, filterName string, key string, value interface{}) {
+func (c *httpCApiImpl) HttpSetDynamicMetadata(r *httpRequest, filterName string, key string, value interface{}) {
 	v, err := structpb.NewValue(value)
 	if err != nil {
 		panic(err)
@@ -252,7 +253,7 @@ func (c *httpCApiImpl) HttpSetDynamicMetadata(r unsafe.Pointer, filterName strin
 	if err != nil {
 		panic(err)
 	}
-	res := C.moeHttpSetDynamicMetadata(r, unsafe.Pointer(&filterName), unsafe.Pointer(&key), unsafe.Pointer(&buf))
+	res := C.moeHttpSetDynamicMetadata(unsafe.Pointer(r.req), unsafe.Pointer(&filterName), unsafe.Pointer(&key), unsafe.Pointer(&buf))
 	handleCApiStatus(res)
 }
 
