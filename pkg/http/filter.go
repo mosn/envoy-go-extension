@@ -35,7 +35,6 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
-	"unsafe"
 
 	"mosn.io/envoy-go-extension/pkg/api"
 )
@@ -57,11 +56,11 @@ func (r *httpRequest) Continue(status api.StatusType) {
 		fmt.Printf("warning: LocalReply status is useless after sendLocalReply, ignoring")
 		return
 	}
-	cAPI.HttpContinue(unsafe.Pointer(r.req), uint64(status))
+	cAPI.HttpContinue(r, uint64(status))
 }
 
 func (r *httpRequest) SendLocalReply(responseCode int, bodyText string, headers map[string]string, grpcStatus int64, details string) {
-	cAPI.HttpSendLocalReply(unsafe.Pointer(r.req), responseCode, bodyText, headers, grpcStatus, details)
+	cAPI.HttpSendLocalReply(r, responseCode, bodyText, headers, grpcStatus, details)
 }
 
 func (r *httpRequest) safeReplyPanic() {
@@ -104,7 +103,7 @@ func (r *httpRequest) StreamInfo() api.StreamInfo {
 }
 
 func (r *httpRequest) Finalize(reason int) {
-	cAPI.HttpFinalize(unsafe.Pointer(r.req), reason)
+	cAPI.HttpFinalize(r, reason)
 }
 
 type streamInfo struct {
@@ -112,7 +111,7 @@ type streamInfo struct {
 }
 
 func (s *streamInfo) GetRouteName() string {
-	return cAPI.HttpGetRouteName(unsafe.Pointer(s.request.req))
+	return cAPI.HttpGetRouteName(s.request)
 }
 
 type dynamicMetadata struct {
@@ -130,5 +129,5 @@ func (d *dynamicMetadata) Get(filterName string) map[string]interface{} {
 }
 
 func (d *dynamicMetadata) Set(filterName string, key string, value interface{}) {
-	cAPI.HttpSetDynamicMetadata(unsafe.Pointer(d.request.req), filterName, key, value)
+	cAPI.HttpSetDynamicMetadata(d.request, filterName, key, value)
 }
