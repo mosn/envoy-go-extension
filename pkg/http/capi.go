@@ -213,6 +213,10 @@ func (c *httpCApiImpl) HttpSetTrailer(r *httpRequest, key *string, value *string
 
 func (c *httpCApiImpl) HttpGetRouteName(r *httpRequest) string {
 	var value string
+	// lock the req_->strValue in the C side, which do not allow concurrency.
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	res := C.moeHttpGetStringValue(unsafe.Pointer(r.req), ValueRouteName, unsafe.Pointer(&value))
 	handleCApiStatus(res)
 	// copy the memory from c to Go.
@@ -226,11 +230,17 @@ func (c *httpCApiImpl) HttpFinalize(r *httpRequest, reason int) {
 func (c *httpCApiImpl) HttpGetDynamicMetadata(r *httpRequest, filterName string) map[string]interface{} {
 	var buf []byte
 	r.sema.Add(1)
+
+	// lock the req_->strValue in the C side, which do not allow concurrency.
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	res := C.moeHttpGetDynamicMetadata(unsafe.Pointer(r.req), unsafe.Pointer(&filterName), unsafe.Pointer(&buf))
 	if res == C.CAPIYield {
-		// means C post a callback to the Envoy worker thread, waitting the C callback
+		// C post a callback to the Envoy worker thread, waiting the C callback.
 		r.sema.Wait()
 	} else {
+		// already in the Envoy worker thread currently, do not need to wait the C callback.
 		r.sema.Done()
 		handleCApiStatus(res)
 	}
