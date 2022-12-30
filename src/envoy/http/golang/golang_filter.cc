@@ -1059,7 +1059,6 @@ uint64_t RoutePluginConfig::getMergedConfigId(uint64_t parent_id, std::string so
 
 /* ProcessorState */
 ProcessorState& Filter::getProcessorState() {
-  ASSERT(req_ != nullptr);
   return enter_encoding_ ? dynamic_cast<ProcessorState&>(encoding_state_)
                          : dynamic_cast<ProcessorState&>(decoding_state_);
 };
