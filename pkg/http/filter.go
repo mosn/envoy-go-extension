@@ -44,7 +44,14 @@ type httpRequest struct {
 	httpFilter api.HttpFilter
 	paniced    bool
 	safePanic  bool
-	sema       sync.WaitGroup
+
+	// lock the req_->strValue in the C side, which do not allow concurrency.
+	mutex sync.Mutex
+
+	// when Go try to read data from Go thread, not in the envoy worker thread,
+	// C will post a callback to Envoy worker thread,
+	// then, we use this sema to wait the callback from the Envoy worker thread.
+	sema sync.WaitGroup
 }
 
 func (r *httpRequest) Phase() string {
