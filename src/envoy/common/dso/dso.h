@@ -26,6 +26,9 @@ public:
 
   void moeOnHttpDestroy(httpRequest* p0, int p1);
 
+  GoUint64 moeNewClusterConfig(GoUint64 p0, GoUint64 p1);
+  GoInt64 moeOnClusterSpecify(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3);
+
   bool loaded() { return loaded_; }
 
 private:
@@ -40,6 +43,9 @@ private:
   GoUint64 (*moeOnHttpData_)(httpRequest* p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
 
   void (*moeOnHttpSemaCallback_)(httpRequest* p0) = {nullptr};
+
+  GoUint64 (*moeNewClusterConfig_)(GoUint64 p0, GoUint64 p1) = {nullptr};
+  GoInt64 (*moeOnClusterSpecify_)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) = {nullptr};
 
   void (*moeOnHttpDestroy_)(httpRequest* p0, GoUint64 p1) = {nullptr};
 };

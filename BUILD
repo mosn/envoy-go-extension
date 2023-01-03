@@ -11,6 +11,7 @@ envoy_cc_binary(
     deps = [
         "//src/envoy/bootstrap/dso:config",
         "//src/envoy/http/golang:config",
+        "//src/envoy/http/cluster:config",
         "@envoy//source/exe:envoy_main_entry_lib",
     ],
 )

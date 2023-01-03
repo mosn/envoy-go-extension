@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package envoy.extensions.clusters.golang.v3;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
+
+import "xds/annotations/v3/status.proto";
+
+import "udpa/annotations/status.proto";
+import "validate/validate.proto";
+
+option java_package = "io.envoyproxy.envoy.extensions.clusters.golang.v3";
+option java_outer_classname = "GolangProto";
+option java_multiple_files = true;
+option go_package = "github.com/envoyproxy/go-control-plane/envoy/extensions/clusters/golang/v3;golangv3";
+option (udpa.annotations.file_status).package_version_status = ACTIVE;
+option (xds.annotations.v3.file_status).work_in_progress = true;
+
+message Config {
+  // A unique ID for a set of go plugin library.
+  string so_id = 1 [(validate.rules).string = {min_bytes: 1}];
+
+  string default_cluster = 2 [(validate.rules).string = {min_bytes: 1}];
+
+  // this configuration is only parsed in the go side.
+  google.protobuf.Any config = 3;
+}
