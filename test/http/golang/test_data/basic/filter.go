@@ -13,6 +13,7 @@ import (
 
 func init() {
 	http.RegisterHttpFilterConfigFactory(configFactory)
+	http.RegisterClusterSpecifierFactory(clusterSpecifierFactory)
 }
 
 type filter struct {
@@ -396,6 +397,24 @@ func configFactory(interface{}) api.HttpFilterFactory {
 			callbacks: callbacks,
 		}
 	}
+}
+
+// cluster specifier plugin
+
+type clusterSpecifier struct {
+	config interface{}
+}
+
+func clusterSpecifierFactory(config interface{}) api.ClusterSpecifier {
+	return &clusterSpecifier{
+		config: config,
+	}
+}
+
+func (s *clusterSpecifier) Choose() string {
+	// use the default cluster
+	fmt.Printf("choosing cluster, using the default cluster\n")
+	return ""
 }
 
 func main() {

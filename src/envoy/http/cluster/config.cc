@@ -13,8 +13,7 @@ GolangClusterSpecifierPluginFactoryConfig::createClusterSpecifierPlugin(
     const Protobuf::Message& config, Server::Configuration::CommonFactoryContext&) {
   const auto& typed_config = dynamic_cast<const GolangClusterProto&>(config);
   auto cluster_config = std::make_shared<ClusterConfig>(typed_config);
-  auto dynamicLib = Dso::DsoInstanceManager::getDsoInstanceByID(typed_config.so_id());
-  return std::make_shared<GolangClusterSpecifierPlugin>(cluster_config, dynamicLib);
+  return std::make_shared<GolangClusterSpecifierPlugin>(cluster_config);
 }
 
 REGISTER_FACTORY(GolangClusterSpecifierPluginFactoryConfig,

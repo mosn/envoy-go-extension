@@ -11,13 +11,24 @@ ClusterConfig::ClusterConfig(const GolangClusterProto& config)
     : so_id_(config.so_id()), default_cluster_(config.default_cluster()), config_(config.config()) {
 }
 
+Dso::DsoInstance* ClusterConfig::getDsoLib() {
+  if (dynamicLib_ != nullptr) {
+    return dynamicLib_;
+  }
+  auto dynamicLib_ = Dso::DsoInstanceManager::getDsoInstanceByID(so_id_);
+  if (dynamicLib_ == nullptr) {
+    ENVOY_LOG(error, "golang dynamicLib is nullPtr.");
+  }
+  return dynamicLib_;
+}
+
 uint64_t ClusterConfig::getConfigId() {
   if (config_id_ != 0) {
     return config_id_;
   }
-  auto dlib = Dso::DsoInstanceManager::getDsoInstanceByID(so_id_);
-  if (dlib == NULL) {
-    ENVOY_LOG(error, "golang extension filter dynamicLib is nullPtr.");
+
+  auto dlib = getDsoLib();
+  if (dlib == nullptr) {
     return 0;
   }
 
@@ -42,13 +53,16 @@ GolangClusterSpecifierPlugin::route(const RouteEntry& parent,
   int buffer_len = 256;
   std::string buffer;
   std::string cluster;
+  auto dlib = config_->getDsoLib();
 
 again:
   buffer.reserve(buffer_len);
   auto config_id = config_->getConfigId();
   auto header_ptr = reinterpret_cast<uint64_t>(&headers);
   auto buffer_ptr = reinterpret_cast<uint64_t>(buffer.data());
-  auto new_len = dynamicLib_->moeOnClusterSpecify(header_ptr, config_id, buffer_ptr, buffer_len);
+  auto new_len = dlib != nullptr
+                     ? dlib->moeOnClusterSpecify(header_ptr, config_id, buffer_ptr, buffer_len)
+                     : 0;
   if (new_len == 0) {
     ENVOY_LOG(debug, "golang choose the default cluster");
     cluster = config_->defaultCluster();

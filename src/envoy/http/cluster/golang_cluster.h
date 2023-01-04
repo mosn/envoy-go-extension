@@ -19,12 +19,14 @@ public:
   ClusterConfig(const GolangClusterProto& config);
   uint64_t getConfigId();
   const std::string& defaultCluster() { return default_cluster_; }
+  Dso::DsoInstance* getDsoLib();
 
 private:
   const std::string so_id_;
   const std::string default_cluster_;
   const Protobuf::Any config_;
   uint64_t config_id_{0};
+  Dso::DsoInstance* dynamicLib_{nullptr};
 };
 
 using ClusterConfigSharedPtr = std::shared_ptr<ClusterConfig>;
@@ -32,14 +34,12 @@ using ClusterConfigSharedPtr = std::shared_ptr<ClusterConfig>;
 class GolangClusterSpecifierPlugin : public ClusterSpecifierPlugin,
                                      Logger::Loggable<Logger::Id::http> {
 public:
-  GolangClusterSpecifierPlugin(ClusterConfigSharedPtr config, Dso::DsoInstance* dynamicLib)
-      : config_(config), dynamicLib_(dynamicLib){};
+  GolangClusterSpecifierPlugin(ClusterConfigSharedPtr config) : config_(config){};
 
   RouteConstSharedPtr route(const RouteEntry& parent, const Http::RequestHeaderMap&) const override;
 
 private:
   ClusterConfigSharedPtr config_;
-  Dso::DsoInstance* dynamicLib_;
 };
 
 } // namespace Golang
