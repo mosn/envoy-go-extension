@@ -103,3 +103,17 @@ type FilterCallbacks interface {
 type FilterCallbackHandler interface {
 	FilterCallbacks
 }
+
+/* cluster specifier plugin */
+
+type ClusterConfigParser interface {
+	Parse(any *anypb.Any) interface{}
+}
+
+type ClusterSpecifier interface {
+	// TODO: support header
+	// Choose(RequestHeaderMap) string
+	Choose() string
+}
+
+type ClusterSpecifierFactory func(config interface{}) ClusterSpecifier
