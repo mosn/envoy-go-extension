@@ -45,7 +45,14 @@ func (h *headerMapImpl) ByteSize() uint64 {
 }
 
 func (h *headerMapImpl) Range(f func(key, value string) bool) {
-	panic("unsupported yet")
+	if h.headers == nil {
+		h.headers = cAPI.HttpCopyHeaders(h.request, h.headerNum, h.headerBytes)
+	}
+	for k, v := range h.headers {
+		if !f(k, v[0]) {
+			break
+		}
+	}
 }
 
 func (h *headerMapImpl) Get(key string) (string, bool) {
