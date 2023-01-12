@@ -20,6 +20,7 @@ package main
 import (
 	"os"
 
+	"mosn.io/envoy-go-extension/samples/clusters"
 	"mosn.io/mosn/pkg/streamfilter"
 
 	_ "mosn.io/envoy-go-extension/pkg/filter/stream/echo"
@@ -31,6 +32,7 @@ var DefaultMosnConfigPath string = "/home/admin/mosn/config/mosn.json"
 
 func init() {
 	http.RegisterHttpFilterConfigFactory(mosn.ConfigFactory)
+	http.RegisterClusterSpecifierFactory(clusters.ClusterSpecifierFactory)
 
 	// load mosn config
 	mosnConfigPath := DefaultMosnConfigPath

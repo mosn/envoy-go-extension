@@ -108,9 +108,12 @@ extern GoUint64 moeOnHttpHeader(httpRequest* r, GoUint64 endStream, GoUint64 hea
 extern GoUint64 moeOnHttpData(httpRequest* r, GoUint64 endStream, GoUint64 buffer, GoUint64 length);
 extern void moeOnHttpDestroy(httpRequest* r, GoUint64 reason);
 extern void moeOnHttpSemaCallback(httpRequest* r);
+extern GoInt64 moeOnClusterSpecify(GoUint64 headerPtr, GoUint64 configId, GoUint64 bufferPtr, GoUint64 bufferLen);
 extern GoUint64 moeNewHttpPluginConfig(GoUint64 configPtr, GoUint64 configLen);
 extern void moeDestroyHttpPluginConfig(GoUint64 id);
 extern GoUint64 moeMergeHttpPluginConfig(GoUint64 parentId, GoUint64 childId);
+extern GoUint64 moeNewClusterConfig(GoUint64 configPtr, GoUint64 configLen);
+extern void moeDestroyClusterConfig(GoUint64 id);
 
 #ifdef __cplusplus
 }

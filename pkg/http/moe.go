@@ -38,6 +38,7 @@ import (
 	"sync"
 
 	"mosn.io/envoy-go-extension/pkg/api"
+	"mosn.io/envoy-go-extension/pkg/utils"
 )
 
 var ErrDupRequestKey = errors.New("dup request key")
@@ -224,4 +225,22 @@ func moeOnHttpSemaCallback(r *C.httpRequest) {
 	req := getRequest(r)
 	defer req.RecoverPanic()
 	req.sema.Done()
+}
+
+//export moeOnClusterSpecify
+func moeOnClusterSpecify(headerPtr uint64, configId uint64, bufferPtr uint64, bufferLen uint64) int64 {
+	specifier := getOrCreateClusterSpecifier(configId)
+	cluster := specifier.Choose()
+	l := uint64(len(cluster))
+	if l == 0 {
+		// means use the default cluster
+		return 0
+	}
+	if l > bufferLen {
+		// buffer length is not large enough.
+		return int64(l)
+	}
+	buffer := utils.BufferToSlice(bufferPtr, bufferLen)
+	copy(buffer, cluster)
+	return int64(l)
 }

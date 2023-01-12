@@ -89,3 +89,31 @@ func moeMergeHttpPluginConfig(parentId uint64, childId uint64) uint64 {
 		return childId
 	}
 }
+
+/* cluster specifier plugin */
+
+var (
+	clusterConfigNumGenerator uint64
+	clusterConfigCache        = &sync.Map{} // uint64 -> any
+)
+
+//export moeNewClusterConfig
+func moeNewClusterConfig(configPtr uint64, configLen uint64) uint64 {
+	buf := utils.BytesToSlice(configPtr, configLen)
+	var any anypb.Any
+	proto.Unmarshal(buf, &any)
+
+	configNum := atomic.AddUint64(&clusterConfigNumGenerator, 1)
+	if clusterConfigParser != nil {
+		clusterConfigCache.Store(configNum, clusterConfigParser.Parse(&any))
+	} else {
+		clusterConfigCache.Store(configNum, &any)
+	}
+
+	return configNum
+}
+
+//export moeDestroyClusterConfig
+func moeDestroyClusterConfig(id uint64) {
+	clusterConfigCache.Delete(id)
+}

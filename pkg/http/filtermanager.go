@@ -47,3 +47,25 @@ func getOrCreateHttpFilterFactory(configId uint64) api.HttpFilterFactory {
 func RegisterStreamingHttpFilterConfigFactory(f api.HttpFilterConfigFactory) {
 	httpFilterConfigFactory = f
 }
+
+/* cluster specifier plugin */
+
+// no cluster config parser by default
+var clusterConfigParser api.ClusterConfigParser = nil
+var clusterSpecifierFactory api.ClusterSpecifierFactory
+
+func RegisterClusterConfigParser(parser api.ClusterConfigParser) {
+	clusterConfigParser = parser
+}
+
+func RegisterClusterSpecifierFactory(f api.ClusterSpecifierFactory) {
+	clusterSpecifierFactory = f
+}
+
+func getOrCreateClusterSpecifier(configId uint64) api.ClusterSpecifier {
+	config, ok := configCache.Load(configId)
+	if !ok {
+		// TODO: panic
+	}
+	return clusterSpecifierFactory(config)
+}

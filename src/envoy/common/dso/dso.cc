@@ -118,6 +118,25 @@ DsoInstance::DsoInstance(const std::string dsoName) : dsoName_(dsoName) {
     ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnHttpDecodeDestroy, err: {}", dsoName,
                    dlerror());
   }
+
+  func = dlsym(handler_, "moeNewClusterConfig");
+  if (func) {
+    moeNewClusterConfig_ = reinterpret_cast<GoUint64 (*)(GoUint64 p0, GoUint64 p1)>(func);
+  } else {
+    loaded_ = false;
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeNewClusterConfig, err: {}", dsoName,
+                   dlerror());
+  }
+
+  func = dlsym(handler_, "moeOnClusterSpecify");
+  if (func) {
+    moeOnClusterSpecify_ =
+        reinterpret_cast<GoInt64 (*)(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3)>(func);
+  } else {
+    loaded_ = false;
+    ENVOY_LOG_MISC(error, "lib: {}, cannot find symbol: moeOnClusterSpecify, err: {}", dsoName,
+                   dlerror());
+  }
 }
 
 DsoInstance::~DsoInstance() {
@@ -127,6 +146,8 @@ DsoInstance::~DsoInstance() {
   moeOnHttpData_ = nullptr;
   moeOnHttpSemaCallback_ = nullptr;
   moeOnHttpDestroy_ = nullptr;
+  moeNewClusterConfig_ = nullptr;
+  moeOnClusterSpecify_ = nullptr;
 
   if (handler_ != nullptr) {
     dlclose(handler_);
@@ -164,6 +185,16 @@ void DsoInstance::moeOnHttpSemaCallback(httpRequest* p0) {
 void DsoInstance::moeOnHttpDestroy(httpRequest* p0, int p1) {
   assert(moeOnHttpDestroy_ != nullptr);
   moeOnHttpDestroy_(p0, GoUint64(p1));
+}
+
+GoUint64 DsoInstance::moeNewClusterConfig(GoUint64 p0, GoUint64 p1) {
+  assert(moeNewClusterConfig_ != nullptr);
+  return moeNewClusterConfig_(p0, p1);
+}
+
+GoInt64 DsoInstance::moeOnClusterSpecify(GoUint64 p0, GoUint64 p1, GoUint64 p2, GoUint64 p3) {
+  assert(moeOnClusterSpecify_ != nullptr);
+  return moeOnClusterSpecify_(p0, p1, p2, p3);
 }
 
 } // namespace Dso
